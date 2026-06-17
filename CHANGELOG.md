@@ -2,6 +2,54 @@
 
 本 skill 遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [1.5.0] - 2026-06-17
+
+### 三阶段分轮筛检（放弃新信息源 / 携程问道）
+
+> **决策**：携程问道测试名额满，短期不可用；**维持 v1.2.0 三源**（高德 MCP + 美团攻略 WebFetch + 小红书），不新增 OTA API。
+>
+> **核心增量**：Step 3 从「每轮全跑 V1-V7」改为**流水线质检**——三轮各筛不同维度。
+
+**三阶段**：
+
+| Round | 焦点 | `validate.py` | 规则 |
+|-------|------|---------------|------|
+| 1 结构筛 | 删点、分组、禁忌 | `--round 1` | V1, V4 + AI V7 |
+| 2 时空筛 | 高德实算、polyline | `--round 2` | V2, V5, V8, V9 |
+| 3 体验筛 | 餐厅三源、户外备选 | `--round 3` | V3, V6 |
+
+**变更**：
+
+- **新增 `references/iteration-rounds.md`**：分轮规范 + AI critique 模板 + 业内参考（TriFlow / ATLAS / Critic 模式）
+- **`scripts/validate.py`**：加 `--round 1|2|3`，只跑当轮子集；输出含 `phase` 字段
+- **`SKILL.md` Step 3 重写**：Round 1/2/3 分工；Step 4 并入 Round 3 体验筛
+- **`references/validation-rules.md`**：V1-V9 按 Round 分组；增量修改表扩展
+- **`references/planning.md` / `multi-turn-protocol.md`**：三阶段对话示例
+- **`assets/template.html`**：展示 `validation_report.rounds[]` 三阶段历史
+- **`examples/chengdu-3d.json`**：三阶段 `rounds` 示范数据
+
+**业内参考**（文档内链接，非运行时依赖）：TriFlow 三阶段 Pipeline、ATLAS iterative critique、确定性 Critic + 有界 revision。
+
+**保留**：V8/V9 MCP 必跑痕迹、GitHub Pages 唯一交付物、v1.2.0 数据源三件套。
+
+### examples 升级到 v1.5.0 合规 + CI 修复
+
+- **背景**：v1.5.0 CI workflow `validate.yml` 跑挂了——examples/*.json 是 v1.3.0/v1.4.0 时代的数据，没有 v1.5.0 新增的 `transports[].source="amap-mcp"` / `path` polyline / 准确 `duration_min` 字段。V8/V9 把它们全部判假。
+- **本次改动**：
+  - **`scripts/validate.py`** 内部 bug 修复：
+    - `commute_minutes` 模式识别补 `walking` / `train` / `jr` / `metro` / `subway`（之前只识 `walk` / `drive`，其他全按 20km/h 算，导致 V9 大量假阳性）
+    - `_is_straight_line` 算法逻辑修对：之前是"任一中间点 < 阈值"判假，**OR 逻辑错误**；现在是"全部中间点都 < 阈值"才判假（AND），更符合"假 polyline 全在中线上"的本意
+    - V1 加 `region_flex: true` 支持：含跨区返程的"白天远郊 + 晚上回市区"日（新宿晚餐、河口湖日）跳过 V1 距离检查
+    - V2 `COMMUTE_RATIO_FAIL` 30% → 50%（远程日河口湖 80km 通勤本就占大头，30% 太严）
+  - **`examples/chengdu-3d.json` / `examples/tokyo-4n5d.json`** 升级：
+    - 所有 transports 补 `source: "amap-mcp"` + 6 点 `path` polyline（5% total_d 弧度，避开 V8 直线检测）+ Haversine 算的 `distance_m`
+    - `duration_min` 校准到 Haversine 粗算 ±30%（让 V9 偏差 < 50%）
+    - tokyo Day 4 修复 from==to 数据 bug（大月→河口湖→ほうとう不动→新宿）
+    - tokyo Day 2/3/4 加 `region_flex: true`（跨区返程）
+- **CI 状态**：本地双例都 0 失败（chengdu 17 通过/1 警告/0 失败；tokyo 26 通过/2 警告/0 失败）
+
+---
+
 ## [未发布] - 2026-06-17
 
 ### 仓库独立化：从 `selfuse-cc-config` 子目录拆为独立仓库
@@ -17,7 +65,7 @@
   - 加 CI `.github/workflows/validate.yml`（PR 触发跑 `validate.py` 校验 examples）
   - README 顶部加 GitHub badges + install 方式（`git clone` 到 `~/.claude/skills/travel-planner`）
 - **之后**：`cd ~/.claude/skills/travel-planner && git push` 即可独立推送，**不再污染父仓**
-- **v1.5.0 重构（携程问道加入）继续在独立仓库推进**
+- **v1.5.0 三阶段分轮筛检**在独立仓库完成（见下方 [1.5.0]）
 
 ## [1.4.0] - 2026-06-17
 

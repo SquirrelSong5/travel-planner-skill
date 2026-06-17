@@ -108,16 +108,19 @@
 ### Step 7：写参考文档（结构化 markdown 输出）
 见 SKILL.md Step 6 的输出结构。
 
-**【3 轮迭代循环】**：Step 3-7 不是一次跑完，而是：
+**【3 轮分阶段筛检】**（v1.5.0，详见 `iteration-rounds.md`）：
 
 ```
-Round 1: 跑 Step 3-7 → 验证 V1-V7
-  ↓ 不通过
-Round 2: 针对性修复 → 跑 Step 3-7 → 验证
-  ↓ 不通过
-Round 3: 再次修复 → 跑 Step 3-7 → 验证
+Round 1 结构筛 → validate.py --round 1（V1,V4 + AI V7）
+  ↓ 不通过：只修结构
+Round 2 时空筛 → validate.py --round 2（V2,V5,V8,V9 + 高德实算）
+  ↓ 不通过：只修时空
+Round 3 体验筛 → validate.py --round 3（V3,V6 + 餐厅三源）
   ↓ 不通过 → 列问题请用户介入
+  ↓ 通过 → Step 6-7
 ```
+
+Step 4「补吃饭」已并入 Round 3；Round 3 完成后 Step 4 仅确认即可。
 
 ---
 
@@ -186,5 +189,5 @@ Round 3: 再次修复 → 跑 Step 3-7 → 验证
 3. **首末日按航站楼和返程时间倒推**
 4. **餐厅是补给不是锚点**
 5. **四拍交互 + Smart skip**
-6. **每轮迭代必须跑验证**（V1-V7 不可跳过）
+6. **每轮迭代必须跑当轮验证**（见 `iteration-rounds.md`）
 7. **增量修改必须重验证**（一致性不允许被改坏而不报警）

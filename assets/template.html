@@ -163,7 +163,15 @@
       list-style: none;
       padding: 2px 0;
     }
-    #validation-banner .vb-detail-btn {
+    #validation-banner .vr-phase {
+      display: inline-block;
+      font-size: var(--fs-xs);
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: var(--surface-2);
+      margin-left: 6px;
+      color: var(--fg-muted);
+    }
       margin-top: var(--sp-2);
       font-size: var(--fs-xs);
       color: inherit;
@@ -1671,11 +1679,33 @@
       function renderValidationSection() {
         const section = document.getElementById('validation-report-section');
         if (!section) return;
-        // 优先用浏览器重算结果
         const report = (D._validation_recomputed) || (D.validation_report) || null;
         if (!report || !report.rules || !report.rules.length) {
           section.style.display = 'none';
           return;
+        }
+        const rounds = (D.validation_report && Array.isArray(D.validation_report.rounds))
+          ? D.validation_report.rounds : [];
+        let roundsHtml = '';
+        if (rounds.length) {
+          roundsHtml = rounds.map(rd => {
+            const phase = rd.phase ? esc(rd.phase) : '';
+            const conc = rd.conclusion ? `<div style="font-size:var(--fs-xs);color:var(--fg-muted);margin-top:4px;">${esc(rd.conclusion)}</div>` : '';
+            const issues = (rd.issues && rd.issues.length)
+              ? `<ul style="margin:6px 0 0 16px;font-size:var(--fs-xs);color:var(--fg-muted);">${rd.issues.map(i => '<li>' + esc(i) + '</li>').join('')}</ul>`
+              : '';
+            const rRules = (rd.rules || []).map(r => {
+              return `<div class="vr-rule" style="margin-left:12px;">
+                <div class="vr-status">${r.status}</div>
+                <div><strong>${r.id}</strong> — ${esc(r.note || '')}</div>
+              </div>`;
+            }).join('');
+            return `<div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+              <strong>Round ${rd.round || '?'}</strong><span class="vr-phase">${phase}</span>
+              ${issues}${rRules}${conc}
+            </div>`;
+          }).join('');
+          roundsHtml = `<div style="margin-bottom:16px;"><div style="font-weight:600;margin-bottom:8px;">三阶段分轮筛检（v1.5.0）</div>${roundsHtml}</div>`;
         }
         const items = report.rules.map(r => {
           const sourceClass = (r.source === 'browser' || r.source === 'browser-recompute') ? 'script' : (r.source === 'browser-stub' ? 'browser-stub' : 'ai');
@@ -1692,7 +1722,9 @@
           </div>`;
         }).join('');
         const sumHtml = report.summary ? `<div style="margin-top: 12px; font-size: var(--fs-xs); color: var(--fg-muted);">${esc(report.summary)}</div>` : '';
-        const inner = `<summary>📋 验证报告（${report.rules.length} 条规则）— 点开查看</summary>${items}${sumHtml}`;
+        const phaseTag = (D.validation_report && D.validation_report.phase)
+          ? ` <span class="vr-phase">${esc(D.validation_report.phase)}</span>` : '';
+        const inner = `<summary>📋 验证报告（${report.rules.length} 条规则）${phaseTag} — 点开查看</summary>${roundsHtml}${items}${sumHtml}`;
         section.innerHTML = inner;
       }
 

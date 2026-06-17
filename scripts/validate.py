@@ -3,16 +3,15 @@
 travel-planner 自动验证脚本（v1.1.0 新增，v1.5.0 强化）
 
 用法：
-    python scripts/validate.py <trip_data.json> [--check V1,V2,...] [--pretty]
+    python scripts/validate.py <trip_data.json> [--round 1|2|3] [--check V1,V2,...] [--pretty]
 
 行为：
     - 读 tripData JSON（与 examples/chengdu-3d.json 同 schema）
     - 跑 V1/V3/V4/V5/V6 五条**纯数据可验**规则（V2 通勤粗算用 Haversine 距离假设速度；
       V7 用户禁忌**必须 AI 调上下文判断**，脚本不验）
-    - **v1.5.0 新增 V8**：transports[].path **MCP 必跑痕迹**——source 必须是 "amap-mcp"，
-      path 必须是 ≥ 2 个真实坐标点（不是 2 个点的"直线"）→ 阻断 AI 凭 LLM 记忆
-    - **v1.5.0 新增 V9**：V2 高德实算 vs 粗算对比——AI 自报"已用高德 route_* 实算"但
-      duration_min 和 Haversine 粗算差 > 50% → 警告（说明 AI 没真跑高德）
+    - **v1.5.0 三阶段分轮筛检**：--round 1=结构(V1,V4) 2=时空(V2,V5,V8,V9) 3=体验(V3,V6)
+    - **v1.5.0 新增 V8**：transports[].path **MCP 必跑痕迹**
+    - **v1.5.0 新增 V9**：V2 高德实算 vs 粗算对比
     - 输出 JSON validation_report（stdout）
     - 退出码：全通过 → 0；有失败 → 1
 
@@ -62,8 +61,8 @@ V3_FAIL_KM = 3.0
 WALK_KMH = 5.0       # 步行 5 km/h
 TRANSIT_KMH = 20.0   # 公交/地铁 20 km/h
 DRIVE_KMH = 40.0     # 市内驾车 40 km/h
-# 通勤占当天行程 30% 阈值
-V2_COMMUTE_RATIO_FAIL = 0.30
+# 通勤占当天行程 50% 阈值（v1.5.0 调整：远程日河口湖→新宿 80km 通勤本就占大头，30% 太严）
+V2_COMMUTE_RATIO_FAIL = 0.50
 # 单段通勤 > 60 分钟强警告（与 V2 规则一致）
 
 # V4 一日一重预约
@@ -86,6 +85,19 @@ V8_ALLOWED_SOURCES = {"amap-mcp"}  # 唯一合法的 source 值
 # V9 V2 高德实算 vs 粗算对比
 V9_DURATION_RATIO_FAIL = 0.5  # 高德实算 vs Haversine 粗算 偏差 > 50% → 失败
 
+# v1.5.0 三阶段分轮筛检：--round N 只跑当轮子集（见 references/iteration-rounds.md）
+ROUND_CHECKS: dict[int, tuple[str, ...]] = {
+    1: ("V1", "V4"),
+    2: ("V2", "V5", "V8", "V9"),
+    3: ("V3", "V6"),
+}
+ROUND_PHASE: dict[int, str] = {
+    1: "结构筛",
+    2: "时空筛",
+    3: "体验筛",
+}
+DEFAULT_CHECKS = ("V1", "V2", "V3", "V4", "V5", "V6", "V8", "V9")
+
 EARTH_R_KM = 6371.0088
 
 
@@ -104,10 +116,13 @@ def haversine_km(a: tuple[float, float], b: tuple[float, float]) -> float:
 def commute_minutes(a: tuple[float, float], b: tuple[float, float], mode: str = "transit") -> float:
     """粗算通勤分钟（基于直线距离 + 典型速度，不调高德 MCP）。"""
     d = haversine_km(a, b)
-    if mode == "walk":
+    m = (mode or "").lower()
+    if m in ("walk", "walking"):
         return d / WALK_KMH * 60
-    if mode == "drive":
+    if m in ("drive", "driving", "taxi", "car"):
         return d / DRIVE_KMH * 60
+    if m in ("train", "jr", "metro", "subway"):
+        return d / 45.0 * 60  # 城轨/铁路 45 km/h（含停靠）
     return d / TRANSIT_KMH * 60
 
 
@@ -125,17 +140,20 @@ def status(v: float, warn: float, fail: float) -> str:
 def check_v1(day: dict[str, Any], is_last_day: bool = False) -> dict[str, Any]:
     """POI 到主区域中心直线距离。
 
-    末日（is_last_day=True）跳过最远 POI 检查的"距离"判定——
-    末日通常要赶机场/高铁站，POI 自然偏远。
+    末日（is_last_day=True）或 `region_flex: true` 跳过最远 POI 距离判定——
+    末日通常要赶机场/高铁站；`region_flex: true` 标记"白天去郊区 + 晚上回市区"的合理跨区域行程。
     """
     center = day.get("center")
     pois = day.get("pois") or []
     if not center or not pois:
         return {"id": "V1", "rule": "区域一致性", "status": "⚠️", "note": "缺 center 或 pois 字段，跳过"}
 
-    # 末日跳过：返程 POI 偏远是合理的
+    # 跨区日跳过：末日（赶机场/高铁）或 region_flex=true（白天远郊+晚上回市区）
+    region = day.get("region", "?")
     if is_last_day:
-        return {"id": "V1", "rule": "区域一致性", "status": "✅", "note": f"末日（{day.get('region', '?')}），跳过区域距离检查（返程 POI 偏远是合理的；用 V5 验缓冲）"}
+        return {"id": "V1", "rule": "区域一致性", "status": "✅", "note": f"末日（{region}），跳过区域距离检查（返程 POI 偏远是合理的；用 V5 验缓冲）"}
+    if day.get("region_flex") is True:
+        return {"id": "V1", "rule": "区域一致性", "status": "✅", "note": f"含跨区返程（{region}），region_flex=true 跳过最远距离检查"}
 
     worst = None
     worst_poi = None
@@ -331,7 +349,7 @@ def check_v6(day: dict[str, Any]) -> dict[str, Any]:
 def _is_straight_line(path: list[list[float]], from_loc: tuple[float, float], to_loc: tuple[float, float]) -> bool:
     """检查 path 是否"近似直线"——AI 凭 LLM 记忆最容易犯的错：写 2-5 个直线排列的"假 polyline"。
 
-    算法：path 任意中间点到 from→to 直线段的距离 < 5% 总距离 → 算直线。
+    算法：**所有**中间点到 from→to 直线段的距离 < 阈值 → 算"假 polyline"（真路网必有显著弧度）。
     """
     if len(path) < 3:
         return True  # 2 个点本来就是直线
@@ -353,16 +371,18 @@ def _is_straight_line(path: list[list[float]], from_loc: tuple[float, float], to
     if total_d == 0:
         return True
 
-    # 检查中间点（去掉首末）
+    # 检查中间点（去掉首末）—— 只有**全部**中间点都 < 阈值（每个都很贴直线）才算"假 polyline"
     mid_points = path[1:-1]
+    if not mid_points:
+        return True
     for pt in mid_points:
         if not isinstance(pt, (list, tuple)) or len(pt) < 2:
             continue
         px, py = float(pt[0]), float(pt[1])
         d_perp = _point_to_segment_dist(px, py, x1, y1, x2, y2)
-        if d_perp / total_d < V8_STRAIGHT_LINE_RATIO:
-            return True  # 中间点全在直线上 → 假 polyline
-    return False
+        if d_perp / total_d >= V8_STRAIGHT_LINE_RATIO:
+            return False  # 有中间点偏离超过阈值 → 真实路网，不是假 polyline
+    return True  # 所有中间点都贴在直线上 → 假 polyline
 
 
 def check_v8(days: list[dict[str, Any]]) -> dict[str, Any]:
@@ -536,7 +556,17 @@ def check_v9(days: list[dict[str, Any]]) -> dict[str, Any]:
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("trip_json", help="tripData JSON 文件路径")
-    p.add_argument("--check", default="V1,V2,V3,V4,V5,V6,V8,V9", help="逗号分隔的规则 ID，默认全跑（v1.5.0 起含 V8/V9 必跑 MCP 痕迹）")
+    p.add_argument(
+        "--round",
+        type=int,
+        choices=(1, 2, 3),
+        help="v1.5.0 三阶段分轮筛检：1=结构(V1,V4) 2=时空(V2,V5,V8,V9) 3=体验(V3,V6)",
+    )
+    p.add_argument(
+        "--check",
+        default=None,
+        help="逗号分隔的规则 ID；默认全跑；与 --round 同时用时 --check 优先",
+    )
     p.add_argument("--pretty", action="store_true", help="缩进输出")
     args = p.parse_args()
 
@@ -545,7 +575,15 @@ def main() -> int:
 
     days = trip.get("days") or []
     prebook = trip.get("prebook") or []
-    selected = set(args.check.split(","))
+    if args.check:
+        selected = set(args.check.split(","))
+        round_num = args.round
+    elif args.round is not None:
+        round_num = args.round
+        selected = set(ROUND_CHECKS[round_num])
+    else:
+        round_num = None
+        selected = set(DEFAULT_CHECKS)
 
     rules = []
     n_days = len(days)
@@ -577,12 +615,15 @@ def main() -> int:
     warn = sum(1 for r in rules if r["status"] == "⚠️")
     pass_ = sum(1 for r in rules if r["status"] == "✅")
 
+    phase = ROUND_PHASE.get(round_num) if round_num else None
+    round_note = f"Round {round_num} · {phase}" if round_num else "全量复检"
     summary = {
-        "round": 1,
+        "round": round_num if round_num else 0,
+        "phase": phase,
         "rules": rules,
-        "summary": f"{pass_} 通过 / {warn} 警告 / {fail} 失败（**V7 用户禁忌需 AI 自行核对**）",
+        "summary": f"{pass_} 通过 / {warn} 警告 / {fail} 失败（{round_note}；**V7 用户禁忌需 AI 自行核对**）",
         "script_version": "1.5.0",
-        "note": "V1.5.0 起：V2 是粗算（直线距离 + 假设速度），**真通勤必跑高德 route_* MCP**；V8 阻断 transports[].source !== 'amap-mcp'；V9 阻断 AI 报告值偏差 > 50%",
+        "note": "v1.5.0 三阶段分轮筛检：--round 1|2|3 见 references/iteration-rounds.md；V2 粗算 + 高德实算；V8/V9 阻断假 MCP 痕迹",
     }
 
     indent = 2 if args.pretty else None

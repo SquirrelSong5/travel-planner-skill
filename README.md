@@ -8,7 +8,7 @@
 > 通过 **高德地图 MCP + 小红书 skill + 美团攻略 WebFetch** 三件套，
 > **零装零扫码**生成含酒店、每日行程、餐厅候选的单文件 HTML 旅行方案。
 > 大众点评 OpenCLI 降级为"深度档"（必吃榜 + 评价数才用）。
-> 支持 3 轮迭代规划自动验证 + 用户后续对话的增量修改。
+> 支持 **v1.5.0 三阶段分轮筛检**（Round1 结构 → Round2 时空 → Round3 体验）+ 增量修改。
 
 ## 安装
 
@@ -73,7 +73,7 @@ claude mcp add --transport http amap "https://mcp.amap.com/mcp?key=YOUR_KEY"
 新会话里说"做个 XX 行程"即可，AI 会：
 1. 自检环境（告诉你哪些 MCP 装好了）
 2. 问几个关键信息（日期 / 酒店 / 想去点）
-3. 跑 3 轮迭代规划（自动验证合理性）
+3. 跑 **三阶段分轮筛检**（Round 1 结构 → Round 2 时空 → Round 3 体验 + `validate.py --round`）
 4. 输出 HTML 方案 + 可选渲染地图
 
 ### 不想配 MCP 也能用？
@@ -94,7 +94,7 @@ claude mcp add --transport http amap "https://mcp.amap.com/mcp?key=YOUR_KEY"
 |------|------------------|---------------------------|
 | 数据获取 | OpenCLI + Chrome CDP | **MCP + WebFetch 优先**（高德 / 小红书 / 美团攻略） |
 | 地图 | Leaflet 交互地图 | **高德 JS API 内嵌** + Tab 切换 |
-| 规划轮次 | 单轮 | **3 轮迭代 + 自动验证**（V1-V7） |
+| 规划轮次 | 单轮 | **3 阶段分轮筛检**（结构→时空→体验，每轮不同规则子集） |
 | 增量修改 | 不支持 | **6 种修改场景模板** |
 | 酒店规划 | 仅当硬约束 | **独立推荐流程** |
 | 餐厅调研 | OpenCLI | **v1.2.0**：高德 POI + 美团攻略 + 小红书（零装） / opencli 降级为深度档 |
@@ -263,7 +263,7 @@ npm install -g @jackwener/opencli
 1. 你说："做个东京 5 日行程，我和老婆两人，预算 1.5 万"
 2. AI 加载本 skill，**Step 0 自动检测 MCP 状态**（首次会引导安装）
 3. AI 一次性问完硬约束（日期 / 酒店 / 想去点 / 禁忌）
-4. AI 跑 3 轮迭代规划 + V1-V7 验证
+4. AI 跑三阶段分轮筛检 + `validate.py --round` + 最终全量验证
 5. AI 输出 markdown 参考文档 + 渲染 HTML 文件
 6. 你说"Day 2 的 X 换成 Y"，AI 走增量修改
 
@@ -285,7 +285,8 @@ travel-planner/
 ├── references/
 │   ├── planning.md                   # 7 步规划方法论 + 5 条硬规则
 │   ├── multi-turn-protocol.md        # 四拍交互 + 增量修改 6 场景
-│   ├── validation-rules.md           # V1-V7 自动验证规则
+│   ├── validation-rules.md           # V1-V9 自动验证 + 按 Round 分组
+│   ├── iteration-rounds.md         # v1.5.0 三阶段分轮筛检规范
 │   ├── amap-mcp-usage.md             # 高德 MCP 工具调用模式
 │   ├── xhs-research.md               # 小红书两段式调研
 │   ├── dianping-research.md          # 餐厅调研方法（v1.2.0 重构：双轨零装 + 深度档）
@@ -295,7 +296,7 @@ travel-planner/
 ├── assets/
 │   └── template.html                 # 单文件 HTML 模板（卡片化 + 移动端适配）
 ├── scripts/
-│   └── validate.py                   # V1-V7 硬约束验证脚本
+│   └── validate.py                   # V1-V9 硬约束验证（--round 1|2|3）
 └── examples/
     ├── chengdu-3d.json               # 国内静态 demo（成都 3 日，默认）
     ├── tokyo-4n5d.json               # 境外参考 demo（东京 5 日）
@@ -313,21 +314,24 @@ travel-planner/
 - 交通方式用不同颜色区分：🟢 步行 / 🔵 地铁公交JR / 🔴 驾车 / 🟠 骑行
 - 缺地图 Key 时降级为"按 Tab 切换文字版行程"
 
-### ✅ 多轮迭代规划
+### ✅ 三阶段分轮筛检（v1.5.0）
 
-每轮规划后跑 **7 条自动验证规则**：
+每阶段筛**不同维度**，不是同一套规则重复三遍：
 
-| ID | 规则 |
-|----|------|
-| V1 | 区域一致性 |
-| V2 | 时间可行性（用高德 route 实算） |
-| V3 | 餐厅区域匹配 |
-| V4 | 一日一重预约 |
-| V5 | 末日返程缓冲 |
-| V6 | 户外天气敏感 |
-| V7 | 用户禁忌屏蔽 |
+| Round | 焦点 | 规则 |
+|-------|------|------|
+| 1 结构筛 | 删点、分组、禁忌 | V1, V4, V7 |
+| 2 时空筛 | 高德实算、路线、末日缓冲 | V2, V5, V8, V9 |
+| 3 体验筛 | 餐厅三源、户外备选 | V3, V6 |
 
-最多 3 轮收敛，超出则提示用户介入。
+```bash
+python scripts/validate.py trip.json --round 1   # 结构
+python scripts/validate.py trip.json --round 2   # 时空
+python scripts/validate.py trip.json --round 3   # 体验
+python scripts/validate.py trip.json --pretty  # 交付前全量
+```
+
+详见 `references/iteration-rounds.md`。最多 3 Round，超出请用户决策。
 
 ### ✅ 增量修改（不重跑全部）
 

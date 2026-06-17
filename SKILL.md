@@ -1,6 +1,6 @@
 ---
 name: travel-planner
-description: 旅行规划助手 —— **唯一交付物 = 单文件 HTML 部署到 GitHub Pages 的 URL**（手机/电脑浏览器直接看）。通过高德地图 MCP（路线/POI/酒店/天气/POI 详情）、小红书 skill（种草笔记/避雷）、美团攻略 WebFetch（编辑过的好店清单）三件套，**零装零扫码**生成含酒店、每日行程、餐厅候选的单文件 HTML 旅行方案。大众点评 OpenCLI 降级为"深度档"（必吃榜 + 评价数才用）。支持多轮对话、迭代规划（最多 3 轮自动验证修复循环）、增量修改（用户后续对话直接改方案而不重跑全部）。**v1.5.0 硬约束**：AI 必跑 MCP（不能凭 LLM 记忆写 POI/路线/餐厅）+ 必部署到 GitHub Pages（不能给 PDF/Word/Markdown 作为"输出"）。适用场景：用户提到"规划旅行"/"做个行程"/"旅行方案"/"旅游规划"/"plan my trip"/"trip itinerary"/"travel plan"，或同时提到高德/小红书/大众点评三个数据源中的两个以上。
+description: 旅行规划助手 —— **唯一交付物 = 单文件 HTML 部署到 GitHub Pages 的 URL**（手机/电脑浏览器直接看）。通过高德地图 MCP（路线/POI/酒店/天气/POI 详情）、小红书 skill（种草笔记/避雷）、美团攻略 WebFetch（编辑过的好店清单）三件套，**零装零扫码**生成含酒店、每日行程、餐厅候选的单文件 HTML 旅行方案。大众点评 OpenCLI 降级为"深度档"（必吃榜 + 评价数才用）。支持多轮对话、**v1.5.0 三阶段分轮筛检**（Round1结构→Round2时空→Round3体验，每轮筛不同维度）、增量修改。**v1.5.0 硬约束**：AI 必跑 MCP + 必部署 GitHub Pages。适用场景：用户提到"规划旅行"/"做个行程"/"旅行方案"/"旅游规划"/"plan my trip"/"trip itinerary"/"travel plan"，或同时提到高德/小红书/大众点评三个数据源中的两个以上。
 ---
 
 # travel-planner
@@ -241,12 +241,11 @@ Step 1：抽硬约束（Re-ground + 一次性问关键信息）
   ↓
 Step 2：清单分组 + 酒店候选
   ↓
-Step 3：【3 轮迭代循环】
-   Round 1 → 验证 V1-V7 → 不通过则
-   Round 2 → 验证 → 不通过则
-   Round 3 → 验证 → 通过 / 超限 → 用户介入
+Step 3：【3 轮分阶段筛检】（v1.5.0 核心）
+   Round 1 结构筛 → Round 2 时空筛 → Round 3 体验筛
+   每轮筛不同维度 + validate.py --round N
   ↓
-Step 4：补吃饭（每顿 2-3 候选）
+Step 4：确认餐饮（Round 3 已补则跳过重复调研）
   ↓
 Step 5：补票务 / 跨城交通
   ↓
@@ -502,143 +501,123 @@ codex mcp add playwright -- npx @playwright/mcp@latest
 
 把分组结果 + 酒店候选摆给用户确认一次，再进入 Step 3。
 
-### Step 3：3 轮迭代规划（核心创新）
+### Step 3：3 轮分阶段筛检（v1.5.0 核心）
 
-**Round 1**：基于 Step 2 产出**首版草案**（每天主区域 + 锚点 POI + 粗时间块）。
+> **v1.5.0 变化**：3 轮不再「每轮全跑 V1-V7」——改为**流水线质检**，每轮筛**不同维度**。详见 `references/iteration-rounds.md`。
 
-#### 🆕 v1.3.0 新增：AI 用高德 MCP 算真实路径（路线规划详细文档）
+```
+Round 1 结构筛（该不该去、怎么分组）
+    ↓ 通过
+Round 2 时空筛（来不来得及、路顺不顺）
+    ↓ 通过
+Round 3 体验筛（吃得顺、不踩雷、有备选）
+    ↓ 通过
+Step 6-7 输出 HTML
+```
 
-> **为什么加**：HTML 地图当前是**直线 polyline**（POI1→POI2 一条直线），不是真实路网。**v1.3.0 起 AI 在 Step 3 必跑 `maps_direction_*` 同时拿通勤时间 + polyline 坐标**，写进 `transports[].path`，**HTML 渲染真实路网路径**（沿公路/步行道/公交线）。
->
-> **零额外 API 开销**：V2 验证（`duration_min`）和 polyline 提取是**同一次 MCP 调用**。
+| Round | 焦点 | 脚本命令 | 规则子集 |
+|-------|------|----------|----------|
+| **1 结构筛** | 删点、分组、一天一区、用户禁忌 | `validate.py --round 1` | V1, V4 + 🤖 V7 |
+| **2 时空筛** | 高德 route 实算、polyline、末日缓冲 | `validate.py --round 2` | V2, V5, V8, V9 + 🤖 V2 实算 |
+| **3 体验筛** | 美团→高德→小红书、户外备选 | `validate.py --round 3` | V3, V6 |
 
-**Round 1 末 + 每次迭代后必做**：
+**每轮末必做 3 步**（硬流程）：
 
-1. **对当天每对相邻 POI**（POI[i] → POI[i+1]），按距离/场景调对应的路线工具：
-
-   | 距离/场景 | 工具 | 返回 |
-   |----------|------|------|
-   | < 1.5km 步行可达 | `maps_direction_walking` | `paths[].steps[].path` |
-   | 1.5-10km 市内 | `maps_direction_transit_integrated` | `transits[].segments[].*.path` |
-   | 适合骑行 | `maps_bicycling` | `paths[].steps[].path` |
-   | > 10km / 跨城 | `maps_direction_driving` | `paths[].steps[].path` |
-
-2. **提取 polyline**（伪代码）：
-
-   ```python
-   result = call_mcp("maps_direction_walking", {"origin": a, "destination": b})
-   path = []
-   for p in result["paths"]:
-     for step in p["steps"]:
-       for coord in step["path"].split(";"):
-         lng, lat = coord.split(",")
-         path.append([float(lng), float(lat)])
-   ```
-
-3. **写进 `tripData.days[].transports[].path`**：
-
-   ```json
-   {
-     "from_idx": 0, "to_idx": 1, "mode": "walking",
-     "duration_min": 15, "distance_m": 1234,
-     "path": [[139.7967, 35.7148], [139.7970, 35.7145], ...],
-     "source": "amap-mcp"
-   }
-   ```
-
-4. **HTML 渲染**（template.html 自动判断）：
-   - `path` 存在且非空 → **画真实路网 polyline**（沿公路/步行道/公交线）
-   - `path` 缺失 → **画直线**（向后兼容）
-
-**注意事项**：
-- **公交路线**是多段拼接：每段类型不同（WALK/BUS/RAILWAY/TRANSFER），**每段都有 path**，按段拼接成一条完整 polyline
-- **跨城/远郊的步行 polyline 精度**：高德在郊区可能返回"沿公路步行"（无独立步行道）——数据限制，不是 skill bug
-- **降级**：MCP 调用失败 / 超时 → 跳过 polyline 提取，保留直线（旧行为）
-
-**完整 polyline 提取代码 + schema 文档**见 `references/amap-mcp-usage.md` §2.3-2.4。
-
-#### 🔒 v1.1.0 新增：代码级硬约束（不再靠提示词）
-
-> **为什么改**：AI 经常"走过场"——写"✅ 全通过"但没真算过。**v1.1.0 起，验证靠代码不靠自觉**。
-
-**每轮必跑的 3 步（硬流程）**：
-
-1. **AI 跑脚本**（不能跳过）：
+1. **跑当轮脚本**：
    ```bash
-   python scripts/validate.py /path/to/trip_data.json --pretty
+   python scripts/validate.py /path/to/trip_data.json --round {1|2|3} --pretty
    ```
-   - V1/V3/V4/V5/V6 五条**纯数据可验**的规则，**脚本自动算**
-   - V2 通勤脚本只能粗算，**AI 需另跑高德 `route_*` MCP 补齐**
-   - V7 用户禁忌**必须 AI 自行核对**（脚本验不了）
+2. **写 AI Critique**（不能只报 ✅）——嵌进 `tripData.validation_report.rounds[]`：
+   - `round` / `phase`（结构筛|时空筛|体验筛）
+   - `issues[]`：发现的问题 + 修复动作
+   - `conclusion`：通过进下一轮 / 不通过重跑当轮
+   - `rules[]`：当轮全部规则（含 V7 在 Round 1）
+3. **合并到 `validation_report.rules`**（最终交付前跑全量 `validate.py` 无 `--round`）
 
-2. **AI 把脚本 stdout + V2 高德结果 + V7 AI 判断 合并**为完整 `validation_report`，嵌进 `tripData.validation_report`：
+**收敛**：当轮 ❌ → 只修当轮维度，不进下一轮；Round 1-3 全 ✅/⚠️ → 进 Step 6；满 3 Round 仍 ❌ → 请用户决策。
 
-   ```json
-   {
-     "round": 1,
-     "rules": [
-       {"id": "V1", "rule": "区域一致性", "status": "✅", "note": "...", "source": "script"},
-       {"id": "V2", "rule": "时间可行性", "status": "✅", "note": "高德 route 实算结果", "source": "ai-amap"},
-       {"id": "V3", "rule": "餐厅区域匹配", "status": "✅", "note": "...", "source": "script"},
-       {"id": "V4", "rule": "一日一重预约", "status": "✅", "note": "...", "source": "script"},
-       {"id": "V5", "rule": "末日返程缓冲", "status": "✅", "note": "...", "source": "script"},
-       {"id": "V6", "rule": "户外天气敏感", "status": "✅", "note": "...", "source": "script"},
-       {"id": "V7", "rule": "用户禁忌屏蔽", "status": "✅", "note": "用户禁忌：xxx → 已剔除", "source": "ai-context"}
-     ],
-     "summary": "全部通过；1 轮收敛"
-   }
-   ```
+---
 
-3. **浏览器硬约束**（这一步是真正"卡 AI 脖子"的关键）：
-   - `assets/template.html` 加载时**用 JS 强制重算 V1/V3/V4/V5/V6**（用 POI 坐标 + 同样阈值）
-   - **重算结果覆盖** AI self-report（AI 想作弊也挡不住）
-   - `validation_report` 字段缺失 → 顶部红条「⚠️ 本方案未跑验证」
-   - 7 条规则不完整 → 黄条「⚠️ 验证报告不完整」
-   - 完整但有失败 → 红条「❌ 浏览器重算发现 N 条失败」
+#### Round 1：结构合理性筛
 
-**AI 没法绕过**——HTML 加载就用浏览器 JS 强制重算，**用户点开就能看到"实际计算结果"**。
+**AI 必做**：删远郊/禁忌点 → `deleted[]`；分组（城内/预约/远郊/可路过）；草案每天主区域 + POI + 粗时间块；V7 禁忌审查；酒店锚点覆盖天数审查。
+
+**不跑**高德 route、不调研餐厅。
+
+```bash
+python scripts/validate.py trip_data.json --round 1 --pretty
+```
+
+**不通过 → 不进 Round 2**。
+
+---
+
+#### Round 2：时空可行性筛
+
+**AI 必做**：对相邻 POI 调 `maps_direction_*` → `transports[].path` + `duration_min` + `source: "amap-mcp"`；用高德结果填 V2。
+
+| 距离/场景 | 工具 |
+|----------|------|
+| < 1.5km 步行 | `maps_direction_walking` |
+| 1.5-10km 市内 | `maps_direction_transit_integrated` |
+| 骑行 | `maps_bicycling` |
+| > 10km / 跨城 | `maps_direction_driving` |
+
+polyline 提取见 `references/amap-mcp-usage.md` §2.3-2.4。
+
+```bash
+python scripts/validate.py trip_data.json --round 2 --pretty
+```
+
+**不通过 → 只修时空，不重跑 Round 1 删点**。
+
+---
+
+#### Round 3：体验质量筛
+
+**AI 必做**（含原 Step 4 餐厅调研）：
+
+1. 美团攻略 WebFetch `guide.meituan.com/<city>/canyin` → 候选池
+2. 高德 `maps_text_search` + `maps_search_detail` → 硬信号
+3. 小红书搜「<店名> 排队」「<店名> 避雷」
+4. 户外 POI 补 `indoor_backup`；体验 critique（游客店/排队/节奏）
+
+```bash
+python scripts/validate.py trip_data.json --round 3 --pretty
+```
+
+---
+
+#### 🔒 代码级硬约束 + 浏览器重算（v1.1.0 起，v1.5.0 保留）
+
+- `validate.py`：脚本可验的规则**必须真跑**（按 `--round` 或全量）
+- `template.html`：加载时 JS **强制重算** V1/V3/V4/V5/V6，覆盖 AI self-report
+- 最终部署前建议全量复检：
+  ```bash
+  python scripts/validate.py trip_data.json --pretty
+  ```
 
 #### 7 条规则总览
 
-| ID | 规则 | 验证方式 | 失败时动作 |
-|----|------|---------|----------|
-| V1 | 区域一致性 | ⚙️ 脚本（POI vs center 直线） | 跨区提示换酒店或挪日 |
-| V2 | 时间可行性 | 🤖 AI 调高德 `route_*` MCP | 替换/删/挪时间 |
-| V3 | 餐厅区域匹配 | ⚙️ 脚本（餐厅 vs center 距离） | 替换餐厅候选 |
-| V4 | 一日一重预约 | ⚙️ 脚本（数 prebook） | 拆日或减预约 |
-| V5 | 末日返程缓冲 | ⚙️ 脚本（POI 末时间 vs 航班） | 末日去远郊挪前 / 提前返酒店 |
-| V6 | 户外天气敏感 | ⚙️ 脚本（检查 indoor_backup 字段） | 配室内备选 |
-| V7 | 用户禁忌屏蔽 | 🤖 AI 上下文判断 | 直接删 |
+| ID | 规则 | Round | 验证方式 |
+|----|------|-------|---------|
+| V1 | 区域一致性 | 1 | ⚙️ 脚本 |
+| V4 | 一日一重预约 | 1 | ⚙️ 脚本 |
+| V7 | 用户禁忌屏蔽 | 1 | 🤖 AI |
+| V2 | 时间可行性 | 2 | 🤖 高德 + ⚙️ 粗算 |
+| V5 | 末日返程缓冲 | 2 | ⚙️ 脚本 |
+| V8 | MCP 必跑痕迹 | 2 | ⚙️ 脚本 |
+| V9 | 实算 vs 粗算 | 2 | ⚙️ 脚本 |
+| V3 | 餐厅区域匹配 | 3 | ⚙️ 脚本 |
+| V6 | 户外天气敏感 | 3 | ⚙️ 脚本 |
 
-**每轮验证报告格式**（用户看的是浏览器底部折叠区 + 顶部 banner）：
+完整规则见 `references/validation-rules.md`；分轮规范见 `references/iteration-rounds.md`。
 
-```md
-## Round N 验证报告
-✅ V1 区域一致性 — 通过（⚙️ 浏览器重算：最远「xx」0.34 km）
-✅ V2 时间可行性 — 通过（🤖 AI 报告：高德 route 实算 Day 2 累计通勤 18%）
-✅ V3 餐厅区域匹配 — 通过
-✅ V4 一日一重预约 — 通过
-⚠️ V5 末日返程缓冲 — 缓冲 2.15 h（临界）
-✅ V6 户外天气敏感 — Day 2 配 indoor_backup
-✅ V7 用户禁忌屏蔽 — 用户禁忌：无酒吧夜场 → 已剔除九眼桥
-```
+### Step 4：确认餐饮（Round 3 已补则跳过）
 
-**收敛条件**：
-- ⚙️ 脚本验的 5 条全 ✅ + 🤖 AI 验的 2 条全 ✅/⚠️ → 进入 Step 4
-- 有 ❌ → 进下一轮针对性修复（**浏览器 banner 会显示**失败原因）
-- 满 3 轮仍未通过 → 列出剩余问题请用户决策（不要无限循环）
+> **v1.5.0**：餐厅调研已并入 **Round 3 体验筛**。若 Round 3 已补全 `meals[]`，Step 4 一句话确认即可，**不必重复**美团/高德/小红书调研。
 
-### Step 4：补吃饭（每顿 2-3 候选）
-
-> **v1.2.0 升级**：餐厅硬信号从"主推大众点评"改为"**高德 POI 详情 + 美团攻略 WebFetch**"双轨零装。每顿给主推 + 备选，写清区域 + 距离主区域 + 高德硬信号 + 美团攻略标签 + 小红书软信号。
-
-**调研流程**（详见 `references/dianping-research.md` §3 / `references/meituan-guide-research.md` §3）：
-1. **美团攻略定方向**（国内 8 大城市）：WebFetch `guide.meituan.com/<city>/canyin` → 编辑推荐清单
-2. **高德 POI 详情填硬信号**：`maps_text_search` + `maps_search_detail` → 坐标/营业/评分/类型
-3. **小红书软信号**：搜"<店名> 排队"/"<店名> 避雷"
-4. **V3 验证**：`scripts/validate.py` 自动算"餐厅 vs 酒店 ≤ 1.5km"
-
-完整选餐逻辑见 `references/dianping-research.md` / `meituan-guide-research.md` / `xhs-research.md`。
+若用户中途只改了 POI 没动餐厅，可只跑 `validate.py --round 3` 增量验证 V3。
 
 **餐厅是补给点不是锚点** —— 只在预约餐、强目的餐、用户明确指定时允许反向推路线。
 
@@ -759,12 +738,12 @@ git push -u origin main
 
 | 用户说 | 类型 | AI 动作 |
 |--------|------|---------|
-| "Day 2 的 X 换成 Y" | 单点替换 | 改这一项 → 跑 V1/V2/V3 增量验证 → 更新 tripData → 重写 HTML 并重新部署 |
-| "加一天京都" | 加日 | 插入新 day → 跑 V1-V7 → 更新 tripData → 重写 HTML 并重新部署 |
+| "Day 2 的 X 换成 Y" | 单点替换 | 改这一项 → `validate.py --round 2`（+ 若餐厅则 `--round 3`）→ 更新 tripData → 重写 HTML 并重新部署 |
+| "加一天京都" | 加日 | 插入新 day → Round 1→2→3 → 更新 tripData → 重写 HTML 并重新部署 |
 | "取消 Day 3" | 删日 | 删 day → 重编号 → 更新 tripData → 重写 HTML 并重新部署 |
-| "酒店换到 X" | 改锚点 | 跑通勤圈校验 → 必要时联动改 day → 更新 tripData → 重写 HTML 并重新部署 |
-| "Day 2 太赶了，分两天" | 节奏拆分 | 提议拆分方案 → 用户确认 → 跑全流程 → 更新 tripData → 重写 HTML 并重新部署 |
-| "重排 Day 1" | 单日重排 | 只重跑 Day 1 + V1-V7 → 更新 tripData → 重写 HTML 并重新部署 |
+| "酒店换到 X" | 改锚点 | Round 1→2→3（V1/V3）→ 更新 tripData → 重写 HTML 并重新部署 |
+| "Day 2 太赶了，分两天" | 节奏拆分 | 提议拆分 → 用户确认 → 新两日 Round 1→2→3 → 更新 tripData → 重写 HTML 并重新部署 |
+| "重排 Day 1" | 单日重排 | 该 day Round 1→2→3 → 更新 tripData → 重写 HTML 并重新部署 |
 
 **关键约束**：任何修改后必须跑受影响规则的验证。详见 `references/multi-turn-protocol.md` 第 5 节。
 
@@ -788,7 +767,7 @@ git push -u origin main
 3. **首末日按航站楼和返程时间倒推**
 4. **餐厅是补给不是锚点**
 5. **四拍交互 + Smart skip**
-6. **每轮迭代必须跑验证**（V1-V7 不可跳过）
+6. **每轮迭代必须跑当轮验证**（`validate.py --round N`；交付前全量复检）
 7. **增量修改必须重验证**（一致性不允许被改坏而不报警）
 
 参考 `references/planning.md` 看完整方法论。
@@ -809,7 +788,8 @@ git push -u origin main
 
 - `references/planning.md` — 7 步规划方法论 + 5 条硬规则 + 反模式表
 - `references/multi-turn-protocol.md` — 四拍协议 + Smart skip + 增量修改 6 场景
-- `references/validation-rules.md` — V1-V7 自动验证规则
+- `references/validation-rules.md` — V1-V9 自动验证规则 + 按 Round 分组
+- `references/iteration-rounds.md` — **v1.5.0** 三阶段分轮筛检规范
 - `references/amap-mcp-usage.md` — 高德 MCP 工具调用模式
 - `references/xhs-research.md` — 小红书两段式调研
 - `references/dianping-research.md` — 餐厅调研方法（v1.2.0 重构：双轨零装 + 深度档）

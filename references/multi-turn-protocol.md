@@ -565,51 +565,43 @@ AI: OK，先用我的 Tokyo 4 泊 5 日示例给你看效果。
     B. 还要继续用 demo 改改看
 ```
 
-### 场景七·验证对话（v1.1.0 新增）
+### 场景七·三阶段分轮验证对话（v1.5.0）
 
-> **核心**：AI 出方案时**不能跳过验证**——**`scripts/validate.py` 必跑** + **`validation_report` 必嵌进 tripData** + **浏览器会强制重算**。
+> **核心**：Step 3 分 **Round 1 结构 / Round 2 时空 / Round 3 体验**，每轮 `validate.py --round N` + AI critique；**不能跳过**。
 
 ```
-🟢 AI: Step 3 Round 1 跑完了。
-     [shell: cd ~/.claude/skills/travel-planner && python3 scripts/validate.py /tmp/chengdu-3d.json]
-     
-     15 通过 / 1 警告 / 0 失败
-     ⚠️ V5 末日返程缓冲 — 航班缺 depart_time 字段
-   
-🟢 AI: 查高德补 V2...
-     [tool: mcp__amap__route_transit "熊猫基地" "双流机场" 出发时间="07:30"]
-     ✅ Day 3 早上通勤 1.2h → 9:00 到基地 → 充实；其他段全 ✅
-   
-🟢 AI: V7 用户禁忌自检：用户没标禁忌，但跳过九眼桥酒吧街（夜场对带娃不友好）
-     ✅ V7 ✅
-   
-🟢 AI: 合并验证报告到 tripData.validation_report...
+🟢 AI: Round 1 · 结构筛 完成。
+     删了：九眼桥酒吧街（用户禁忌：无夜场）
+     [shell: python scripts/validate.py /tmp/chengdu.json --round 1 --pretty]
+     ✅ V1/V4 通过；V7 已自检禁忌
+     → 写入 validation_report.rounds[0]，conclusion：进入 Round 2
 
-用户: 渲染 HTML 看看
+🟢 AI: Round 2 · 时空筛。
+     [tool: mcp__amap__maps_direction_walking ...] × N 段
+     [shell: python scripts/validate.py /tmp/chengdu.json --round 2 --pretty]
+     ✅ V2/V5/V8/V9 通过
+     → rounds[1]：高德实算 Day 3 早上最紧，仍可行
 
-🟢 AI: 部署到 GitHub Pages...
-     [tool: gh repo create ...]
-     [shell: git push]
+🟢 AI: Round 3 · 体验筛。
+     [WebFetch: guide.meituan.com/chengdu/canyin]
+     [tool: mcp__amap__maps_search_detail ...]
+     [shell: python ~/xhs-skill/scripts/cli.py search-feeds --keyword "蜀大侠 排队"]
+     [shell: python scripts/validate.py /tmp/chengdu.json --round 3 --pretty]
+     ✅ V3/V6 通过
+     → rounds[2]：餐厅三源已留痕
+
+🟢 AI: 最终全量复检：
+     [shell: python scripts/validate.py /tmp/chengdu.json --pretty]
+     合并 rules → 部署 GitHub Pages
      https://squirrelsong5.github.io/travel-plans/chengdu-3d.html
 
-用户: （点开 HTML）哎呀 V5 显示警告了，航班时间怎么没填？
-
-🟢 AI: 对，V5 检测到 prebook 里的航班没 depart_time 字段。我现在去补。
-     [shell: cd ~/.claude/skills/travel-planner && python3 -c "import json; d=json.load(open('examples/chengdu-3d.json')); ..."]
-     ✅ 补了 "18:00" → V5 改 ✅
-     [shell: 重新跑 validate.py]
-     16 通过 / 0 警告 / 0 失败
-     [shell: 重新部署]
-
-用户: 这下绿色了
+用户: （点开 HTML）底部能看到 Round 1/2/3 三阶段报告
 ```
 
 **关键点**：
-- AI 跑完脚本 + 高德 → 把结果嵌进 tripData.validation_report
-- 浏览器加载时**用 JS 强制重算** V1/V3/V4/V5/V6（不依赖 AI 报告）
-- 用户点开 HTML 就能看到**实际计算结果**——AI 想作弊也挡不住
-- V2 通勤**必须 AI 跑高德**，浏览器内无法算
-- V7 用户禁忌**完全靠 AI 上下文**判断
+- 每轮只跑**当轮规则子集**（见 `iteration-rounds.md`）
+- `validation_report.rounds[]` 保留三阶段历史 + critique
+- 浏览器仍强制重算 V1/V3/V4/V5/V6；V2 看 AI 高德报告；V7 Round 1 必查
 
 ### 场景八：配置失败排查
 
