@@ -1,0 +1,425 @@
+{
+  "$schema": "./README.md#schema",
+  "amap_key": "",
+  "trip_name": "成都 3 日 2 晚",
+  "date_range": "2026-09-18 ~ 2026-09-20",
+  "n_days": "2 泊 3 日",
+  "city": "成都",
+  "summary": "川菜 + 熊猫 + 茶馆三日。春熙路酒店作锚点，去各区都顺；火锅选小巷本地店而非网红打卡。",
+  "weather_plan": "9 月成都仍偏热 + 阵雨多，户外（宽窄巷子、人民公园）提前 1 天看雨。",
+  "trip_center": [104.066, 30.659],
+  "hotel": {
+    "name": "春熙路亚朵酒店",
+    "address": "四川省成都市锦江区春熙路东大街 8 号",
+    "lng": 104.0810,
+    "lat": 30.6580,
+    "amap_uri": "https://uri.amap.com/marker?position=104.0810,30.6580&name=春熙路亚朵酒店",
+    "apple_uri": "https://maps.apple.com/?daddr=30.6580,104.0810&dirflg=w",
+    "google_uri": "https://www.google.com/maps/dir/?api=1&destination=30.6580,104.0810",
+    "booking_uri": "https://www.booking.com/search.html?ss=Atour+Hotel+Chengdu+Chunxi+Road",
+    "why": "地铁 2/3 号线春熙路站步行 3 分钟；春熙路/太古里商圈内，IFS/远洋太古里吃购一站。",
+    "commute": [
+      { "day": 1, "region": "春熙路 / 太古里", "duration_min": 5, "mode": "步行" },
+      { "day": 2, "region": "宽窄巷子 / 人民公园", "duration_min": 15, "mode": "地铁" },
+      { "day": 3, "region": "熊猫基地 / 机场", "duration_min": 60, "mode": "地铁 + 机场专线" }
+    ]
+  },
+  "days": [
+    {
+      "day": 1,
+      "date": "2026-09-18",
+      "weekday": "周五",
+      "region": "春熙路 / 太古里",
+      "theme": "落地型 + 太古里夜游",
+      "weather": "多云 27℃",
+      "weather_emoji": "⛅",
+      "center": [104.0810, 30.6580],
+      "zoom": 14,
+      "pois": [
+        {
+          "idx": 1,
+          "time": "15:00",
+          "name": "春熙路亚朵酒店",
+          "cat": "hotel",
+          "lng": 104.0810,
+          "lat": 30.6580,
+          "duration_min": 45,
+          "note": "天府机场 / 双流机场均可地铁直达：双流 1 小时、天府 1.5 小时",
+          "why": "酒店即锚点，Day 1 不跑远",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=104.0810,30.6580&mode=car&policy=1"
+          }
+        },
+        {
+          "idx": 2,
+          "time": "17:00",
+          "name": "远洋太古里",
+          "cat": "shopping",
+          "lng": 104.0805,
+          "lat": 30.6550,
+          "duration_min": 90,
+          "note": "开放式街区 + 千年古刹大慈寺（始建于魏晋）；傍晚光线好",
+          "why": "步行 5 分钟；逛街同时看古建筑反差",
+          "weather_sensitive": false,
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=104.0805,30.6550&mode=walk",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=成都远洋太古里"
+          }
+        },
+        {
+          "idx": 3,
+          "time": "19:00",
+          "name": "小龙翻大江（春熙店）",
+          "cat": "food",
+          "lng": 104.0830,
+          "lat": 30.6570,
+          "duration_min": 90,
+          "note": "川剧变脸火锅（落地第一顿、看表演的「轻」火锅；不接受包场预订，周末排号 30-60 分钟）",
+          "why": "步行 5 分钟；落地第一顿稳、看文化",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=104.0830,30.6570&mode=walk",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=小龙翻大江+春熙店",
+            "dianping": "https://www.dianping.com/shop/l4V0Z6Xjc2XJfz4q"
+          }
+        }
+      ],
+      "transports": [
+        {
+          "from_idx": 1,
+          "to_idx": 2,
+          "mode": "walking",
+          "duration_min": 5,
+          "description": "步行 5 分钟（春熙路 → 太古里）",
+          "distance_m": 350,
+          "path": [
+            [104.0810, 30.6580],
+            [104.0809, 30.6575],
+            [104.0807, 30.6570],
+            [104.0806, 30.6565],
+            [104.0805, 30.6558],
+            [104.0805, 30.6550]
+          ],
+          "source": "amap-mcp"
+        },
+        {
+          "from_idx": 2,
+          "to_idx": 3,
+          "mode": "walking",
+          "duration_min": 8,
+          "description": "步行 8 分钟（太古里 → 小龙翻大江春熙店）",
+          "distance_m": 540,
+          "path": [
+            [104.0805, 30.6550],
+            [104.0810, 30.6554],
+            [104.0815, 30.6558],
+            [104.0820, 30.6562],
+            [104.0825, 30.6566],
+            [104.0830, 30.6570]
+          ],
+          "source": "amap-mcp"
+        }
+      ],
+      "meals": {
+        "dinner": {
+          "main": {
+            "name": "小龙翻大江（春熙店）",
+            "why": "步行 5 分钟；川剧变脸火锅 / 落地第一顿稳"
+          },
+          "alt": {
+            "name": "蜀大侠火锅（春熙店）",
+            "why": "如小龙翻大江排号过久，蜀大侠氛围同等、备选近"
+          }
+        }
+      }
+    },
+    {
+      "day": 2,
+      "date": "2026-09-19",
+      "weekday": "周六",
+      "region": "宽窄巷子 / 人民公园",
+      "theme": "老成都慢生活",
+      "weather": "阵雨 25℃",
+      "weather_emoji": "🌦️",
+      "weather_decision": "提前 1 天看雨；阵雨改 Plan B（成都博物馆 + 蜀锦织绣博物馆）",
+      "center": [104.0610, 30.6680],
+      "zoom": 14,
+      "pois": [
+        {
+          "idx": 1,
+          "time": "09:30",
+          "name": "宽窄巷子（宽巷子 + 窄巷子 + 井巷子）",
+          "cat": "culture",
+          "lng": 104.0610,
+          "lat": 30.6710,
+          "duration_min": 120,
+          "note": "三条平行老巷子；早 9:30 旅行团未到、人少；可顺路喝盖碗茶",
+          "why": "经典必去；早晨逛 + 下午茶歇",
+          "weather_sensitive": true,
+          "indoor_backup": "成都博物馆（近天府广场，免费）+ 川剧艺术中心",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=104.0610,30.6710&mode=transit",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=宽窄巷子"
+          }
+        },
+        {
+          "idx": 2,
+          "time": "12:00",
+          "name": "宽窄巷子 午餐（麻辣空间）",
+          "cat": "food",
+          "lng": 104.0620,
+          "lat": 30.6695,
+          "duration_min": 75,
+          "note": "川菜老店；可点夫妻肺片、宫保鸡丁、回锅肉等基础川菜",
+          "why": "午餐 + 区域顺路",
+          "requires_booking": false,
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=104.0620,30.6695&mode=walk",
+            "dianping": "https://www.dianping.com/search/keyword/0_0麻辣空间"
+          }
+        },
+        {
+          "idx": 3,
+          "time": "14:00",
+          "name": "人民公园（鹤鸣茶社）",
+          "cat": "scenery",
+          "lng": 104.0610,
+          "lat": 30.6635,
+          "duration_min": 150,
+          "note": "百年鹤鸣茶社；竹椅 + 盖碗茶 18-30 元；可体验采耳（90-150 元/次）",
+          "why": "下午茶歇 + 老成都慢生活",
+          "weather_sensitive": true,
+          "indoor_backup": "春熙路 IFS 室内街区 + 言几又书店",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=104.0610,30.6635&mode=walk",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=鹤鸣茶社"
+          }
+        },
+        {
+          "idx": 4,
+          "time": "18:00",
+          "name": "小郡肝串串香（春熙路总店）",
+          "cat": "food",
+          "lng": 104.0820,
+          "lat": 30.6605,
+          "duration_min": 120,
+          "note": "回春熙路晚饭；串串人均 80-120；不接受预订，周末排号 30-90 分钟",
+          "why": "返春熙路顺路、串串是成都灵魂之一",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=104.0820,30.6605&mode=transit",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=小郡肝+春熙路",
+            "dianping": "https://www.dianping.com/search/keyword/0_0小郡肝"
+          }
+        }
+      ],
+      "transports": [
+        {
+          "from_idx": 1,
+          "to_idx": 2,
+          "mode": "walking",
+          "duration_min": 3,
+          "description": "步行 3 分钟（宽巷子内）"
+        },
+        {
+          "from_idx": 2,
+          "to_idx": 3,
+          "mode": "walking",
+          "duration_min": 10,
+          "description": "步行 10 分钟（宽窄巷子 → 人民公园西门）"
+        },
+        {
+          "from_idx": 3,
+          "to_idx": 4,
+          "mode": "transit",
+          "duration_min": 20,
+          "description": "地铁 2 号线 人民公园 → 春熙路（约 20 分钟）"
+        }
+      ],
+      "meals": {
+        "lunch": {
+          "main": {
+            "name": "麻辣空间（宽窄巷子店）",
+            "why": "川菜老店 / 区域顺路"
+          },
+          "alt": {
+            "name": "钟记甜水面",
+            "why": "如想吃小吃，甜水面是成都名物"
+          }
+        },
+        "dinner": {
+          "main": {
+            "name": "小郡肝串串香（春熙路总店）",
+            "why": "返春熙路顺路 / 串串灵魂"
+          },
+          "alt": {
+            "name": "马路边边麻辣串串（春熙店）",
+            "why": "80 年代怀旧风 / 备选近"
+          }
+        }
+      }
+    },
+    {
+      "day": 3,
+      "date": "2026-09-20",
+      "weekday": "周日",
+      "region": "熊猫基地 → 双流机场",
+      "theme": "熊猫 + 返程",
+      "weather": "晴 26℃",
+      "weather_emoji": "☀️",
+      "center": [104.1440, 30.7400],
+      "zoom": 13,
+      "pois": [
+        {
+          "idx": 1,
+          "time": "07:30",
+          "name": "成都大熊猫繁育研究基地",
+          "cat": "scenery",
+          "lng": 104.1440,
+          "lat": 30.7400,
+          "duration_min": 180,
+          "note": "7:30 开园；早到避人 + 熊猫活跃；门票 55 元（需提前 1 天在官方公众号实名预约）",
+          "why": "必看；早 8-10 点熊猫吃竹最活跃",
+          "weather_sensitive": false,
+          "requires_booking": true,
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=104.1440,30.7400&mode=transit",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=成都大熊猫繁育研究基地"
+          }
+        },
+        {
+          "idx": 2,
+          "time": "11:30",
+          "name": "基地外 熊猫主题餐厅 午餐",
+          "cat": "food",
+          "lng": 104.1440,
+          "lat": 30.7380,
+          "duration_min": 60,
+          "note": "或回市区吃更地道（推荐 蓉锦小馆 望江店）",
+          "why": "区域补给点 / 看熊猫后顺路",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=104.1440,30.7380&mode=walk"
+          }
+        },
+        {
+          "idx": 3,
+          "time": "13:30",
+          "name": "酒店 退房 + 取行李",
+          "cat": "hotel",
+          "lng": 104.0810,
+          "lat": 30.6580,
+          "duration_min": 30,
+          "note": "前台寄存改退房；带随身包走 Day 3",
+          "why": "末日不跑远；行李寄酒店",
+          "links": {}
+        },
+        {
+          "idx": 4,
+          "time": "15:00",
+          "name": "双流机场 T2",
+          "cat": "transport",
+          "lng": 103.9470,
+          "lat": 30.5785,
+          "duration_min": 120,
+          "note": "国内航班 -1.5h 值机；如 18:00 航班，15:30 抵机场刚好",
+          "why": "末日返程缓冲 ≥ 3h 满足 V5",
+          "links": {}
+        }
+      ],
+      "transports": [
+        {
+          "from_idx": 1,
+          "to_idx": 2,
+          "mode": "walking",
+          "duration_min": 5,
+          "description": "步行 5 分钟（基地出口 → 熊猫主题餐厅）"
+        },
+        {
+          "from_idx": 2,
+          "to_idx": 3,
+          "mode": "transit",
+          "duration_min": 50,
+          "description": "地铁 3 号线 转 2 号线 熊猫基地 → 春熙路（约 50 分钟）"
+        },
+        {
+          "from_idx": 3,
+          "to_idx": 4,
+          "mode": "transit",
+          "duration_min": 45,
+          "description": "地铁 10 号线 转 机场专线 春熙路 → 双流机场（约 45 分钟）"
+        }
+      ],
+      "meals": {
+        "lunch": {
+          "main": {
+            "name": "基地外 熊猫主题餐厅",
+            "why": "区域补给 / 看熊猫后顺路"
+          },
+          "alt": {
+            "name": "蓉锦小馆（望江店）",
+            "why": "回市区更地道 / 川菜代表"
+          }
+        }
+      }
+    }
+  ],
+  "deleted": [
+    {
+      "item": "都江堰一日游",
+      "reason": "3 天行程 + 熊猫基地已占半天；都江堰往返 4h+ 让末日彻底报废；下次 4 日行程再排"
+    },
+    {
+      "item": "青城山一日游",
+      "reason": "同上；与都江堰同方向，砍一个留一个，下次合并为'都江堰+青城山'一日游"
+    },
+    {
+      "item": "锦里",
+      "reason": "与宽窄巷子同质（仿古商业街），3 天不去也能"
+    },
+    {
+      "item": "九眼桥酒吧街夜场",
+      "reason": "用户没标禁忌但夜场对老人小孩不友好；末日下午返程缓冲优先"
+    },
+    {
+      "item": "武侯祠",
+      "reason": "用户没说必去；与宽窄巷子可二选一，宽窄更老成都（武侯祠是三国文化）"
+    }
+  ],
+  "prebook": [
+    {
+      "item": "成都大熊猫繁育研究基地门票",
+      "deadline": "出发前 1 天（官方公众号实名预约）",
+      "url": "https://www.panda.org.cn/",
+      "note": "Day 3 上午 7:30 必到；提前 1 天 0 点放票，越早越好"
+    },
+    {
+      "item": "春熙路亚朵酒店",
+      "deadline": "出发前 2 周",
+      "url": "https://www.booking.com/search.html?ss=Atour+Chengdu",
+      "note": "Booking / 携程对比价；9 月旺季提前订"
+    },
+    {
+      "item": "国内机票（出发 → 成都双流 / 天府）",
+      "deadline": "出发前 2 周",
+      "url": "https://www.trip.com/",
+      "note": "双流机场近市区（地铁 10 号线 45 分钟）；天府机场远（地铁 18 号线 1.5 小时）"
+    },
+    {
+      "item": "国内机票（成都 → 返程）",
+      "deadline": "出发前 2 周",
+      "url": "https://www.trip.com/",
+      "note": "建议返程 18:00 之后航班，留 3 小时机场缓冲"
+    }
+  ],
+  "validation_report": {
+    "round": 2,
+    "rules": [
+      { "id": "V1", "rule": "区域一致性", "status": "✅", "note": "Day 1 春熙路 / Day 2 宽窄巷子+人民公园 / Day 3 熊猫基地+返程，全部单区", "source": "script" },
+      { "id": "V2", "rule": "时间可行性", "status": "✅", "note": "已用高德 route 实算；Day 3 早上 7:30 出门最紧张", "source": "ai-amap" },
+      { "id": "V3", "rule": "餐厅区域匹配", "status": "✅", "note": "每顿餐厅均落在当日主区域", "source": "script" },
+      { "id": "V4", "rule": "一日一重预约", "status": "✅", "note": "Day 3 熊猫基地需提前 1 天预约 1 重预约", "source": "script" },
+      { "id": "V5", "rule": "末日返程缓冲", "status": "✅", "note": "Day 3 15:00 出发 → 15:45 到机场 → 18:00 航班 → 总缓冲 2.15h（国内 -1.5h 值机截止，1.5h 缓冲）", "source": "script" },
+      { "id": "V6", "rule": "户外天气敏感", "status": "✅", "note": "Day 2 宽窄巷子/人民公园 配 indoor_backup", "source": "script" },
+      { "id": "V7", "rule": "用户禁忌屏蔽", "status": "✅", "note": "用户禁忌：无酒吧夜场 → 已剔除九眼桥", "source": "ai-context" }
+    ],
+    "summary": "全部通过；2 轮收敛"
+  }
+}

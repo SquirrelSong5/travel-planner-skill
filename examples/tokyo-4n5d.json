@@ -1,0 +1,639 @@
+{
+  "$schema": "./README.md#schema",
+  "amap_key": "",
+  "trip_name": "东京 4 泊 5 日",
+  "date_range": "2026-09-12 ~ 2026-09-16",
+  "n_days": "4 泊 5 日",
+  "city": "东京",
+  "summary": "经典关东行程：涩谷-浅草-镰仓三区各一天，Day 4 富士山（天气依赖）。新宿酒店作为锚点，去各区都顺。",
+  "weather_plan": "9 月东京仍偏热 + 台风季尾段，富士山日提前 3 天查天气订新干线。",
+  "hotel": {
+    "name": "新宿王子大饭店",
+    "address": "東京都新宿区歌舞伎町1-30-1",
+    "lng": 139.7036,
+    "lat": 35.6938,
+    "amap_uri": "https://uri.amap.com/marker?position=139.7036,35.6938&name=新宿王子大饭店",
+    "apple_uri": "https://maps.apple.com/?daddr=35.6938,139.7036&dirflg=w",
+    "google_uri": "https://www.google.com/maps/dir/?api=1&destination=35.6938,139.7036",
+    "booking_uri": "https://www.booking.com/search.html?ss=Shinjuku+Prince+Hotel",
+    "why": "JR 新宿步行 5 分钟，三条地铁交汇（丸之内 / 副都心 / 大江户），去各区都顺。歌舞伎町 24h 餐饮充足。",
+    "commute": [
+      { "day": 1, "region": "新宿 / 歌舞伎町", "duration_min": 5, "mode": "步行" },
+      { "day": 2, "region": "浅草 / 晴空塔", "duration_min": 25, "mode": "地铁" },
+      { "day": 3, "region": "镰仓 / 江之岛", "duration_min": 55, "mode": "JR" },
+      { "day": 4, "region": "富士山 / 河口湖", "duration_min": 110, "mode": "JR + 富士急行" },
+      { "day": 5, "region": "成田机场", "duration_min": 80, "mode": "成田特快" }
+    ]
+  },
+  "days": [
+    {
+      "day": 1,
+      "date": "2026-09-12",
+      "weekday": "周六",
+      "region": "新宿 / 歌舞伎町",
+      "theme": "落地型轻量收尾",
+      "weather": "晴 28℃",
+      "weather_emoji": "☀️",
+      "center": [139.7036, 35.6938],
+      "zoom": 14,
+      "pois": [
+        {
+          "idx": 1,
+          "time": "15:00",
+          "name": "新宿王子大饭店",
+          "cat": "hotel",
+          "lng": 139.7036,
+          "lat": 35.6938,
+          "duration_min": 45,
+          "note": "落地羽田 / 成田后 check-in。建议成田走 N'EX（约 80 分钟），羽田走单轨 + JR（约 30 分钟）。",
+          "why": "酒店即锚点，Day 1 不跑远",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=139.7036,35.6938&mode=car&policy=1"
+          }
+        },
+        {
+          "idx": 2,
+          "time": "17:30",
+          "name": "新宿御苑",
+          "cat": "scenery",
+          "lng": 139.7100,
+          "lat": 35.6852,
+          "duration_min": 60,
+          "note": "9 月 9:30-16:00 最后入场时间略紧，可缩短或改 16:00 前到",
+          "why": "近酒店（步行 10 分钟），让身体从飞行中恢复；不剧烈",
+          "weather_sensitive": false,
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=139.7100,35.6852&mode=walk",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=新宿御苑"
+          }
+        },
+        {
+          "idx": 3,
+          "time": "19:00",
+          "name": "思い出横丁",
+          "cat": "food",
+          "lng": 139.7051,
+          "lat": 35.6938,
+          "duration_min": 90,
+          "note": "怀旧氛围烤串小巷，不接受预订，现金为主",
+          "why": "近酒店（步行 3 分钟），落地第一顿稳",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=139.7051,35.6938&mode=walk",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=思い出横丁",
+            "dianping": "https://www.dianping.com/search/keyword/0_0思い出横丁"
+          }
+        }
+      ],
+      "transports": [
+        {
+          "from_idx": 1,
+          "to_idx": 2,
+          "mode": "walking",
+          "duration_min": 10,
+          "description": "步行 10 分钟（穿过歌舞伎町外苑通）"
+        },
+        {
+          "from_idx": 2,
+          "to_idx": 3,
+          "mode": "walking",
+          "duration_min": 12,
+          "description": "步行 12 分钟（新宿门 → 西武新宿站方向）"
+        }
+      ],
+      "meals": {
+        "dinner": {
+          "main": {
+            "name": "思い出横丁",
+            "why": "近酒店 3 分钟，怀旧氛围，不接受预订 / 现金为主 / 烤串和啤酒"
+          },
+          "alt": {
+            "name": "KABEAT 新宿",
+            "why": "24h 出餐稳，适合真到深夜才饿的情况"
+          }
+        }
+      }
+    },
+    {
+      "day": 2,
+      "date": "2026-09-13",
+      "weekday": "周日",
+      "region": "浅草 / 晴空塔",
+      "theme": "经典东京下町",
+      "weather": "多云 27℃",
+      "weather_emoji": "⛅",
+      "center": [139.8000, 35.7120],
+      "zoom": 14,
+      "pois": [
+        {
+          "idx": 1,
+          "time": "09:00",
+          "name": "浅草寺 + 仲见世通",
+          "cat": "culture",
+          "lng": 139.7967,
+          "lat": 35.7148,
+          "duration_min": 120,
+          "note": "9 点开门；雷门前拍照人多但可接受；人形烧 / 雷おこし 试吃",
+          "why": "经典必去 + 9 点开门早，可作为整日第一个点",
+          "weather_sensitive": false,
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=139.7967,35.7148&mode=transit",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=浅草寺"
+          }
+        },
+        {
+          "idx": 2,
+          "time": "12:00",
+          "name": "今半 すき焼き（浅草店）",
+          "cat": "food",
+          "lng": 139.7955,
+          "lat": 35.7119,
+          "duration_min": 90,
+          "note": "寿喜烧百年老店；中午前到 / 提前订位",
+          "why": "近浅草寺，午餐 + 经典日式体验",
+          "requires_booking": true,
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=139.7955,35.7119&mode=walk",
+            "dianping": "https://www.dianping.com/search/keyword/0_0今半"
+          }
+        },
+        {
+          "idx": 3,
+          "time": "14:30",
+          "name": "隅田川散步 + 晴空塔",
+          "cat": "scenery",
+          "lng": 139.8107,
+          "lat": 35.7101,
+          "duration_min": 180,
+          "note": "吾妻桥 → 晴空塔 → 押上站；晴空塔天望甲板 350F 3500 yen / 天望回廊 450F 加 1000 yen",
+          "why": "午餐后步行消化；下午登塔避免夜排",
+          "weather_sensitive": true,
+          "indoor_backup": "すみだ水族館（晴空塔内）+ 押上站商业",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=139.8107,35.7101&mode=walk",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=东京晴空塔"
+          }
+        },
+        {
+          "idx": 4,
+          "time": "18:30",
+          "name": "晴空塔 31F 食街（晚餐）",
+          "cat": "food",
+          "lng": 139.8107,
+          "lat": 35.7094,
+          "duration_min": 90,
+          "note": "或选浅草今半 别馆（如午餐未吃）；晴空塔 31F 多选择 / 不需订位",
+          "why": "登塔后直接吃饭，区域顺路",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=139.8107,35.7094&mode=walk",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=晴空塔+晚餐"
+          }
+        }
+      ],
+      "transports": [
+        {
+          "from_idx": 1,
+          "to_idx": 2,
+          "mode": "walking",
+          "duration_min": 5,
+          "description": "步行 5 分钟（仲见世通 → 国际通）"
+        },
+        {
+          "from_idx": 2,
+          "to_idx": 3,
+          "mode": "walking",
+          "duration_min": 15,
+          "description": "步行 15 分钟（经吾妻桥跨隅田川）"
+        },
+        {
+          "from_idx": 3,
+          "to_idx": 4,
+          "mode": "walking",
+          "duration_min": 5,
+          "description": "步行 5 分钟（晴空塔内同楼层）"
+        }
+      ],
+      "meals": {
+        "lunch": {
+          "main": {
+            "name": "今半 すき焼き（浅草店）",
+            "why": "寿喜烧百年老店，必体验"
+          },
+          "alt": {
+            "name": "浅草もんじゃ もんろう",
+            "why": "如不吃寿喜烧，月岛もんじゃ更轻松"
+          }
+        },
+        "dinner": {
+          "main": {
+            "name": "晴空塔 31F 食街",
+            "why": "多选择 / 不需订位 / 看夜景"
+          },
+          "alt": {
+            "name": "浅草今半 别馆（すき焼き）",
+            "why": "如午餐未吃今半，晚餐补"
+          }
+        }
+      }
+    },
+    {
+      "day": 3,
+      "date": "2026-09-14",
+      "weekday": "周一",
+      "region": "镰仓 / 江之岛",
+      "theme": "一日远郊：古都 + 海",
+      "weather": "阴 26℃",
+      "weather_emoji": "☁️",
+      "center": [139.5200, 35.3200],
+      "zoom": 12,
+      "pois": [
+        {
+          "idx": 1,
+          "time": "10:00",
+          "name": "镰仓大佛 + 长谷寺",
+          "cat": "culture",
+          "lng": 139.5357,
+          "lat": 35.3173,
+          "duration_min": 120,
+          "note": "镰仓大佛 300 yen；长谷寺 400 yen / 紫阳花已过但 9 月有桂花",
+          "why": "经典必去；上午光线好",
+          "weather_sensitive": false,
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=139.5357,35.3173&mode=walk"
+          }
+        },
+        {
+          "idx": 2,
+          "time": "12:30",
+          "name": "镰仓 小町通 午餐（しらす丼）",
+          "cat": "food",
+          "lng": 139.5504,
+          "lat": 35.3192,
+          "duration_min": 90,
+          "note": "しらす丼（吻仔鱼饭）是镰仓名物；推荐 さくら井 或 力车食堂",
+          "why": "区域补给点；不在镰仓吃就白来了",
+          "links": {
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=镰仓+吻仔鱼饭"
+          }
+        },
+        {
+          "idx": 3,
+          "time": "14:30",
+          "name": "江之岛 + 江之电沿线",
+          "cat": "scenery",
+          "lng": 139.4795,
+          "lat": 35.3092,
+          "duration_min": 180,
+          "note": "江之电一日券 700 yen；藤泽 → 镰仓沿线可多次上下；江之岛神社 + 展望台（电梯 1000 yen）",
+          "why": "《灌篮高手》同款 / 海景 + 古寺",
+          "weather_sensitive": true,
+          "indoor_backup": "江之岛岩屋（阴雨天取消）+ 江之岛水族馆",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=139.4795,35.3092&mode=walk",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=江之岛"
+          }
+        },
+        {
+          "idx": 4,
+          "time": "19:30",
+          "name": "新宿 伊势丹 7F 寿司街（返程晚餐）",
+          "cat": "food",
+          "lng": 139.7036,
+          "lat": 35.6910,
+          "duration_min": 90,
+          "note": "返新宿已疲，不跑远；寿司街多选择 / 不需订位",
+          "why": "返新宿已疲，寿司街选择多、不用排队",
+          "links": {}
+        }
+      ],
+      "transports": [
+        {
+          "from_idx": 1,
+          "to_idx": 2,
+          "mode": "walking",
+          "duration_min": 20,
+          "description": "步行 20 分钟（长谷 → 江之电长谷站 → 江之电到镰仓站 → 小町通）"
+        },
+        {
+          "from_idx": 2,
+          "to_idx": 3,
+          "mode": "train",
+          "duration_min": 25,
+          "description": "江之电 镰仓 → 藤泽（约 25 分钟）→ 步行 5 分钟到江之岛"
+        },
+        {
+          "from_idx": 3,
+          "to_idx": 4,
+          "mode": "jr",
+          "duration_min": 65,
+          "description": "JR 藤泽 → 大船 → 新宿（约 65 分钟）"
+        }
+      ],
+      "meals": {
+        "lunch": {
+          "main": {
+            "name": "镰仓 しらす丼（さくら井）",
+            "why": "吻仔鱼是镰仓招牌"
+          },
+          "alt": {
+            "name": "镰仓 力车食堂",
+            "why": "怀旧氛围 / 不接受预订"
+          }
+        },
+        "dinner": {
+          "main": {
+            "name": "新宿 伊势丹 7F 寿司街",
+            "why": "多选择 / 不需订位 / 返新宿顺路"
+          },
+          "alt": {
+            "name": "思い出横丁（Day 1 重访）",
+            "why": "如怀念怀旧烤串"
+          }
+        }
+      }
+    },
+    {
+      "day": 4,
+      "date": "2026-09-15",
+      "weekday": "周二",
+      "region": "富士山 / 河口湖",
+      "theme": "天气依赖的远郊日",
+      "weather": "晴转多云 22℃",
+      "weather_emoji": "🌤️",
+      "weather_decision": "提前 1 天查天气；阴天 / 雨天则改 Plan B（河口湖美术馆 + 忍野八海）",
+      "center": [138.7700, 35.5500],
+      "zoom": 10,
+      "pois": [
+        {
+          "idx": 1,
+          "time": "09:00",
+          "name": "大月駅",
+          "cat": "transport",
+          "lng": 138.7659,
+          "lat": 35.6458,
+          "duration_min": 30,
+          "note": "富士回游号（每日 3 班，全车指定席）；必须提前订",
+          "why": "JR 中央本线 + 特急 → 大月（约 90 分钟）",
+          "requires_booking": true,
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=138.7659,35.6458&mode=transit"
+          }
+        },
+        {
+          "idx": 2,
+          "time": "10:30",
+          "name": "河口湖 / 富士山五合目",
+          "cat": "scenery",
+          "lng": 138.7640,
+          "lat": 35.4829,
+          "duration_min": 240,
+          "note": "富士急行 大月 → 河口湖（50 分钟）；河口湖周游巴士 red line 一日券 1500 yen；五合目需另坐巴士 2300 yen",
+          "why": "看富士山本体；五合目高反轻",
+          "weather_sensitive": true,
+          "indoor_backup": "河口湖美术馆 + 河口湖猿剧场（如主行程因天气取消）",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=138.7640,35.4829&mode=car",
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=富士山+五合目"
+          }
+        },
+        {
+          "idx": 3,
+          "time": "14:30",
+          "name": "河口湖畔 ほうとう 不动 午餐",
+          "cat": "food",
+          "lng": 138.7665,
+          "lat": 35.4842,
+          "duration_min": 75,
+          "note": "ほうとう（南瓜味噌面）是山梨名物；河口湖北岸本店，量大",
+          "why": "区域补给点；必吃山梨名物",
+          "links": {
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=河口湖+ほうとう"
+          }
+        },
+        {
+          "idx": 4,
+          "time": "19:30",
+          "name": "新宿 居酒屋（魚串だるま）",
+          "cat": "food",
+          "lng": 139.7036,
+          "lat": 35.6945,
+          "duration_min": 90,
+          "note": "推荐 魚串だし巻き だるま 或 新宿西口思い出横丁",
+          "why": "登山一日后，返新宿吃居酒屋恢复",
+          "links": {}
+        }
+      ],
+      "transports": [
+        {
+          "from_idx": 1,
+          "to_idx": 2,
+          "mode": "train",
+          "duration_min": 50,
+          "description": "富士急行 大月 → 河口湖（约 50 分钟）"
+        },
+        {
+          "from_idx": 2,
+          "to_idx": 3,
+          "mode": "walking",
+          "duration_min": 15,
+          "description": "河口湖周游巴士 red line / 步行 15 分钟"
+        },
+        {
+          "from_idx": 3,
+          "to_idx": 4,
+          "mode": "jr",
+          "duration_min": 130,
+          "description": "河口湖 → 大月（富士急行 50 min）→ 新宿（中央本线 + 特急 80 min）"
+        }
+      ],
+      "meals": {
+        "lunch": {
+          "main": {
+            "name": "河口湖畔 ほうとう 不动",
+            "why": "山梨名物必吃 / 暖身"
+          },
+          "alt": {
+            "name": "河口湖美术馆餐厅",
+            "why": "如主行程改 Plan B"
+          }
+        },
+        "dinner": {
+          "main": {
+            "name": "新宿 魚串だし巻き だるま",
+            "why": "返新宿顺路 / 居酒屋氛围恢复"
+          },
+          "alt": {
+            "name": "新宿思い出横丁（重访）",
+            "why": "如怀念 Day 1 烤串"
+          }
+        }
+      }
+    },
+    {
+      "day": 5,
+      "date": "2026-09-16",
+      "weekday": "周三",
+      "region": "酒店 → 机场",
+      "theme": "轻量返程日",
+      "weather": "晴 26℃",
+      "weather_emoji": "☀️",
+      "center": [139.7000, 35.7000],
+      "zoom": 9,
+      "pois": [
+        {
+          "idx": 1,
+          "time": "09:00",
+          "name": "酒店 check-out + 寄存行李",
+          "cat": "hotel",
+          "lng": 139.7036,
+          "lat": 35.6938,
+          "duration_min": 30,
+          "note": "前台寄存大件；带随身包走 Day 5",
+          "why": "末日不跑远；行李寄酒店",
+          "links": {}
+        },
+        {
+          "idx": 2,
+          "time": "10:00",
+          "name": "新宿 伊势丹 / 0101 百货",
+          "cat": "shopping",
+          "lng": 139.7036,
+          "lat": 35.6910,
+          "duration_min": 120,
+          "note": "药妆 / 零食 / Royce' 巧克力 / 一蘭拉面杯面",
+          "why": "伴手礼一站搞定",
+          "links": {
+            "amap_navi": "https://uri.amap.com/navigation?to=139.7036,35.6910&mode=walk"
+          }
+        },
+        {
+          "idx": 3,
+          "time": "12:30",
+          "name": "新宿 午餐（一蘭拉面）",
+          "cat": "food",
+          "lng": 139.7043,
+          "lat": 35.6908,
+          "duration_min": 60,
+          "note": "一蘭 24h / 单独座位 / 不接受预订",
+          "why": "返程前最后一顿，选容易的",
+          "links": {
+            "xhs": "https://www.xiaohongshu.com/search_result?keyword=新宿+一蘭"
+          }
+        },
+        {
+          "idx": 4,
+          "time": "15:30",
+          "name": "成田机场",
+          "cat": "transport",
+          "lng": 140.3929,
+          "lat": 35.7647,
+          "duration_min": 120,
+          "note": "国际航班 -3h 值机截止；如 18:30 航班，14:30-15:30 抵机场刚好",
+          "why": "末日返程缓冲 ≥ 3h 满足 V5",
+          "links": {}
+        }
+      ],
+      "transports": [
+        {
+          "from_idx": 1,
+          "to_idx": 2,
+          "mode": "walking",
+          "duration_min": 5,
+          "description": "步行 5 分钟（新宿站 → 伊势丹）"
+        },
+        {
+          "from_idx": 2,
+          "to_idx": 3,
+          "mode": "walking",
+          "duration_min": 8,
+          "description": "步行 8 分钟（伊势丹 → 一蘭 新宿中央东口店）"
+        },
+        {
+          "from_idx": 3,
+          "to_idx": 4,
+          "mode": "train",
+          "duration_min": 80,
+          "description": "成田特快（N'EX）新宿 → 成田机场（约 80 分钟）"
+        }
+      ],
+      "meals": {
+        "lunch": {
+          "main": {
+            "name": "新宿 一蘭拉面",
+            "why": "返程前最后一餐 / 单独座位省事"
+          },
+          "alt": {
+            "name": "新宿 寿司清",
+            "why": "如想念日本寿司"
+          }
+        }
+      }
+    }
+  ],
+  "deleted": [
+    {
+      "item": "横滨一日游",
+      "reason": "Day 4 已排富士山 + 远郊强度大；加横滨会让 Day 4 变成 6AM 出门 11PM 返酒店，老人小孩受不了。"
+    },
+    {
+      "item": "原宿 / 表参道 单独一天",
+      "reason": "新宿 → 原宿 5 分钟地铁，行程含在 Day 1 早晨散步中即可，不需单独一天。"
+    },
+    {
+      "item": "台场",
+      "reason": "彩虹桥夜景和 free 商场各地都有；台场专属的 Toyota 体验馆和高达像不是必去，Day 5 时间已紧。"
+    },
+    {
+      "item": "三鹰之森吉卜力美术馆",
+      "reason": "需提前 1 个月抽票（LAWSON 售票），本计划下单时已错过窗口；下次提前准备。"
+    },
+    {
+      "item": "筑地市场清晨拍卖",
+      "reason": "5AM 起床 + Day 1 落地第一天的时差 / 疲劳叠加，性价比低；筑地外市场白天去可。"
+    }
+  ],
+  "prebook": [
+    {
+      "item": "富士回游号 指定席",
+      "deadline": "出发前 1 个月开售",
+      "url": "https://www.jreast.co.jp/multi/en/pass/tokyowidepass.html",
+      "note": "Day 4 往返大月，必须提前订。提前 1 个月放票，越早越好"
+    },
+    {
+      "item": "今半 すき焼き 午餐",
+      "deadline": "出发前 2 周订位",
+      "url": "https://www.imahan.com/",
+      "note": "Day 2 午餐。浅草店人气高，午餐时段建议订 11:30"
+    },
+    {
+      "item": "成田特快 N'EX 往返票",
+      "deadline": "出发前 1 周",
+      "url": "https://www.jreast.co.jp/multi/en/pass/nex_round_trip.html",
+      "note": "Day 5 返程。提前买往返票比单程便宜"
+    },
+    {
+      "item": "河口湖 周游巴士 一日券",
+      "deadline": "当天现场买",
+      "url": "https://www.fujikyu.co.jp/en/",
+      "note": "Day 4 河口湖移动。建议买 red + green 一日券 2000 yen"
+    },
+    {
+      "item": "新宿王子大饭店",
+      "deadline": "出发前 2 周",
+      "url": "https://www.princehotels.com/en-gb/shinjuku/",
+      "note": "Booking / 官网对比价；9 月旺季提前订"
+    }
+  ],
+  "validation_report": {
+    "round": 3,
+    "rules": [
+      { "id": "V1", "rule": "区域一致性", "status": "✅", "note": "Day 1-3 / 5 城内单区；Day 4 跨城作为远郊日，POI 间距离 < 10km 视为同远郊圈" },
+      { "id": "V2", "rule": "时间可行性", "status": "✅", "note": "已用高德 route_walking/transit 实算；Day 3 镰仓日城内通勤 1.5h 占 8%，Day 4 远郊日通勤不计" },
+      { "id": "V3", "rule": "餐厅区域匹配", "status": "✅", "note": "每顿餐厅均落在当日主区域；Day 2 晚餐「银座 鮨青木」已替换为「晴空塔 31F 食街」（Round 2 修复）" },
+      { "id": "V4", "rule": "一日一重预约", "status": "✅", "note": "Day 2 今半 / Day 4 富士回游 各 1 重预约；其他天无预约" },
+      { "id": "V5", "rule": "末日返程缓冲", "status": "✅", "note": "Day 5 13:30 酒店出发 → 15:30 到机场 → 18:30 航班 → 总缓冲 3h（Round 1 不达标已修复）" },
+      { "id": "V6", "rule": "户外天气敏感", "status": "✅", "note": "Day 4 富士山 / Day 3 江之岛 均配 indoor_backup" },
+      { "id": "V7", "rule": "用户禁忌屏蔽", "status": "✅", "note": "用户禁忌：无夜店 / 无网红打卡 → 已剔除台场夜景" }
+    ],
+    "summary": "全部通过；3 轮收敛（Round 1 V3 + V5 fail → Round 2 修复 → Round 3 全通过）"
+  }
+}

@@ -1,0 +1,1725 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{TRIP_NAME}} · {{DATE_RANGE}}</title>
+  <style>
+    /* ===== 基础 ===== */
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      /* 颜色（WCAG AA 校验过：accent 在浅底上对比度 4.7，深底 5.2） */
+      --bg: #fafaf7;
+      --bg-elevated: #ffffff;
+      --bg-soft: #f4f2ec;
+      --fg: #171717;
+      --fg-muted: #595959;        /* 提深以保 AA 对比 */
+      --fg-subtle: #8a8a87;
+      --line: #e8e6e0;
+      --line-strong: #d6d3cc;
+      --accent: #c8421a;           /* 比原 #d4451b 深一档，AA 通过 */
+      --accent-hover: #a83512;
+      --accent-soft: #fbeee8;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-lg: 0 12px 32px rgba(0,0,0,0.10);
+      --radius-sm: 8px;
+      --radius: 14px;
+      --radius-lg: 20px;
+      /* 交通方式颜色 */
+      --c-walk: #2d7a4a;
+      --c-transit: #1f6feb;
+      --c-drive: #c0392b;
+      --c-bike: #e67e22;
+      /* 间距栅格（4 / 8 基准） */
+      --sp-1: 4px;
+      --sp-2: 8px;
+      --sp-3: 12px;
+      --sp-4: 16px;
+      --sp-5: 20px;
+      --sp-6: 24px;
+      --sp-8: 32px;
+      --sp-10: 40px;
+      /* 字号 scale（移动端 ≥16px 防 iOS 缩放） */
+      --fs-xs: 12px;
+      --fs-sm: 13px;
+      --fs-base: 15px;     /* 桌面正文 */
+      --fs-md: 16px;       /* 移动端正文下界 */
+      --fs-lg: 18px;
+      --fs-xl: 22px;
+      --fs-2xl: 28px;
+      --fs-3xl: 34px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1011;
+        --bg-elevated: #1a1b1d;
+        --bg-soft: #232427;
+        --fg: #f2f2f0;
+        --fg-muted: #b0b0ae;
+        --fg-subtle: #7a7a78;
+        --line: #2a2b2d;
+        --line-strong: #3a3b3d;
+        --accent: #ff7a55;
+        --accent-hover: #ff9276;
+        --accent-soft: #2a1f1a;
+        --shadow-md: 0 2px 8px rgba(0,0,0,0.4);
+        --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
+        --c-walk: #4ca870;
+        --c-transit: #5a96ff;
+        --c-drive: #ff7560;
+        --c-bike: #ffb05c;
+      }
+    }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      font-size: var(--fs-base);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: var(--sp-6) var(--sp-5) calc(var(--sp-10) + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* ===== Skip Link（无障碍） ===== */
+    .skip-link {
+      position: absolute;
+      top: -40px;
+      left: 16px;
+      background: var(--accent);
+      color: white;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: 14px;
+      z-index: 200;
+      transition: top 0.2s;
+    }
+    .skip-link:focus { top: 16px; }
+
+    /* ===== Validation Banner（v1.1.0 新增，代码级硬约束）===== */
+    #validation-banner {
+      margin: 0 0 var(--sp-4);
+      padding: var(--sp-3) var(--sp-4);
+      border-radius: var(--radius);
+      font-size: var(--fs-sm);
+      line-height: 1.5;
+      display: none;
+    }
+    #validation-banner.show { display: block; }
+    #validation-banner.banner-missing {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+    }
+    @media (prefers-color-scheme: dark) {
+      #validation-banner.banner-missing {
+        background: #2a0e0e;
+        border-color: #7f1d1d;
+        color: #fecaca;
+      }
+    }
+    #validation-banner.banner-warn {
+      background: #fefce8;
+      border: 1px solid #fde047;
+      color: #854d0e;
+    }
+    @media (prefers-color-scheme: dark) {
+      #validation-banner.banner-warn {
+        background: #2a1f0a;
+        border-color: #713f12;
+        color: #fef08a;
+      }
+    }
+    #validation-banner.banner-pass {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      color: #166534;
+    }
+    @media (prefers-color-scheme: dark) {
+      #validation-banner.banner-pass {
+        background: #0a2a14;
+        border-color: #14532d;
+        color: #bbf7d0;
+      }
+    }
+    #validation-banner .vb-title {
+      font-weight: 600;
+      margin-bottom: var(--sp-1);
+    }
+    #validation-banner .vb-rules {
+      font-size: var(--fs-xs);
+      margin-top: var(--sp-2);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    #validation-banner .vb-rules li {
+      list-style: none;
+      padding: 2px 0;
+    }
+    #validation-banner .vb-detail-btn {
+      margin-top: var(--sp-2);
+      font-size: var(--fs-xs);
+      color: inherit;
+      background: transparent;
+      border: 1px solid currentColor;
+      padding: 2px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    /* ===== Validation Report Section（页面底部折叠区）===== */
+    details#validation-report-section {
+      margin: var(--sp-8) 0 var(--sp-4);
+      padding: var(--sp-4);
+      background: var(--bg-soft);
+      border-radius: var(--radius);
+    }
+    details#validation-report-section > summary {
+      cursor: pointer;
+      font-weight: 600;
+      font-size: var(--fs-sm);
+      color: var(--fg-muted);
+      list-style: none;
+    }
+    details#validation-report-section > summary::before {
+      content: "▸ ";
+      display: inline-block;
+      transition: transform 0.15s;
+    }
+    details#validation-report-section[open] > summary::before {
+      content: "▾ ";
+    }
+    details#validation-report-section .vr-rule {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: var(--sp-2);
+      padding: var(--sp-2) 0;
+      border-top: 1px solid var(--line);
+      font-size: var(--fs-sm);
+    }
+    details#validation-report-section .vr-rule:first-of-type {
+      border-top: 0;
+    }
+    details#validation-report-section .vr-status {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    details#validation-report-section .vr-source {
+      font-size: var(--fs-xs);
+      color: var(--fg-subtle);
+      margin-left: var(--sp-2);
+    }
+    details#validation-report-section .vr-source.script {
+      color: #166534;
+    }
+    @media (prefers-color-scheme: dark) {
+      details#validation-report-section .vr-source.script { color: #86efac; }
+    }
+
+    /* ===== Header ===== */
+    header.hero {
+      padding: var(--sp-2) 0 var(--sp-6);
+      margin-bottom: var(--sp-6);
+    }
+    header.hero h1 {
+      font-size: clamp(var(--fs-2xl), 5vw, var(--fs-3xl));
+      line-height: 1.15;
+      margin: 0 0 var(--sp-2);
+      letter-spacing: -0.025em;
+      font-weight: 700;
+    }
+    header.hero .meta {
+      margin: 0 0 var(--sp-4);
+      color: var(--fg-muted);
+      font-size: var(--fs-sm);
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-2) var(--sp-3);
+    }
+    header.hero .summary {
+      margin: 0;
+      font-size: var(--fs-base);
+      line-height: 1.6;
+      color: var(--fg);
+      background: var(--accent-soft);
+      padding: var(--sp-4) var(--sp-5);
+      border-radius: var(--radius);
+      border-left: 3px solid var(--accent);
+    }
+
+    /* ===== Drawer 触发按钮（FAB 风格，移动端触控 ≥44px） ===== */
+    .drawer-toggle {
+      position: fixed;
+      top: calc(var(--sp-5) + env(safe-area-inset-top, 0px));
+      right: var(--sp-5);
+      z-index: 90;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      /* 保证触控目标 ≥ 44px */
+      min-height: 44px;
+      padding: 10px 18px 10px 14px;
+      background: var(--bg-elevated);
+      color: var(--fg);
+      border: 1px solid var(--line);
+      border-radius: 100px;
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: var(--fs-sm);
+      font-weight: 500;
+      transition: all 0.2s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .drawer-toggle:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-lg);
+    }
+    .drawer-toggle:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .drawer-toggle:active { transform: translateY(0); }
+    .drawer-toggle svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .drawer-toggle .badge {
+      background: var(--accent);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 10px;
+      min-width: 18px;
+      text-align: center;
+    }
+    @media (max-width: 480px) {
+      .drawer-toggle {
+        top: calc(var(--sp-4) + env(safe-area-inset-top, 0px));
+        right: var(--sp-4);
+      }
+      .drawer-toggle .label { display: none; }
+    }
+
+    /* ===== Drawer Backdrop ===== */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 99;
+    }
+    .drawer-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* ===== Drawer 抽屉 ===== */
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(420px, 90vw);
+      height: 100vh;
+      height: 100dvh;
+      background: var(--bg);
+      border-left: 1px solid var(--line);
+      box-shadow: var(--shadow-lg);
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: calc(var(--sp-5) + env(safe-area-inset-top, 0px)) var(--sp-5) var(--sp-4);
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+      background: var(--bg-elevated);
+    }
+    .drawer-header h2 {
+      margin: 0;
+      font-size: var(--fs-md);
+      font-weight: 600;
+    }
+    .drawer-close {
+      background: transparent;
+      border: none;
+      /* 触控 ≥44px */
+      min-width: 44px;
+      min-height: 44px;
+      padding: var(--sp-2);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--fg-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .drawer-close:hover {
+      background: var(--bg-soft);
+      color: var(--fg);
+    }
+    .drawer-close:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .drawer-close svg { width: 20px; height: 20px; }
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--sp-5);
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+    .drawer-body::-webkit-scrollbar { width: 6px; }
+    .drawer-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+    .drawer-body section { margin-bottom: var(--sp-6); }
+    .drawer-body section:last-child { margin-bottom: 0; }
+    .drawer-body h3 {
+      margin: 0 0 var(--sp-3);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--fg-subtle);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+    }
+    .drawer-body h3 svg { width: 14px; height: 14px; }
+    .drawer-body h3 .count {
+      margin-left: auto;
+      background: var(--bg-soft);
+      color: var(--fg-muted);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    /* ===== Hotel card ===== */
+    .drawer .hotel-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: var(--sp-4);
+    }
+    .drawer .hotel-card h4 { margin: 0 0 4px; font-size: var(--fs-md); font-weight: 600; }
+    .drawer .hotel-card .address { margin: 0 0 var(--sp-2); color: var(--fg-muted); font-size: var(--fs-xs); }
+    .drawer .hotel-card .why { margin: 0 0 var(--sp-3); font-size: var(--fs-sm); line-height: 1.6; }
+    .drawer .hotel-commute { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px dashed var(--line); }
+    .drawer .hotel-commute summary { cursor: pointer; font-size: var(--fs-xs); color: var(--fg-muted); user-select: none; min-height: 36px; display: inline-flex; align-items: center; padding: 4px 0; }
+    .drawer .hotel-commute ul { margin: var(--sp-2) 0 0; padding-left: 18px; font-size: var(--fs-xs); color: var(--fg-muted); }
+
+    /* ===== Drawer links（移动端触控 ≥44px） ===== */
+    .drawer .links { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+    .drawer .links a {
+      font-size: var(--fs-xs);
+      min-height: 36px;
+      padding: 8px 14px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 100px;
+      text-decoration: none;
+      color: var(--fg);
+      background: var(--bg);
+      transition: all 0.15s ease;
+    }
+    .drawer .links a:hover {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .drawer .links a:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    /* ===== Drawer 列表（prebook / hotel commute 等） ===== */
+    .drawer-list { list-style: none; padding: 0; margin: 0; }
+    .drawer-list li {
+      padding: var(--sp-3) 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .drawer-list li:last-child { border-bottom: none; }
+    .drawer-list .item-title {
+      display: block;
+      font-weight: 600;
+      font-size: var(--fs-sm);
+      margin-bottom: 2px;
+    }
+    .drawer-list .item-title a {
+      color: var(--fg);
+      text-decoration: none;
+    }
+    .drawer-list .item-title a:hover {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+    .drawer-list .item-deadline {
+      color: var(--accent);
+      font-size: var(--fs-xs);
+      margin-left: var(--sp-2);
+      font-weight: 500;
+    }
+    .drawer-list .item-meta {
+      display: block;
+      color: var(--fg-muted);
+      font-size: var(--fs-xs);
+      line-height: 1.5;
+      margin-top: 2px;
+    }
+    .drawer-list .item-cta {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* ===== Weather card ===== */
+    .weather-card {
+      background: var(--accent-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: var(--sp-3) var(--sp-4);
+      font-size: var(--fs-sm);
+      line-height: 1.6;
+      color: var(--fg);
+    }
+
+    /* ===== Tabs：分段控件（移动端可横向滚动、sticky 吸顶） ===== */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      overflow-x: auto;
+      padding: var(--sp-1);
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+      margin-bottom: var(--sp-4);
+      background: var(--bg-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      /* sticky 吸顶：滚动时贴在 hero 下方 */
+      position: sticky;
+      top: calc(var(--sp-2) + env(safe-area-inset-top, 0px));
+      z-index: 50;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .tabs::-webkit-scrollbar { height: 0; }
+    .tab {
+      flex-shrink: 0;
+      /* 触控 ≥44px */
+      min-height: 44px;
+      padding: 8px 14px;
+      border: none;
+      background: transparent;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+      font-family: inherit;
+      color: var(--fg-muted);
+      min-width: 96px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tab:hover {
+      color: var(--fg);
+    }
+    .tab:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+    }
+    .tab.active {
+      background: var(--bg-elevated);
+      color: var(--fg);
+      box-shadow: var(--shadow-sm);
+      font-weight: 500;
+    }
+    .tab .tab-day {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      opacity: 0.65;
+    }
+    .tab .tab-region {
+      display: block;
+      font-size: var(--fs-sm);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+    }
+    .tab.active .tab-day { opacity: 0.85; color: var(--accent); }
+
+    /* ===== Map ===== */
+    .map-section {
+      margin-bottom: var(--sp-4);
+    }
+    .map-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--bg-elevated);
+      border: 1px solid var(--line);
+      border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+      font-size: var(--fs-sm);
+    }
+    .map-controls label.toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      cursor: pointer;
+      user-select: none;
+      /* 触控 ≥44px */
+      min-height: 44px;
+      padding: 0 var(--sp-2);
+    }
+    .map-controls label.toggle input { margin: 0; cursor: pointer; width: 18px; height: 18px; }
+    .legend {
+      display: flex;
+      gap: var(--sp-3);
+      flex-wrap: wrap;
+      color: var(--fg-muted);
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-1);
+      font-size: var(--fs-xs);
+    }
+    .legend-item .dot {
+      display: inline-block;
+      width: 18px;
+      height: 3px;
+      border-radius: 1px;
+    }
+    #map {
+      width: 100%;
+      height: 460px;
+      border: 1px solid var(--line);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      overflow: hidden;
+      /* 移动端触摸滚动与地图手势冲突时优先地图 */
+      touch-action: pan-x pan-y;
+    }
+    @media (max-width: 600px) {
+      #map { height: 320px; }
+      .legend { font-size: 10px; gap: var(--sp-2); }
+    }
+    .map-fallback {
+      padding: 40px 20px;
+      text-align: center;
+      background: var(--bg-elevated);
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      color: var(--fg-muted);
+    }
+    .map-fallback p { margin: 4px 0; }
+    .map-fallback .hint { font-size: 12px; }
+
+    /* ===== Day Card ===== */
+    .day-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: var(--sp-5) var(--sp-5) var(--sp-4);
+      box-shadow: var(--shadow-sm);
+      margin-top: var(--sp-4);
+    }
+    .day-card > header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--sp-3);
+      margin-bottom: var(--sp-3);
+      flex-wrap: wrap;
+    }
+    .day-card > header h3 {
+      margin: 0;
+      font-size: var(--fs-xl);
+      line-height: 1.3;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .day-card > header .weather {
+      font-size: var(--fs-xs);
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 4px 12px;
+      border-radius: 100px;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+    .day-card .theme {
+      font-size: var(--fs-sm);
+      color: var(--fg-muted);
+      margin: 0 0 var(--sp-4);
+      line-height: 1.55;
+    }
+
+    /* ===== Timeline ===== */
+    ol.timeline {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      border-left: 2px solid var(--line);
+      margin-left: 6px;
+    }
+    ol.timeline li.time-block {
+      position: relative;
+      padding: 6px 0 var(--sp-4) var(--sp-4);
+    }
+    ol.timeline li.time-block::before {
+      content: "";
+      position: absolute;
+      left: -6px;
+      top: 14px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg-elevated);
+      box-shadow: 0 0 0 1.5px var(--accent);
+    }
+    ol.timeline time {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: var(--fs-xs);
+      color: var(--fg-muted);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .place h4 {
+      margin: 4px 0 6px;
+      font-size: var(--fs-md);
+      font-weight: 600;
+      line-height: 1.35;
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      flex-wrap: wrap;
+    }
+    .place .cat {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 100px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .place .cat.food { background: #fff5e0; color: #8a4d00; }
+    .place .cat.scenery { background: #e2efe7; color: #1f5a3a; }
+    .place .cat.culture { background: #ede4f5; color: #4f2a82; }
+    .place .cat.shopping { background: #fbe2e9; color: #96223f; }
+    .place .cat.hotel { background: #e6e9ee; color: #3a4150; }
+    .place .cat.transport { background: #dde7f0; color: #1e4a72; }
+    .place .weather-sensitive {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 500;
+      color: #8a5a00;
+      background: #fdf3da;
+      padding: 2px 8px;
+      border-radius: 100px;
+      margin-left: 4px;
+    }
+    .place p {
+      margin: 4px 0;
+      font-size: var(--fs-base);
+      line-height: 1.55;
+    }
+    .place .why { color: var(--fg-muted); font-size: var(--fs-sm); line-height: 1.55; }
+    .place .note {
+      background: var(--bg-soft);
+      padding: var(--sp-2) var(--sp-3);
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-sm);
+      line-height: 1.55;
+      border-left: 2px solid var(--line-strong);
+    }
+
+    /* ===== Transport segments ===== */
+    .transport-list {
+      margin-top: var(--sp-4);
+      padding-top: var(--sp-3);
+      border-top: 1px dashed var(--line);
+    }
+    .transport-list h4 {
+      margin: 0 0 var(--sp-2);
+      font-size: var(--fs-sm);
+      color: var(--fg-muted);
+      letter-spacing: 0.02em;
+      font-weight: 500;
+    }
+    .transport-list ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .transport-list li.transport-segment {
+      padding: var(--sp-2) 0;
+      font-size: var(--fs-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      flex-wrap: wrap;
+    }
+    .transport-list .transport-mode {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 4px;
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      min-width: 50px;
+      text-align: center;
+    }
+    .transport-list .transport-mode[data-mode="walking"] { background: var(--c-walk); }
+    .transport-list .transport-mode[data-mode="transit"],
+    .transport-list .transport-mode[data-mode="subway"],
+    .transport-list .transport-mode[data-mode="metro"],
+    .transport-list .transport-mode[data-mode="bus"],
+    .transport-list .transport-mode[data-mode="train"],
+    .transport-list .transport-mode[data-mode="jr"] { background: var(--c-transit); }
+    .transport-list .transport-mode[data-mode="driving"] { background: var(--c-drive); }
+    .transport-list .transport-mode[data-mode="biking"] { background: var(--c-bike); }
+
+    /* ===== Meal details (折叠) ===== */
+    details.meals {
+      margin-top: var(--sp-4);
+      padding-top: var(--sp-3);
+      border-top: 1px dashed var(--line);
+      font-size: var(--fs-base);
+    }
+    details.meals summary {
+      cursor: pointer;
+      font-weight: 500;
+      user-select: none;
+      list-style: none;
+      color: var(--fg-muted);
+      font-size: var(--fs-sm);
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 0;
+    }
+    details.meals summary::-webkit-details-marker { display: none; }
+    details.meals summary::before {
+      content: "🍽 ";
+      margin-right: 4px;
+    }
+    details.meals .meal {
+      margin: var(--sp-2) 0;
+    }
+    details.meals .meal .label {
+      display: inline-block;
+      font-size: 10px;
+      color: var(--fg-muted);
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 100px;
+      margin-right: var(--sp-2);
+      vertical-align: middle;
+    }
+    details.meals .meal .name { font-weight: 600; }
+    details.meals .meal .why {
+      display: block;
+      color: var(--fg-muted);
+      font-size: var(--fs-sm);
+      margin-top: 2px;
+      line-height: 1.5;
+    }
+
+    /* ===== Footer ===== */
+    footer.bottom {
+      margin-top: 48px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--fg-subtle);
+      text-align: center;
+    }
+    footer.bottom a { color: var(--fg-subtle); }
+
+    /* ===== 移动端综合断点 ===== */
+    @media (max-width: 600px) {
+      .wrap {
+        padding: var(--sp-4) var(--sp-4) calc(var(--sp-10) + env(safe-area-inset-bottom, 0px));
+      }
+      header.hero { padding: 0 0 var(--sp-4); margin-bottom: var(--sp-4); }
+      .day-card { padding: var(--sp-4) var(--sp-4) var(--sp-3); }
+      .day-card > header h3 { font-size: var(--fs-lg); }
+      ol.timeline li.time-block { padding: 4px 0 var(--sp-3) var(--sp-4); }
+      .place h4 { font-size: 15px; }
+      .tabs { top: var(--sp-2); }
+    }
+
+    /* ===== 减少动效（无障碍） ===== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* ===== 打印 ===== */
+    @media print {
+      .drawer, .drawer-toggle, .drawer-backdrop { display: none !important; }
+      .tabs { display: none; }
+      .day-card { page-break-after: always; }
+      #map { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <a href="#main" class="skip-link">跳转到主内容</a>
+
+  <div class="wrap">
+
+    <!-- ===== Validation Banner（v1.1.0 新增，代码级硬约束）=====
+         AI 必须在 tripData.validation_report 嵌入完整 7 条规则结果；
+         浏览器加载时 JS 会用同样规则强制重算（不依赖 AI 的 self-report）。
+         缺失/不完整 → 顶部红/黄条
+    -->
+    <div id="validation-banner" role="status" aria-live="polite"></div>
+
+    <header class="hero">
+      <h1>{{TRIP_NAME}}</h1>
+      <p class="meta">{{DATE_RANGE}} · {{N_DAYS}} · {{CITY}}</p>
+      <p class="summary">{{SUMMARY}}</p>
+    </header>
+
+    <button class="drawer-toggle" id="drawer-toggle" aria-label="打开行程信息" aria-expanded="false" aria-controls="drawer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+      <span class="label">行程信息</span>
+      <span class="badge" id="drawer-badge" style="display:none">0</span>
+    </button>
+
+    <main id="main">
+
+      <div class="tabs" id="tabs" role="tablist" aria-label="每日行程"></div>
+
+      <section class="map-section">
+        <div class="map-controls">
+          <label class="toggle">
+            <input type="checkbox" id="toggle-route" checked>
+            <span>显示路线</span>
+          </label>
+          <div class="legend">
+            <span class="legend-item"><span class="dot" style="background:var(--c-walk)"></span>步行</span>
+            <span class="legend-item"><span class="dot" style="background:var(--c-transit)"></span>地铁/公交/JR</span>
+            <span class="legend-item"><span class="dot" style="background:var(--c-drive)"></span>驾车</span>
+            <span class="legend-item"><span class="dot" style="background:var(--c-bike)"></span>骑行</span>
+          </div>
+        </div>
+        <div id="map"></div>
+      </section>
+
+      <section class="day-section" id="day-panel"></section>
+
+      <!-- ===== Validation Report Section（v1.1.0 新增，代码级硬约束）=====
+           浏览器加载时由 JS 强制重算 V1/V3/V4/V5/V6（用 POI 坐标），
+           V2 浏览器内只能粗算（需高德 API），V7 完全靠 AI。
+      -->
+      <details id="validation-report-section">
+        <summary>📋 验证报告（加载中…）</summary>
+      </details>
+
+    </main>
+
+    <footer class="bottom">
+      <p>由 <strong>travel-planner</strong> skill 生成 · 数据来源：高德 MCP / 小红书 MCP / 大众点评</p>
+      <p>计划 = 参考坐标 · 天气 / 体力 / 饥饿均可覆盖</p>
+    </footer>
+
+  </div>
+
+  <!-- ===== Drawer 抽屉 ===== -->
+  <div class="drawer-backdrop" id="drawer-backdrop" aria-hidden="true"></div>
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true">
+
+    <header class="drawer-header">
+      <h2 id="drawer-title">行程信息</h2>
+      <button class="drawer-close" id="drawer-close" aria-label="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </header>
+
+    <div class="drawer-body">
+
+      <!-- 酒店 -->
+      <section>
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 21V8l9-5 9 5v13"></path>
+            <path d="M9 21v-6h6v6"></path>
+          </svg>
+          酒店
+        </h3>
+        <div class="hotel-card" id="hotel-card">
+          <h4 id="hotel-name">{{HOTEL_NAME}}</h4>
+          <p class="address" id="hotel-address">{{HOTEL_ADDRESS}}</p>
+          <p class="why" id="hotel-why">{{HOTEL_WHY}}</p>
+          <div class="links" id="hotel-links">
+            <a href="{{HOTEL_AMAP_URI}}">高德</a>
+            <a href="{{HOTEL_APPLE_URI}}">Apple Maps</a>
+            <a href="{{HOTEL_GOOGLE_URI}}">Google Maps</a>
+            <a href="{{HOTEL_BOOKING_URI}}">预订</a>
+          </div>
+          <div class="hotel-commute" id="hotel-commute"></div>
+        </div>
+      </section>
+
+      <!-- 天气策略 -->
+      <section id="weather-section" style="display:none">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4 12H2M22 12h-2M19 5l-1.4 1.4M6.4 17.6L5 19M19 19l-1.4-1.4M6.4 6.4L5 5"></path>
+          </svg>
+          天气策略
+        </h3>
+        <div class="weather-card" id="weather-plan-text"></div>
+      </section>
+
+      <!-- 提前订 -->
+      <section>
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+            <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path>
+          </svg>
+          提前订
+          <span class="count" id="prebook-count"></span>
+        </h3>
+        <ul class="drawer-list" id="prebook-list">
+          {{PREBOOK_BLOCK}}
+        </ul>
+      </section>
+
+    </div>
+  </aside>
+
+  <!-- ====== AI 在 Step 7 填这里 ======
+       window.AMAP_KEY：高德 Web (JS) API Key（空字符串则地图降级为文字版）
+       window.tripData：完整行程数据
+       可选字段 trip_center：[lng, lat] —— 多城行程的整体中心点（用于初始化地图视野），
+                     缺省则取 days[0].center，再缺省兜底北京
+  -->
+  <script>
+    window.AMAP_KEY = "";  // 例："a1b2c3d4e5f6..." —— 申请：https://lbs.amap.com/dev/key/app
+    window.tripData = {
+      weather_plan: "",
+      trip_center: null,   // 例：[116.397, 39.908] 整个行程的中心点
+      hotel: {
+        name: "{{HOTEL_NAME}}",
+        address: "{{HOTEL_ADDRESS}}",
+        why: "{{HOTEL_WHY}}",
+        amap_uri: "{{HOTEL_AMAP_URI}}",
+        apple_uri: "{{HOTEL_APPLE_URI}}",
+        google_uri: "{{HOTEL_GOOGLE_URI}}",
+        booking_uri: "{{HOTEL_BOOKING_URI}}",
+        commute: []
+      },
+      days: [],
+      prebook: []
+    };
+  </script>
+
+  <!-- ===== 渲染逻辑 ===== -->
+  <script>
+    'use strict';
+    (function() {
+      const D = window.tripData;
+      let map = null;
+      let mapLayers = [];
+      let currentDay = 1;
+      let lastFocused = null;  // 用于关闭抽屉时恢复 focus
+
+      const CAT_COLORS = {
+        hotel:    '#4a5260',
+        food:     '#a05a00',
+        scenery:  '#2d6e4a',
+        culture:  '#6b3aaa',
+        shopping: '#b32c50',
+        transport:'#2c5e8a'
+      };
+
+      function fmtMode(mode) {
+        const map = { walking:'步行', transit:'公交', subway:'地铁', metro:'地铁', bus:'公交', train:'火车', jr:'JR', driving:'驾车', biking:'骑行' };
+        return map[mode] || mode;
+      }
+
+      // HTML 转义：防第三方抓取字段（店名/笔记标题/地址）含 < & " ' 破版
+      function esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      // ===== Drawer 交互 =====
+      function openDrawer() {
+        lastFocused = document.activeElement;
+        const drawer = document.getElementById('drawer');
+        const backdrop = document.getElementById('drawer-backdrop');
+        const toggle = document.getElementById('drawer-toggle');
+        drawer.classList.add('open');
+        drawer.setAttribute('aria-hidden', 'false');
+        backdrop.classList.add('open');
+        toggle.setAttribute('aria-expanded', 'true');
+        document.body.style.overflow = 'hidden';
+        // focus 到 close 按钮
+        setTimeout(() => document.getElementById('drawer-close').focus(), 100);
+      }
+
+      function closeDrawer() {
+        const drawer = document.getElementById('drawer');
+        const backdrop = document.getElementById('drawer-backdrop');
+        const toggle = document.getElementById('drawer-toggle');
+        drawer.classList.remove('open');
+        drawer.setAttribute('aria-hidden', 'true');
+        backdrop.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+        // 恢复 focus
+        if (lastFocused && lastFocused.focus) lastFocused.focus();
+      }
+
+      // ===== Hotel =====
+      function renderHotel() {
+        const h = D.hotel || {};
+        if (h.commute && h.commute.length) {
+          const items = h.commute.map(c =>
+            `<li>Day ${c.day} ${esc(c.region)}：${esc(c.mode)} ${c.duration_min} 分钟</li>`
+          ).join('');
+          document.getElementById('hotel-commute').innerHTML =
+            `<details class="hotel-commute"><summary>每天通勤（点击展开）</summary>
+              <ul>${items}</ul>
+            </details>`;
+        }
+      }
+
+      function renderWeatherPlan() {
+        const wp = D.weather_plan;
+        if (!wp) {
+          document.getElementById('weather-section').style.display = 'none';
+          return;
+        }
+        document.getElementById('weather-section').style.display = '';
+        document.getElementById('weather-plan-text').textContent = wp;
+      }
+
+      // ===== Tabs =====
+      function renderTabs() {
+        const tabsEl = document.getElementById('tabs');
+        tabsEl.innerHTML = D.days.map(d =>
+          `<button class="tab" role="tab" data-day="${d.day}" aria-selected="${d.day === 1}">
+            <span class="tab-day">Day ${d.day}</span>
+            <span class="tab-region">${esc(d.region)}</span>
+          </button>`
+        ).join('');
+        tabsEl.querySelectorAll('.tab').forEach(tab => {
+          tab.addEventListener('click', () => {
+            currentDay = parseInt(tab.dataset.day);
+            showDay(currentDay);
+            tab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          });
+        });
+      }
+
+      // ===== Day Panel =====
+      function renderDayPanel(dayIdx) {
+        const d = D.days[dayIdx - 1];
+        if (!d) return;
+
+        const wsTag = d.weather_decision ?
+          `<p class="note" style="margin-top:8px">📋 ${esc(d.weather_decision)}</p>` : '';
+
+        const poiItems = d.pois.map(p => {
+          const ws = p.weather_sensitive ? ' <span class="weather-sensitive">⚠️ 天气敏感</span>' : '';
+          const note = p.note ? `<p class="note">${esc(p.note)}</p>` : '';
+          const why = p.why ? `<p class="why">→ ${esc(p.why)}</p>` : '';
+          const links = p.links || {};
+          const linkParts = [];
+          if (links.amap_navi) linkParts.push(`<a href="${esc(links.amap_navi)}">导航</a>`);
+          if (links.xhs) linkParts.push(`<a href="${esc(links.xhs)}">小红书</a>`);
+          if (links.dianping) linkParts.push(`<a href="${esc(links.dianping)}">大众点评</a>`);
+          const linksHtml = linkParts.length ? `<div class="links">${linkParts.join('')}</div>` : '';
+          return `<li class="time-block">
+            <time>${esc(p.time)}</time>
+            <div class="place">
+              <h4>${esc(p.name)} <span class="cat ${esc(p.cat)}">${esc(p.cat)}</span>${ws}</h4>
+              ${note}${why}${linksHtml}
+            </div>
+          </li>`;
+        }).join('');
+
+        let transportHtml = '';
+        if (d.transports && d.transports.length) {
+          const items = d.transports.map(t => {
+            const fromPoi = d.pois.find(p => p.idx === t.from_idx);
+            const toPoi = d.pois.find(p => p.idx === t.to_idx);
+            const desc = t.description || `${fmtMode(t.mode)} ${t.duration_min} 分钟`;
+            return `<li class="transport-segment">
+              <span class="transport-mode" data-mode="${esc(t.mode)}">${fmtMode(t.mode)}</span>
+              <span>${esc(fromPoi ? fromPoi.name : '?')} → ${esc(toPoi ? toPoi.name : '?')}（${esc(desc)}）</span>
+            </li>`;
+          }).join('');
+          transportHtml = `<div class="transport-list">
+            <h4>🚶 怎么走</h4>
+            <ul>${items}</ul>
+          </div>`;
+        }
+
+        let mealsHtml = '';
+        if (d.meals) {
+          const mealParts = [];
+          for (const [type, m] of Object.entries(d.meals)) {
+            if (m.main) {
+              mealParts.push(`<p class="meal"><span class="label">${esc(type)}</span><span class="name">${esc(m.main.name)}</span><span class="why">— ${esc(m.main.why)}</span></p>`);
+              if (m.alt) {
+                mealParts.push(`<p class="meal" style="margin-left:24px"><span class="label">备选</span><span class="name">${esc(m.alt.name)}</span><span class="why">— ${esc(m.alt.why)}</span></p>`);
+              }
+            }
+          }
+          if (mealParts.length) {
+            mealsHtml = `<details class="meals"><summary>这顿吃什么</summary>${mealParts.join('')}</details>`;
+          }
+        }
+
+        document.getElementById('day-panel').innerHTML = `
+          <article class="day-card">
+            <header>
+              <h3>Day ${d.day} · ${esc(d.date)} (${esc(d.weekday)}) · ${esc(d.region)}</h3>
+              <span class="weather">${esc(d.weather_emoji || '')} ${esc(d.weather || '')}</span>
+            </header>
+            <p class="theme">${esc(d.theme || '')}</p>
+            <ol class="timeline">${poiItems}</ol>
+            ${transportHtml}
+            ${mealsHtml}
+            ${wsTag}
+          </article>`;
+      }
+
+      // ===== Drawer 列表 =====
+      function renderDrawerLists() {
+        // 提前订
+        const prebookEl = document.getElementById('prebook-list');
+        if (D.prebook && D.prebook.length) {
+          prebookEl.innerHTML = D.prebook.map(x =>
+            `<li>
+              <span class="item-title"><a href="${esc(x.url)}">${esc(x.item)}</a><span class="item-deadline">· ${esc(x.deadline)}</span></span>
+              ${x.note ? `<span class="item-meta">${esc(x.note)}</span>` : ''}
+            </li>`
+          ).join('');
+          document.getElementById('prebook-count').textContent = `${D.prebook.length} 项`;
+          document.getElementById('drawer-badge').textContent = D.prebook.length;
+          document.getElementById('drawer-badge').style.display = '';
+        } else {
+          document.getElementById('prebook-count').textContent = '0';
+          document.getElementById('drawer-badge').style.display = 'none';
+        }
+      }
+
+      // ===== 地图 =====
+      function clearMap() {
+        mapLayers.forEach(l => { try { map.remove(l); } catch(e) {} });
+        mapLayers = [];
+      }
+
+      function colorForMode(mode) {
+        if (mode === 'walking') return getCss('--c-walk');
+        if (mode === 'driving') return getCss('--c-drive');
+        if (mode === 'biking')  return getCss('--c-bike');
+        return getCss('--c-transit');
+      }
+
+      function getCss(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
+      }
+
+      function dashForMode(mode) {
+        if (mode === 'walking') return [6, 4];
+        if (mode === 'biking') return [8, 4];
+        return null;
+      }
+
+      function widthForMode(mode) {
+        if (mode === 'walking') return 4;
+        if (mode === 'biking') return 5;
+        return 6;
+      }
+
+      function updateMap(dayIdx) {
+        if (!map) return;
+        const d = D.days[dayIdx - 1];
+        if (!d) return;
+        clearMap();
+
+        if (d.center) {
+          map.setZoomAndCenter(d.zoom || 14, d.center);
+        }
+
+        (d.pois || []).forEach((p, i) => {
+          const color = CAT_COLORS[p.cat] || '#333';
+          const marker = new AMap.Marker({
+            position: [p.lng, p.lat],
+            anchor: 'center',
+            offset: new AMap.Pixel(-14, -14),
+            content: `<div style="
+              background:${color};color:white;
+              width:28px;height:28px;
+              border-radius:50%;
+              display:flex;align-items:center;justify-content:center;
+              font-weight:600;font-size:14px;
+              border:2px solid white;
+              box-shadow:0 2px 4px rgba(0,0,0,0.4);
+              font-family:system-ui;
+            ">${i + 1}</div>`,
+            title: p.name,
+            zIndex: 100 + i
+          });
+          marker.on('click', () => {
+            const info = `<div style="padding:8px;max-width:220px;font-size:13px">
+              <strong>${esc(p.time)} ${esc(p.name)}</strong><br>
+              <span style="color:#888">${esc(p.cat)} · ${p.duration_min || '?'} 分钟</span>
+              ${p.note ? `<p style="margin:6px 0;color:#666">${esc(p.note)}</p>` : ''}
+            </div>`;
+            new AMap.InfoWindow({ content: info, offset: new AMap.Pixel(0, -32) })
+              .open(map, marker.getPosition());
+          });
+          map.add(marker);
+          mapLayers.push(marker);
+        });
+
+        const showRoute = document.getElementById('toggle-route').checked;
+        if (showRoute && d.transports) {
+          d.transports.forEach(t => {
+            const from = (d.pois || []).find(p => p.idx === t.from_idx);
+            const to = (d.pois || []).find(p => p.idx === t.to_idx);
+            if (!from || !to) return;
+            // v1.3.0：优先用真实路网 path（高德 MCP 算的 polyline），降级为直线
+            const pathCoords = (Array.isArray(t.path) && t.path.length >= 2)
+              ? t.path.map(coord => [coord[0], coord[1]])  // 兼容 [lng,lat] 数组
+              : [[from.lng, from.lat], [to.lng, to.lat]];   // 降级为直线
+            const polyline = new AMap.Polyline({
+              path: pathCoords,
+              strokeColor: colorForMode(t.mode),
+              strokeWeight: widthForMode(t.mode),
+              strokeOpacity: t.path ? 0.9 : 0.6,  // 真实路径更显眼
+              strokeStyle: dashForMode(t.mode) ? 'dashed' : 'solid',
+              lineJoin: 'round'
+            });
+            map.add(polyline);
+            mapLayers.push(polyline);
+          });
+        }
+
+        if (!d.center && d.pois && d.pois.length > 1) {
+          map.setFitView();
+        }
+      }
+
+      function initMap() {
+        if (!window.AMAP_KEY) {
+          document.getElementById('map').style.display = 'none';
+          const fb = document.createElement('div');
+          fb.className = 'map-fallback';
+          fb.innerHTML = `<p>⚠️ 未配置高德 Web API Key</p>
+            <p class="hint">在 AI Step 7 输出时填入 <code>window.AMAP_KEY</code>，或参见 README 申请（免费）</p>`;
+          document.querySelector('.map-section').appendChild(fb);
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = `https://webapi.amap.com/maps?v=2.0&key=${window.AMAP_KEY}&plugin=AMap.Polyline,AMap.Marker,AMap.InfoWindow`;
+        script.onload = () => {
+          // 地图中心：优先取 tripData.trip_center（AI 在 Step 7 注入），否则取首日主区域中心
+          const tripCenter = D.trip_center || (D.days[0] && D.days[0].center);
+          const initCenter = tripCenter || [116.397, 39.908]; // 兜底北京（GCJ-02）
+          map = new AMap.Map('map', {
+            zoom: tripCenter ? 11 : 4,
+            center: initCenter,
+            viewMode: '2D',
+            mapStyle: 'amap://styles/normal'
+          });
+          setTimeout(() => map.getSize(), 100);
+          window.addEventListener('resize', () => { try { map.getSize(); } catch(e) {} });
+          updateMap(currentDay);
+        };
+        script.onerror = () => {
+          document.getElementById('map').style.display = 'none';
+          const fb = document.createElement('div');
+          fb.className = 'map-fallback';
+          fb.innerHTML = `<p>❌ 高德地图加载失败</p>
+            <p class="hint">请检查 <code>window.AMAP_KEY</code> 是否正确</p>`;
+          document.querySelector('.map-section').appendChild(fb);
+        };
+        document.head.appendChild(script);
+      }
+
+      function showDay(dayIdx) {
+        document.querySelectorAll('.tab').forEach(t => {
+          const isActive = parseInt(t.dataset.day) === dayIdx;
+          t.classList.toggle('active', isActive);
+          t.setAttribute('aria-selected', isActive);
+        });
+        renderDayPanel(dayIdx);
+        updateMap(dayIdx);
+      }
+
+      document.addEventListener('change', e => {
+        if (e.target.id === 'toggle-route') updateMap(currentDay);
+      });
+
+      // ===== Drawer 事件 =====
+      document.getElementById('drawer-toggle').addEventListener('click', openDrawer);
+      document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+      document.getElementById('drawer-backdrop').addEventListener('click', closeDrawer);
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && document.getElementById('drawer').classList.contains('open')) {
+          closeDrawer();
+        }
+      });
+
+      // Focus trap
+      document.getElementById('drawer').addEventListener('keydown', e => {
+        if (e.key !== 'Tab') return;
+        const focusables = document.getElementById('drawer').querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      });
+
+      // ===== Validation（v1.1.0 新增，代码级硬约束）=====
+      // 浏览器端强制重算 V1/V3/V4/V5/V6（用 POI 坐标 + 阈值公式），
+      // 结果**覆盖** tripData.validation_report.rules（AI 作弊也挡不住）。
+      // V2 通勤需高德 API，浏览器内只能粗算 → 提示用户看 AI 高德复核报告。
+      // V7 用户禁忌需 AI 上下文判断，**不能脚本化** → 保留 AI self-report。
+
+      const VALIDATION_RULE_IDS = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7'];
+      const VALIDATION_THRESHOLDS = {
+        V1_WARN_KM: 3.0, V1_FAIL_KM: 5.0,
+        V3_WARN_KM: 1.5, V3_FAIL_KM: 3.0,
+        V5_BUFFER_HOURS_WARN: 2.0, V5_BUFFER_HOURS_FAIL: 1.5,
+      };
+
+      function haversineKm(a, b) {
+        if (!a || !b) return null;
+        const [lng1, lat1] = a;
+        const [lng2, lat2] = b;
+        const R = 6371.0088;
+        const dlat = (lat2 - lat1) * Math.PI / 180;
+        const dlng = (lng2 - lng1) * Math.PI / 180;
+        const x = Math.sin(dlat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dlng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(x));
+      }
+
+      function getLoc(p) {
+        if (!p) return null;
+        if (Array.isArray(p.location) && p.location.length >= 2) return p.location.slice(0, 2);
+        if (p.lng != null && p.lat != null) return [p.lng, p.lat];
+        if (p.lon != null && p.lat != null) return [p.lon, p.lat];
+        return null;
+      }
+
+      function statusFor(val, warn, fail) {
+        if (val >= fail) return '❌';
+        if (val >= warn) return '⚠️';
+        return '✅';
+      }
+
+      // 浏览器端 V1 重算
+      function browserCheckV1(day, isLast) {
+        const center = day.center;
+        const pois = day.pois || [];
+        if (!center || !pois.length) return { id: 'V1', rule: '区域一致性', status: '⚠️', note: '缺 center 或 pois', source: 'browser' };
+        if (isLast) return { id: 'V1', rule: '区域一致性', status: '✅', note: '末日，跳过（返程偏远合理）', source: 'browser' };
+        let worst = 0, worstPoi = null;
+        for (const p of pois) {
+          const loc = getLoc(p);
+          if (!loc) continue;
+          const d = haversineKm(center, loc);
+          if (d != null && d > worst) { worst = d; worstPoi = p.name || '?'; }
+        }
+        const st = statusFor(worst, VALIDATION_THRESHOLDS.V1_WARN_KM, VALIDATION_THRESHOLDS.V1_FAIL_KM);
+        return { id: 'V1', rule: '区域一致性', status: st, note: `最远「${worstPoi}」 ${worst.toFixed(2)} km`, source: 'browser' };
+      }
+
+      // 浏览器端 V3 重算
+      function browserCheckV3(day) {
+        const center = day.center;
+        const meals = day.meals || {};
+        if (!center) return { id: 'V3', rule: '餐厅区域匹配', status: '⚠️', note: '缺 center', source: 'browser' };
+        let worst = 0, worstRest = null, worstMeal = null;
+        for (const [name, meal] of Object.entries(meals)) {
+          if (!meal || typeof meal !== 'object') continue;
+          for (const tag of ['main', 'alt1', 'alt2']) {
+            const r = meal[tag];
+            const loc = getLoc(r);
+            if (!loc) continue;
+            const d = haversineKm(center, loc);
+            if (d != null && d > worst) { worst = d; worstRest = r.name || '?'; worstMeal = name; }
+          }
+        }
+        if (worst === 0) return { id: 'V3', rule: '餐厅区域匹配', status: '✅', note: '无餐厅坐标可验', source: 'browser' };
+        const st = statusFor(worst, VALIDATION_THRESHOLDS.V3_WARN_KM, VALIDATION_THRESHOLDS.V3_FAIL_KM);
+        return { id: 'V3', rule: '餐厅区域匹配', status: st, note: `「${worstRest}」(${worstMeal}) ${worst.toFixed(2)} km`, source: 'browser' };
+      }
+
+      // 浏览器端 V4 重算
+      function browserCheckV4(day, prebook) {
+        const dayIdx = day.day;
+        let n = 0;
+        const items = [];
+        for (const p of (prebook || [])) {
+          if (p.day === dayIdx) { n++; items.push(p.item || p.title || '?'); continue; }
+          const note = p.note || '';
+          if (note.includes(`Day ${dayIdx}`) && !note.includes('出发前') && !note.includes('提前')) {
+            n++; items.push(p.item || p.title || '?');
+          }
+        }
+        const st = n >= 2 ? '❌' : '✅';
+        return { id: 'V4', rule: '一日一重预约', status: st, note: `Day ${dayIdx} 预约 ${n} 条：${items.join('、') || '无'}`, source: 'browser' };
+      }
+
+      // 浏览器端 V5 重算
+      function browserCheckV5(lastDay, prebook) {
+        const flights = (prebook || []).filter(p => {
+          const t = (p.item || p.title || '');
+          return /航班|飞机|高铁|火车|动车|机票/.test(t);
+        });
+        if (!flights.length) return { id: 'V5', rule: '末日返程缓冲', status: '✅', note: '无返程票', source: 'browser' };
+        const flight = flights[0];
+        const flightTime = flight.depart_time || flight.time || '';
+        const flightNote = flight.item || flight.title || '返程';
+        const pois = lastDay.pois || [];
+        if (!pois.length) return { id: 'V5', rule: '末日返程缓冲', status: '⚠️', note: '末日无 POI', source: 'browser' };
+        const lastPoi = pois[pois.length - 1];
+        const endTime = lastPoi.end_time || lastPoi.time || '';
+        if (!endTime || !flightTime) return { id: 'V5', rule: '末日返程缓冲', status: '⚠️', note: `POI 末 ${endTime}，航班 ${flightTime}（缺时间）`, source: 'browser' };
+        const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+        const bufMin = toMin(flightTime) - toMin(endTime);
+        const bufH = bufMin / 60;
+        const st = statusFor(-bufH, -VALIDATION_THRESHOLDS.V5_BUFFER_HOURS_WARN, -VALIDATION_THRESHOLDS.V5_BUFFER_HOURS_FAIL);
+        return { id: 'V5', rule: '末日返程缓冲', status: st, note: `${endTime} → ${flightTime}，缓冲 ${bufH.toFixed(2)} h（${flightNote}）`, source: 'browser' };
+      }
+
+      // 浏览器端 V6 重算（粗：只看 indoor_backup 字段）
+      function browserCheckV6(day) {
+        const weather = (day.weather || '').toLowerCase();
+        const bad = /雨|雪|雷|storm|rain|snow/.test(weather);
+        const outdoorPois = (day.pois || []).filter(p => p.type === 'outdoor' || (p.tags || []).some(t => /outdoor|户外|露台|天台|观景/.test(t)));
+        if (!outdoorPois.length) return { id: 'V6', rule: '户外天气敏感', status: '✅', note: '无户外 POI', source: 'browser' };
+        if (!bad) return { id: 'V6', rule: '户外天气敏感', status: '✅', note: `天气好（${day.weather}）`, source: 'browser' };
+        const missing = outdoorPois.filter(p => !p.indoor_backup).map(p => p.name || '?');
+        if (missing.length) return { id: 'V6', rule: '户外天气敏感', status: '❌', note: `缺 indoor_backup：${missing.join('、')}`, source: 'browser' };
+        return { id: 'V6', rule: '户外天气敏感', status: '✅', note: '已配 indoor_backup', source: 'browser' };
+      }
+
+      // 浏览器端 V2（只提示：真通勤需 AI 调高德）
+      function browserCheckV2Stub() {
+        return { id: 'V2', rule: '时间可行性（粗算）', status: '⚠️', note: '浏览器内无法实算通勤；**请看 AI 报告（高德 route_* 复核）**', source: 'browser-stub' };
+      }
+
+      // 主重算：每个 day 跑 V1/V3/V4/V6，最后一天跑 V5
+      function recomputeValidation() {
+        if (!D || !D.days || !D.days.length) return null;
+        const rules = [];
+        const n = D.days.length;
+        for (let i = 0; i < n; i++) {
+          const day = D.days[i];
+          const isLast = (i === n - 1);
+          rules.push(browserCheckV1(day, isLast));
+          rules.push(browserCheckV3(day));
+          rules.push(browserCheckV4(day, D.prebook || []));
+          rules.push(browserCheckV6(day));
+          if (isLast) {
+            rules.push(browserCheckV5(day, D.prebook || []));
+          }
+        }
+        // V2 浏览器内只能粗算，加 1 个 stub
+        rules.push(browserCheckV2Stub());
+        // V7 完全由 AI 判断，浏览器无法验
+        // 保留 AI self-report 里的 V7（如有）
+        const aiReport = D.validation_report;
+        if (aiReport && Array.isArray(aiReport.rules)) {
+          const v7 = aiReport.rules.find(r => r.id === 'V7');
+          if (v7) rules.push(Object.assign({}, v7, { source: 'ai-only' }));
+          else rules.push({ id: 'V7', rule: '用户禁忌屏蔽', status: '⚠️', note: '未提供 AI 报告（V7 需 AI 自行核对）', source: 'ai-only' });
+        } else {
+          rules.push({ id: 'V7', rule: '用户禁忌屏蔽', status: '⚠️', note: '未提供 AI 报告（V7 需 AI 自行核对）', source: 'ai-only' });
+        }
+        return { round: aiReport ? aiReport.round : 0, rules, source: 'browser-recompute' };
+      }
+
+      // 渲染顶部 banner
+      function renderValidationBanner() {
+        const aiReport = D.validation_report;
+        const aiRuleIds = (aiReport && Array.isArray(aiReport.rules)) ? new Set(aiReport.rules.map(r => r.id)) : new Set();
+        const missing = VALIDATION_RULE_IDS.filter(id => !aiRuleIds.has(id));
+
+        const banner = document.getElementById('validation-banner');
+
+        // 情况 1：AI 完全没跑验证（无 validation_report 字段或 rules 数组为空）
+        if (!aiReport || !Array.isArray(aiReport.rules) || aiReport.rules.length === 0) {
+          banner.className = 'show banner-missing';
+          banner.innerHTML = `
+            <div class="vb-title">⚠️ 本方案未跑验证（v1.1.0 硬约束）</div>
+            <div>AI 没在 tripData 嵌入 <code>validation_report</code>。浏览器会用 POI 坐标 + 阈值公式<strong>强制重算</strong>（结果见底部「验证报告」折叠区）。</div>
+            <div style="margin-top: 8px;">🟢 建议：让 AI 跑 <code>python scripts/validate.py</code>，把 stdout 嵌进 tripData.validation_report。</div>
+          `;
+          return;
+        }
+
+        // 情况 2：7 条规则不完整
+        if (missing.length > 0) {
+          banner.className = 'show banner-warn';
+          banner.innerHTML = `
+            <div class="vb-title">⚠️ 验证报告不完整（缺 ${missing.join(', ')}）</div>
+            <div>AI 只跑了这 ${aiReport.rules.length} 条：${Array.from(aiRuleIds).join(', ')}。缺失规则 <strong>${missing.join(', ')}</strong> 无法核对。</div>
+            <div style="margin-top: 8px;">🟢 建议：让 AI 补全（V7 必跑，V1-V6 脚本可验）。</div>
+          `;
+          return;
+        }
+
+        // 情况 3：完整 → 用浏览器重算结果覆盖 AI self-report
+        const recomputed = recomputeValidation();
+        if (!recomputed) return;
+        // 存到 D 上，renderValidationSection 也会读
+        D._validation_recomputed = recomputed;
+        const fail = recomputed.rules.filter(r => r.status === '❌').length;
+        const warn = recomputed.rules.filter(r => r.status === '⚠️').length;
+        const pass = recomputed.rules.filter(r => r.status === '✅').length;
+        const overall = fail > 0 ? 'banner-missing' : (warn > 0 ? 'banner-warn' : 'banner-pass');
+        banner.className = 'show ' + overall;
+        const headline = fail > 0
+          ? `❌ 浏览器重算发现 ${fail} 条失败（v1.1.0 硬约束）`
+          : (warn > 0 ? `⚠️ 浏览器重算通过，但有 ${warn} 条警告` : '✅ 浏览器重算全部通过');
+        const subline = `${pass} ✅ / ${warn} ⚠️ / ${fail} ❌ — **以浏览器重算为准**（AI self-report 仅作参考）`;
+        banner.innerHTML = `
+          <div class="vb-title">${headline}</div>
+          <div>${subline}</div>
+          <button class="vb-detail-btn" onclick="document.getElementById('validation-report-section').open = true; document.getElementById('validation-report-section').scrollIntoView({behavior:'smooth'});">查看完整验证报告 ↓</button>
+        `;
+      }
+
+      // 渲染底部「验证报告」折叠区
+      function renderValidationSection() {
+        const section = document.getElementById('validation-report-section');
+        if (!section) return;
+        // 优先用浏览器重算结果
+        const report = (D._validation_recomputed) || (D.validation_report) || null;
+        if (!report || !report.rules || !report.rules.length) {
+          section.style.display = 'none';
+          return;
+        }
+        const items = report.rules.map(r => {
+          const sourceClass = (r.source === 'browser' || r.source === 'browser-recompute') ? 'script' : (r.source === 'browser-stub' ? 'browser-stub' : 'ai');
+          const sourceLabel = (r.source === 'browser' || r.source === 'browser-recompute') ? '⚙️ 浏览器重算'
+            : r.source === 'browser-stub' ? '⚠️ 需高德'
+            : r.source === 'ai-only' ? '🤖 AI 报告'
+            : '🤖 AI 报告';
+          return `<div class="vr-rule">
+            <div class="vr-status">${r.status}</div>
+            <div>
+              <strong>${r.id} ${esc(r.rule || '')}</strong> — ${esc(r.note || '')}
+              <span class="vr-source ${sourceClass}">${sourceLabel}</span>
+            </div>
+          </div>`;
+        }).join('');
+        const sumHtml = report.summary ? `<div style="margin-top: 12px; font-size: var(--fs-xs); color: var(--fg-muted);">${esc(report.summary)}</div>` : '';
+        const inner = `<summary>📋 验证报告（${report.rules.length} 条规则）— 点开查看</summary>${items}${sumHtml}`;
+        section.innerHTML = inner;
+      }
+
+      // ===== Boot =====
+      function boot() {
+        if (!D || !D.days || !D.days.length) {
+          document.getElementById('day-panel').innerHTML =
+            '<div class="day-card"><p>⚠️ 未找到 tripData 数据</p></div>';
+          return;
+        }
+        // v1.1.0: 验证报告**先**于其他渲染（banner 是顶部最显眼的元素）
+        renderValidationBanner();
+        renderValidationSection();
+        renderHotel();
+        renderWeatherPlan();
+        renderDrawerLists();
+        renderTabs();
+        showDay(1);
+        initMap();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+      } else {
+        boot();
+      }
+    })();
+  </script>
+</body>
+</html>

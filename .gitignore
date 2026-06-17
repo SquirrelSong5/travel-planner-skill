@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# AI IDE / runtime cache
+.playwright-mcp/
+.cache/
+.idea/
+.vscode/
+
+# 敏感：用户登录态（小红书 cookie 等）
+cookies.json
+*.cookie.json
+
+# 临时 / 日志
+*.log
+*.tmp
+*.swp
+
+# 用户本地配置（AMAP_KEY 等真实密钥）
+.travel-planner/
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
