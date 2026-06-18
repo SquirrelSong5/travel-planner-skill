@@ -130,6 +130,17 @@ def collect_and_finalize(trip: dict, day: dict):
     return {"start": start, "vias": vias, "end": end}
 
 
+def mobile_url(start, vias, end, hotel_name: str) -> str:
+    def pt(p):
+        c = poi_coords(p)
+        name = quote(navi_place_name(p, hotel_name) or "地点", safe="")
+        return f"{c['lng']},{c['lat']},{name}"
+
+    parts = [f"saddr={pt(start)}", f"daddr={pt(end)}", "sort=dist"]
+    parts.extend(f"maddr={pt(v)}" for v in vias)
+    return f"https://m.amap.com/navigation/carmap/{'&'.join(parts)}"
+
+
 def dir_url(start, vias, end, hotel_name: str) -> str:
     ts = 1_781_792_351_000
 
@@ -167,14 +178,21 @@ def main() -> int:
                 print(f"  Day {day['day']}: skip (no route)")
                 continue
             same = same_coords(route["start"], route["end"])
-            url = dir_url(route["start"], route["vias"], route["end"], hotel_name)
+            desktop = dir_url(route["start"], route["vias"], route["end"], hotel_name)
+            mobile = mobile_url(route["start"], route["vias"], route["end"], hotel_name)
             issues = []
             if same:
                 issues.append("SAME_START_END")
-            if len(route["vias"]) > 1 and "via[1]" not in url:
+            if len(route["vias"]) > 1 and "via[1]" not in desktop:
                 issues.append("MISSING_MULTI_VIA")
-            if len(route["vias"]) > 0 and "via[0]" not in url:
+            if len(route["vias"]) > 0 and "via[0]" not in desktop:
                 issues.append("MISSING_VIA0")
+            if not mobile.startswith("https://m.amap.com/navigation/carmap/"):
+                issues.append("BAD_MOBILE_PREFIX")
+            if len(route["vias"]) > 0 and "maddr=" not in mobile:
+                issues.append("MISSING_MADDR")
+            if len(route["vias"]) > 1 and mobile.count("maddr=") < 2:
+                issues.append("MISSING_MULTI_MADDR")
             status = "OK" if not issues else "FAIL " + ",".join(issues)
             if issues:
                 failed += 1

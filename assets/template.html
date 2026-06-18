@@ -1576,13 +1576,24 @@
         return { start: s, vias: v, end: e };
       }
 
-      function amapRoutePointParams(p) {
+      function mobileNavPoint(p) {
         const c = poiCoords(p);
-        return {
-          lat: c.lat,
-          lon: c.lng,
-          name: naviPlaceName(p) || '地点',
-        };
+        if (!c) return '';
+        const name = encodeURIComponent(naviPlaceName(p) || '地点');
+        return `${c.lng},${c.lat},${name}`;
+      }
+
+      /** 高德手机版驾车导航（m.amap.com/carmap，saddr + maddr… + daddr） */
+      function buildDayAmapMobileUrl(start, vias, end) {
+        const saddr = mobileNavPoint(start);
+        const daddr = mobileNavPoint(end);
+        if (!saddr || !daddr) return null;
+        const parts = [`saddr=${saddr}`, `daddr=${daddr}`, 'sort=dist'];
+        vias.forEach((v) => {
+          const m = mobileNavPoint(v);
+          if (m) parts.push(`maddr=${m}`);
+        });
+        return `https://m.amap.com/navigation/carmap/${parts.join('&')}`;
       }
 
       function dirEndpointQuery(role, p, id) {
@@ -1600,8 +1611,7 @@
       }
 
       /** 高德地图路线规划页（ditu.amap.com/dir，支持 via[0]…via[n] 多途经点） */
-      function buildDayAmapDirUrl(start, vias, end, opts) {
-        const callnative = opts && opts.callnative;
+      function buildDayAmapDirUrl(start, vias, end) {
         const ts = Date.now();
         const q = [
           dirEndpointQuery('from', start, `${ts}-from`),
@@ -1612,59 +1622,30 @@
           'innersrc=uriapi',
           'policy=1',
         ];
-        if (callnative) q.push('callnative=1');
         if (q.length < 5) return null;
         return `https://ditu.amap.com/dir?${q.filter(Boolean).join('&')}`;
-      }
-
-      function buildDayAmapNativeUrls(start, vias, end) {
-        const s = amapRoutePointParams(start);
-        const e = amapRoutePointParams(end);
-        const viaPts = vias.map(amapRoutePointParams);
-        let common = `sourceApplication=${encodeURIComponent('travel-planner')}`
-          + `&slat=${s.lat}&slon=${s.lon}&sname=${encodeURIComponent(s.name)}`
-          + `&dlat=${e.lat}&dlon=${e.lon}&dname=${encodeURIComponent(e.name)}`
-          + '&dev=0&t=0';
-        if (viaPts.length) {
-          common += `&vian=${viaPts.length}`
-            + `&vialons=${viaPts.map(v => v.lon).join('|')}`
-            + `&vialats=${viaPts.map(v => v.lat).join('|')}`
-            + `&vianames=${encodeURIComponent(viaPts.map(v => v.name).join('|'))}`;
-        }
-        return {
-          ios: `iosamap://path?${common}`,
-          android: `amapuri://route/plan/?${common}`,
-        };
       }
 
       function isMobileAmapDevice() {
         return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       }
 
+      function openAmapUrl(url) {
+        if (!url) return;
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
       function openAmapDayRoute(route) {
-        const desktop = !isMobileAmapDevice();
-        const dirUrl = buildDayAmapDirUrl(route.start, route.vias, route.end, { callnative: !desktop });
-        if (!dirUrl) return;
-        if (desktop) {
-          const a = document.createElement('a');
-          a.href = dirUrl;
-          a.target = '_blank';
-          a.rel = 'noopener';
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          return;
-        }
-        const native = buildDayAmapNativeUrls(route.start, route.vias, route.end);
-        const nativeUrl = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? native.ios : native.android;
-        let timer = setTimeout(() => { window.location.href = dirUrl; }, 2000);
-        const clear = () => {
-          clearTimeout(timer);
-          document.removeEventListener('visibilitychange', onVis);
-        };
-        const onVis = () => { if (document.hidden) clear(); };
-        document.addEventListener('visibilitychange', onVis);
-        window.location.href = nativeUrl;
+        const url = isMobileAmapDevice()
+          ? buildDayAmapMobileUrl(route.start, route.vias, route.end)
+          : buildDayAmapDirUrl(route.start, route.vias, route.end);
+        openAmapUrl(url);
       }
 
       function bindDayRouteButtons() {
