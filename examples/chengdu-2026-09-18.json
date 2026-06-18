@@ -76,9 +76,6 @@
           "duration_min": 45,
           "note": "天府机场 / 双流机场均可地铁直达：双流 1 小时、天府 1.5 小时",
           "why": "酒店即锚点，Day 1 不跑远",
-          "links": {
-            "amap_navi": "https://uri.amap.com/navigation?to=104.0810,30.6580&mode=car&policy=1"
-          },
           "price": {
             "min": 0.0,
             "max": 0.0,
@@ -136,10 +133,6 @@
           "note": "开放式街区 + 千年古刹大慈寺（始建于魏晋）；傍晚光线好",
           "why": "步行 5 分钟；逛街同时看古建筑反差",
           "weather_sensitive": false,
-          "links": {
-            "amap_navi": "https://uri.amap.com/navigation?to=104.0805,30.6550&mode=walk",
-            "xhs": "https://www.xiaohongshu.com/search_result?keyword=成都远洋太古里"
-          },
           "price": {
             "min": 0.0,
             "max": 0.0,
@@ -195,11 +188,6 @@
           "duration_min": 90,
           "note": "川剧变脸火锅（落地第一顿、看表演的「轻」火锅；不接受包场预订，周末排号 30-60 分钟）",
           "why": "步行 5 分钟；落地第一顿稳、看文化",
-          "links": {
-            "amap_navi": "https://uri.amap.com/navigation?to=104.0830,30.6570&mode=walk",
-            "xhs": "https://www.xiaohongshu.com/search_result?keyword=小龙翻大江+春熙店",
-            "dianping": "https://www.dianping.com/shop/l4V0Z6Xjc2XJfz4q"
-          },
           "price": {
             "min": 80,
             "max": 120,
@@ -334,11 +322,26 @@
           "description": "步行 5 分钟（小龙翻大江 → 酒店）",
           "distance_m": 280,
           "path": [
-            [104.083, 30.657],
-            [104.0825, 30.6575],
-            [104.082, 30.658],
-            [104.0815, 30.658],
-            [104.081, 30.658]
+            [
+              104.083,
+              30.657
+            ],
+            [
+              104.0825,
+              30.6575
+            ],
+            [
+              104.082,
+              30.658
+            ],
+            [
+              104.0815,
+              30.658
+            ],
+            [
+              104.081,
+              30.658
+            ]
           ],
           "source": "amap-mcp",
           "fare": {
@@ -407,10 +410,6 @@
           "why": "经典必去；早晨逛 + 下午茶歇",
           "weather_sensitive": true,
           "indoor_backup": "成都博物馆（近天府广场，免费）+ 川剧艺术中心",
-          "links": {
-            "amap_navi": "https://uri.amap.com/navigation?to=104.0610,30.6710&mode=transit",
-            "xhs": "https://www.xiaohongshu.com/search_result?keyword=宽窄巷子"
-          },
           "price": {
             "min": 0.0,
             "max": 0.0,
@@ -452,10 +451,6 @@
           "note": "川菜老店；可点夫妻肺片、宫保鸡丁、回锅肉等基础川菜",
           "why": "午餐 + 区域顺路",
           "requires_booking": false,
-          "links": {
-            "amap_navi": "https://uri.amap.com/navigation?to=104.0620,30.6695&mode=walk",
-            "dianping": "https://www.dianping.com/search/keyword/0_0麻辣空间"
-          },
           "price": {
             "min": 80,
             "max": 120,
@@ -528,10 +523,6 @@
           "why": "下午茶歇 + 老成都慢生活",
           "weather_sensitive": true,
           "indoor_backup": "春熙路 IFS 室内街区 + 言几又书店",
-          "links": {
-            "amap_navi": "https://uri.amap.com/navigation?to=104.0610,30.6635&mode=walk",
-            "xhs": "https://www.xiaohongshu.com/search_result?keyword=鹤鸣茶社"
-          },
           "price": {
             "min": 18.0,
             "max": 30.0,
@@ -587,11 +578,6 @@
           "duration_min": 120,
           "note": "回春熙路晚饭；串串人均 80-120；不接受预订，周末排号 30-90 分钟",
           "why": "返春熙路顺路、串串是成都灵魂之一",
-          "links": {
-            "amap_navi": "https://uri.amap.com/navigation?to=104.0820,30.6605&mode=transit",
-            "xhs": "https://www.xiaohongshu.com/search_result?keyword=小郡肝+春熙路",
-            "dianping": "https://www.dianping.com/search/keyword/0_0小郡肝"
-          },
           "price": {
             "min": 80.0,
             "max": 120.0,
@@ -648,11 +634,26 @@
           "source": "amap-mcp",
           "distance_m": 2800,
           "path": [
-            [104.081, 30.658],
-            [104.075, 30.662],
-            [104.069, 30.666],
-            [104.065, 30.668],
-            [104.061, 30.671]
+            [
+              104.081,
+              30.658
+            ],
+            [
+              104.075,
+              30.662
+            ],
+            [
+              104.069,
+              30.666
+            ],
+            [
+              104.065,
+              30.668
+            ],
+            [
+              104.061,
+              30.671
+            ]
           ],
           "fare": {
             "min": 3,
@@ -817,11 +818,26 @@
           "source": "amap-mcp",
           "distance_m": 400,
           "path": [
-            [104.082, 30.6605],
-            [104.0818, 30.6595],
-            [104.0815, 30.6588],
-            [104.0812, 30.6583],
-            [104.081, 30.658]
+            [
+              104.082,
+              30.6605
+            ],
+            [
+              104.0818,
+              30.6595
+            ],
+            [
+              104.0815,
+              30.6588
+            ],
+            [
+              104.0812,
+              30.6583
+            ],
+            [
+              104.081,
+              30.658
+            ]
           ],
           "fare": {
             "min": 3,
@@ -910,10 +926,6 @@
           "why": "必看；早 8-10 点熊猫吃竹最活跃",
           "weather_sensitive": false,
           "requires_booking": true,
-          "links": {
-            "amap_navi": "https://uri.amap.com/navigation?to=104.1440,30.7400&mode=transit",
-            "xhs": "https://www.xiaohongshu.com/search_result?keyword=成都大熊猫繁育研究基地"
-          },
           "price": {
             "min": 55.0,
             "max": 55.0,
@@ -969,9 +981,6 @@
           "duration_min": 60,
           "note": "或回市区吃更地道（推荐 蓉锦小馆 望江店）",
           "why": "区域补给点 / 看熊猫后顺路",
-          "links": {
-            "amap_navi": "https://uri.amap.com/navigation?to=104.1440,30.7380&mode=walk"
-          },
           "price": {
             "min": 80,
             "max": 120,
@@ -1042,7 +1051,6 @@
           "duration_min": 30,
           "note": "前台寄存改退房；带随身包走 Day 3",
           "why": "末日不跑远；行李寄酒店",
-          "links": {},
           "price": {
             "min": 0.0,
             "max": 0.0,
@@ -1083,7 +1091,6 @@
           "duration_min": 120,
           "note": "国内航班 -1.5h 值机；如 18:00 航班，15:30 抵机场刚好",
           "why": "末日返程缓冲 ≥ 3h 满足 V5",
-          "links": {},
           "price": {
             "min": 0.0,
             "max": 0.0,
@@ -1126,11 +1133,26 @@
           "source": "amap-mcp",
           "distance_m": 18500,
           "path": [
-            [104.081, 30.658],
-            [104.095, 30.672],
-            [104.108, 30.695],
-            [104.122, 30.718],
-            [104.144, 30.74]
+            [
+              104.081,
+              30.658
+            ],
+            [
+              104.095,
+              30.672
+            ],
+            [
+              104.108,
+              30.695
+            ],
+            [
+              104.122,
+              30.718
+            ],
+            [
+              104.144,
+              30.74
+            ]
           ],
           "fare": {
             "min": 4,

@@ -135,11 +135,6 @@
           weather_sensitive?: boolean
           indoor_backup?: string  // weather_sensitive=true 时必填
           requires_booking?: boolean
-          links: {
-            amap_navi?: string
-            xhs?: string
-            dianping?: string
-          }
           price?: PriceObject     // v2.1.0 必填（V10 溯源）；与 slot_costs 并存
           slot_costs?: [          // v2.2.0 推荐：本时间段全部可能花销（批注 UI）
             {
@@ -249,12 +244,6 @@
   - 12-13：跨区（如新宿 + 机场）
   - 14：单区（如浅草寺周边）
   - 15-16：极细（如一个小型公园）
-
-### URL
-
-- **amap_navi**：`https://uri.amap.com/navigation?to={lng},{lat}&mode={car/walk/transit}`
-- **xhs**：`https://www.xiaohongshu.com/search_result?keyword=<URL encoded 店名>`
-- **dianping**：`https://www.dianping.com/search/keyword/0_0<店名>`
 
 ### 删减理由
 

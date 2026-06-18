@@ -1208,7 +1208,7 @@
     </main>
 
     <footer class="bottom">
-      <p>由 <strong>travel-planner</strong> skill 生成 · 数据来源：高德 MCP / 小红书 MCP / 大众点评</p>
+      <p>由 <strong>travel-planner</strong> skill 生成 · 数据来源：高德 MCP / 小红书 MCP</p>
       <p>计划 = 参考坐标 · 天气 / 体力 / 饥饿均可覆盖</p>
     </footer>
 
@@ -2342,13 +2342,6 @@
           const ws = p.weather_sensitive ? ' <span class="weather-sensitive">⚠️ 天气敏感</span>' : '';
           const note = p.note ? `<p class="note">${mdLite(p.note)}</p>` : '';
           const why = p.why ? `<p class="why">→ ${mdLite(p.why)}</p>` : '';
-          const links = p.links || {};
-          const linkParts = [];
-          // 删：POI 卡片"导航"按钮（v2.0.1 改：next-leg 卡片已自带导航，POI 卡片不再重复）
-          // 删：POI 卡片"小红书"按钮（v2.0.2 改：与 next-leg 导航重复，保留大众点评作餐厅维度的第三方参考）
-          if (links.dianping) linkParts.push(`<a href="${esc(links.dianping)}" target="_blank" rel="noopener">大众点评</a>`);
-          const linksHtml = linkParts.length ? `<div class="links">${linkParts.join('')}</div>` : '';
-
           const slotId = `d${d.day}-p${p.idx}`;
           const ctx = buildSlotContext(d, p, poiArrIdx, dayIdx - 1, mealsUsed, pendingMeals);
           const costItems = buildSlotCostItems(d, p, ctx);
@@ -2396,7 +2389,7 @@
                 </div>
                 <div class="place">
                   <h4><span class="slot-num">${slotNum}.</span>${esc(p.name)} <span class="cat ${esc(p.cat)}">${esc(p.cat)}</span>${ws}</h4>
-                  ${note}${why}${linksHtml}
+                  ${note}${why}
                   ${nextLegHtml}
                   ${mealLegHtml}
                 </div>
