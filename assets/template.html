@@ -1337,6 +1337,25 @@
         const d = D.days[dayIdx - 1];
         if (!d) return;
 
+        // v2.0.3 防御：检测 POI idx 跳号 + transport 引用越界（不阻断渲染，仅 console.warn）
+        (function validateDayIntegrity() {
+          const indices = d.pois.map(p => p.idx).sort((a, b) => a - b);
+          for (let i = 0; i < indices.length; i++) {
+            if (indices[i] !== i + 1) {
+              console.warn(`[travel-planner] Day ${d.day} POI idx 跳号：${indices.join(',')} (缺 ${i + 1})`);
+              break;
+            }
+          }
+          (d.transports || []).forEach(t => {
+            if (t.from_idx < 1 || t.from_idx > d.pois.length) {
+              console.warn(`[travel-planner] Day ${d.day} transport from_idx=${t.from_idx} 越界（POI 范围 1-${d.pois.length}）`);
+            }
+            if (t.to_idx < 1 || t.to_idx > d.pois.length) {
+              console.warn(`[travel-planner] Day ${d.day} transport to_idx=${t.to_idx} 越界（POI 范围 1-${d.pois.length}）`);
+            }
+          });
+        })();
+
         const wsTag = d.weather_decision ?
           `<p class="note" style="margin-top:8px">📋 ${esc(d.weather_decision)}</p>` : '';
 
