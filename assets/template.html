@@ -1497,7 +1497,7 @@
         return { lng, lat };
       }
 
-      /** 高德导航用地点名：不用行程标题里的「入住/退房」等活动后缀 */
+      /** 高德导航用地点名：不用行程标题里的「入住/退房/出发去」等活动文案 */
       function naviPlaceName(p) {
         if (!p) return '';
         if (p.nav_name) return String(p.nav_name).trim();
@@ -1514,13 +1514,54 @@
         }
 
         let s = raw
+          .replace(/^抵达/, '')
           .replace(/\s*[\|｜].*$/, '')
           .replace(/\s*[（(][^）)]*[）)]\s*$/g, '')
           .replace(/\s*(?:办理)?(?:入住|退房)(?:\s*\+\s*取行李)?(?:\s*\+\s*[^+]+)?$/i, '')
           .replace(/\s*\+\s*取行李.*$/i, '')
           .replace(/\s*取行李.*$/i, '')
+          .replace(/(?:午餐|晚餐|早饭|午饭|晚饭|早餐)$/i, '')
           .trim();
         return s || raw;
+      }
+
+      function poisByIdx(day) {
+        return [...(day.pois || [])].sort((a, b) => a.idx - b.idx);
+      }
+
+      function firstPoiByIdx(day) {
+        const pois = poisByIdx(day);
+        return pois[0] || null;
+      }
+
+      function lastPoiByIdx(day) {
+        const pois = poisByIdx(day);
+        return pois.length ? pois[pois.length - 1] : null;
+      }
+
+      /** 行程标题式 transport，不是可导航的实体地点 */
+      function isActivityOnlyRouteStop(p) {
+        if (!p) return true;
+        if (p.nav_name || p.place_name) return false;
+        if (p.cat === 'hotel') return false;
+        const raw = String(p.name || '').trim();
+        if (!raw) return true;
+        if (/^(?:出发去|前往|赶往|转场|出发)/.test(raw)) return true;
+        if (/(?:退房|入住|取行李)/.test(raw)) return true;
+        if (/\+\s*出发/.test(raw)) return true;
+        return false;
+      }
+
+      /** Day>1 残留的「抵达某某」交通锚点（非当日首站） */
+      function isStaleArrivalPoi(p, day) {
+        if ((day.day || 1) <= 1) return false;
+        if (p.nav_name || p.place_name) return false;
+        return p.cat === 'transport' && /^抵达/.test(String(p.name || '').trim());
+      }
+
+      function dayStartsFromHotel(day) {
+        if (firstPoiSkipsMorningLeg(day)) return false;
+        return (day.transports || []).some(t => t.from_idx === 0);
       }
 
       /** 导航条展示名：酒店锚点固定为「酒店」，其余用清洗后的地点名 */
@@ -1557,31 +1598,32 @@
       }
 
       function collectDayRouteStops(day) {
-        const pois = [...(day.pois || [])].sort((a, b) => a.idx - b.idx).filter(p => poiCoords(p));
+        const pois = poisByIdx(day).filter(p => poiCoords(p) && !isActivityOnlyRouteStop(p) && !isStaleArrivalPoi(p, day));
         if (!pois.length) return null;
 
         const hotel = resolveTransportPoint(day, 0);
         const ordered = [];
         const pushIfNew = (p) => {
           if (!p || !poiCoords(p)) return;
-          if (ordered.length && sameRouteCoords(p, ordered[ordered.length - 1])) return;
+          if (ordered.length) {
+            const last = ordered[ordered.length - 1];
+            if (sameRouteCoords(p, last)) return;
+            if (isHotelStop(p) && isHotelStop(last)) return;
+          }
           ordered.push(p);
         };
 
-        if (!firstPoiSkipsMorningLeg(day) && findHotelLeg(day, 'morning') && hotel) {
+        if (dayStartsFromHotel(day) && hotel) {
           pushIfNew(hotel);
         } else if (firstPoiSkipsMorningLeg(day) && firstPoiIsHotel(day)) {
           pushIfNew(hotel || pois[0]);
         }
 
         for (const p of pois) {
-          if (firstPoiSkipsMorningLeg(day) && firstPoiIsHotel(day) && isHotelStop(p) && ordered.length && sameRouteCoords(p, ordered[0])) {
-            continue;
-          }
+          if (isHotelStop(p) && ordered.some(q => isHotelStop(q) && sameRouteCoords(p, q))) continue;
           pushIfNew(p);
         }
 
-        // 全天驾车路线不以「回酒店」作终点（易与入住/途经酒店重复）；末 POI 即终点
         if (ordered.length < 2) return null;
         return finalizeDayRouteStops(ordered[0], ordered.slice(1, -1), ordered[ordered.length - 1]);
       }
@@ -1605,14 +1647,35 @@
         return { start: s, vias: v, end: e };
       }
 
+      function encodeAmapNavName(name) {
+        return encodeURIComponent(name || '地点').replace(/%28/g, '(').replace(/%29/g, ')');
+      }
+
+      function mobileNavPoint(p) {
+        const c = poiCoords(p);
+        if (!c) return '';
+        return `${c.lng},${c.lat},${encodeAmapNavName(naviPlaceName(p) || '地点')}`;
+      }
+
+      /** 手机 m.amap 驾车最多 3 点（起点 + 1 途经 + 终点） */
+      function buildDayAmapMobileUrl(start, vias, end) {
+        const saddr = mobileNavPoint(start);
+        const daddr = mobileNavPoint(end);
+        if (!saddr || !daddr) return null;
+        const parts = [`saddr=${saddr}`, `daddr=${daddr}`, 'sort=dist'];
+        if (vias.length === 1) {
+          const m = mobileNavPoint(vias[0]);
+          if (m) parts.push(`maddr=${m}`);
+        } else if (vias.length > 1) {
+          return null;
+        }
+        return `https://m.amap.com/navigation/carmap/${parts.join('&')}`;
+      }
+
       function amapRoutePointParams(p) {
         const c = poiCoords(p);
         if (!c) return null;
-        return {
-          lat: c.lat,
-          lon: c.lng,
-          name: naviPlaceName(p) || '地点',
-        };
+        return { lat: c.lat, lon: c.lng, name: naviPlaceName(p) || '地点' };
       }
 
       function buildDayAmapNativeUrls(start, vias, end) {
@@ -1688,18 +1751,20 @@
       }
 
       function openAmapDayRoute(route) {
-        const dirUrl = buildDayAmapDirUrl(route.start, route.vias, route.end, {
-          callnative: isMobileAmapDevice(),
-        });
-        if (!dirUrl) return;
         if (!isMobileAmapDevice()) {
-          openAmapUrl(dirUrl);
+          openAmapUrl(buildDayAmapDirUrl(route.start, route.vias, route.end));
+          return;
+        }
+        const mobileUrl = buildDayAmapMobileUrl(route.start, route.vias, route.end);
+        if (mobileUrl) {
+          window.location.href = mobileUrl;
           return;
         }
         const native = buildDayAmapNativeUrls(route.start, route.vias, route.end);
         if (!native) return;
         const nativeUrl = isIosAmapDevice() ? native.ios : native.android;
-        let timer = setTimeout(() => { window.location.href = dirUrl; }, 2000);
+        const fallback = buildDayAmapDirUrl(route.start, route.vias, route.end);
+        let timer = setTimeout(() => { if (fallback) window.location.href = fallback; }, 2000);
         const clear = () => {
           clearTimeout(timer);
           document.removeEventListener('visibilitychange', onVis);
@@ -2431,15 +2496,14 @@
       }
 
       function firstPoiIsHotel(day) {
-        const p = (day.pois || [])[0];
+        const p = firstPoiByIdx(day);
         if (!p) return false;
         if (p.cat === 'hotel') return true;
         return !!(D.hotel && D.hotel.name && p.name === D.hotel.name);
       }
 
       function lastPoiIsDeparture(day) {
-        const pois = day.pois || [];
-        const last = pois[pois.length - 1];
+        const last = lastPoiByIdx(day);
         if (!last) return false;
         if (last.cat === 'transport') return true;
         return /机场|火车站|高铁站|(?:汽车)?车站|码头|港口/.test(last.name || '');
@@ -2448,14 +2512,14 @@
       function firstPoiSkipsMorningLeg(day) {
         if (firstPoiIsHotel(day)) return true;
         if (day.day !== 1) return false;
-        const p = (day.pois || [])[0];
+        const p = firstPoiByIdx(day);
         if (!p) return true;
         if (p.cat === 'transport') return true;
         return /机场|火车站|高铁站|(?:汽车)?车站|码头|港口/.test(p.name || '');
       }
 
       function findHotelLeg(day, kind) {
-        const pois = day.pois || [];
+        const pois = poisByIdx(day);
         if (!pois.length) return null;
         const ts = day.transports || [];
         if (kind === 'morning') {

@@ -6,7 +6,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from urllib.parse import quote, unquote, urlparse, parse_qs
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,9 +28,13 @@ def navi_place_name(p, hotel_name: str) -> str:
         return hotel_name or raw or "酒店"
     if hotel_name and (raw == hotel_name or raw.startswith(hotel_name)):
         return hotel_name
-    s = re.sub(r"\s*[\|｜].*$", "", raw)
+    if hotel_name and (re.search(r"^酒店\b", raw) or "退房" in raw or "入住" in raw):
+        return hotel_name
+    s = re.sub(r"^抵达", "", raw)
+    s = re.sub(r"\s*[\|｜].*$", "", s)
     s = re.sub(r"\s*[（(][^）)]*[）)]\s*$", "", s)
     s = re.sub(r"\s*(?:办理)?(?:入住|退房).*$", "", s, flags=re.I)
+    s = re.sub(r"(?:午餐|晚餐|早饭|午饭|晚饭|早餐)$", "", s, flags=re.I)
     return (s or raw).strip()
 
 
@@ -39,6 +43,65 @@ def same_coords(a, b) -> bool:
     if not ca or not cb:
         return False
     return abs(ca["lng"] - cb["lng"]) < 1e-5 and abs(ca["lat"] - cb["lat"]) < 1e-5
+
+
+def is_activity_only_route_stop(p) -> bool:
+    if p.get("nav_name") or p.get("place_name"):
+        return False
+    if p.get("cat") == "hotel":
+        return False
+    raw = str(p.get("name") or "").strip()
+    if not raw:
+        return True
+    if re.search(r"^(?:出发去|前往|赶往|转场|出发)", raw):
+        return True
+    if re.search(r"(?:退房|入住|取行李)", raw):
+        return True
+    if re.search(r"\+\s*出发", raw):
+        return True
+    return False
+
+
+def is_stale_arrival_poi(p, day: dict) -> bool:
+    if (day.get("day") or 1) <= 1:
+        return False
+    if p.get("nav_name") or p.get("place_name"):
+        return False
+    return p.get("cat") == "transport" and str(p.get("name") or "").strip().startswith("抵达")
+
+
+def first_poi_by_idx(day: dict):
+    pois = sorted(day.get("pois") or [], key=lambda p: p["idx"])
+    return pois[0] if pois else None
+
+
+def first_poi_skips_morning(day: dict, hotel_name: str) -> bool:
+    p = first_poi_by_idx(day)
+    if not p:
+        return True
+    if p.get("cat") == "hotel" or (hotel_name and p.get("name") == hotel_name):
+        return True
+    if day.get("day") != 1:
+        return False
+    if p.get("cat") == "transport":
+        return True
+    return bool(re.search(r"机场|火车站|高铁站|(?:汽车)?车站|码头|港口", p.get("name") or ""))
+
+
+def day_starts_from_hotel(day: dict, hotel_name: str) -> bool:
+    if first_poi_skips_morning(day, hotel_name):
+        return False
+    return any(t.get("from_idx") == 0 for t in day.get("transports") or [])
+
+
+def is_hotel_stop(p, hotel_name: str, hotel_pt: dict | None) -> bool:
+    if not p:
+        return False
+    if p.get("idx") == 0 or p.get("cat") == "hotel":
+        return True
+    if hotel_name and p.get("name") == hotel_name:
+        return True
+    return bool(hotel_pt and same_coords(p, hotel_pt))
 
 
 def collect_and_finalize(trip: dict, day: dict):
@@ -53,39 +116,13 @@ def collect_and_finalize(trip: dict, day: dict):
             "lat": hotel_info["lat"],
             "cat": "hotel",
         }
-    pois = sorted([p for p in day.get("pois", []) if poi_coords(p)], key=lambda p: p["idx"])
+
+    pois = [
+        p
+        for p in sorted(day.get("pois") or [], key=lambda p: p["idx"])
+        if poi_coords(p) and not is_activity_only_route_stop(p) and not is_stale_arrival_poi(p, day)
+    ]
     if not pois:
-        return None
-
-    def first_poi_is_hotel():
-        p = pois[0]
-        return p.get("cat") == "hotel" or (hotel_name and p.get("name") == hotel_name)
-
-    def last_poi_is_departure():
-        last = pois[-1]
-        if last.get("cat") == "transport":
-            return True
-        return bool(re.search(r"机场|火车站|高铁站|(?:汽车)?车站|码头|港口", last.get("name") or ""))
-
-    def first_poi_skips_morning():
-        if first_poi_is_hotel():
-            return True
-        if day.get("day") != 1:
-            return False
-        p = pois[0]
-        if p.get("cat") == "transport":
-            return True
-        return bool(re.search(r"机场|火车站|高铁站|(?:汽车)?车站|码头|港口", p.get("name") or ""))
-
-    def find_hotel_leg(kind: str):
-        ts = day.get("transports") or []
-        if kind == "morning":
-            return next((t for t in ts if t.get("from_idx") == 0 and t.get("to_idx") == pois[0]["idx"]), None)
-        if kind == "evening":
-            if last_poi_is_departure():
-                return None
-            last = pois[-1]
-            return next((t for t in ts if t.get("from_idx") == last["idx"] and t.get("to_idx") == 0), None)
         return None
 
     ordered = []
@@ -93,26 +130,26 @@ def collect_and_finalize(trip: dict, day: dict):
     def push(p):
         if not p or not poi_coords(p):
             return
-        if ordered and same_coords(p, ordered[-1]):
-            return
+        if ordered:
+            last = ordered[-1]
+            if same_coords(p, last):
+                return
+            if is_hotel_stop(p, hotel_name, hotel_pt) and is_hotel_stop(last, hotel_name, hotel_pt):
+                return
         ordered.append(p)
 
-    if not first_poi_skips_morning() and find_hotel_leg("morning") and hotel_pt:
+    if day_starts_from_hotel(day, hotel_name) and hotel_pt:
         push(hotel_pt)
-    elif first_poi_skips_morning() and first_poi_is_hotel():
+    elif first_poi_skips_morning(day, hotel_name) and (
+        first_poi_by_idx(day) or {}).get("cat") == "hotel":
         push(hotel_pt or pois[0])
+
     for p in pois:
-        if (
-            first_poi_skips_morning()
-            and first_poi_is_hotel()
-            and (p.get("cat") == "hotel" or (hotel_name and p.get("name") == hotel_name))
-            and ordered
-            and same_coords(p, ordered[0])
+        if is_hotel_stop(p, hotel_name, hotel_pt) and any(
+            is_hotel_stop(q, hotel_name, hotel_pt) and same_coords(p, q) for q in ordered
         ):
             continue
         push(p)
-    if not last_poi_is_departure() and find_hotel_leg("evening") and hotel_pt:
-        pass  # 导航路线不以回酒店作终点
 
     if len(ordered) < 2:
         return None
@@ -130,36 +167,25 @@ def collect_and_finalize(trip: dict, day: dict):
     return {"start": start, "vias": vias, "end": end}
 
 
-def native_url(start, vias, end, hotel_name: str, platform: str = "ios") -> str:
+def encode_amap_nav_name(name: str) -> str:
+    return quote(name or "地点", safe="").replace("%28", "(").replace("%29", ")")
+
+
+def mobile_url(start, vias, end, hotel_name: str) -> str | None:
     def pt(p):
         c = poi_coords(p)
-        return {
-            "lat": c["lat"],
-            "lon": c["lng"],
-            "name": navi_place_name(p, hotel_name) or "地点",
-        }
+        return f"{c['lng']},{c['lat']},{encode_amap_nav_name(navi_place_name(p, hotel_name) or '地点')}"
 
-    s, e = pt(start), pt(end)
-    via_pts = [pt(v) for v in vias]
-    common = (
-        f"sourceApplication={quote('travel-planner', safe='')}"
-        f"&slat={s['lat']}&slon={s['lon']}&sname={quote(s['name'], safe='')}"
-        f"&dlat={e['lat']}&dlon={e['lon']}&dname={quote(e['name'], safe='')}"
-        "&dev=0&t=0"
-    )
-    if via_pts:
-        common += (
-            f"&vian={len(via_pts)}"
-            f"&vialons={'|'.join(str(v['lon']) for v in via_pts)}"
-            f"&vialats={'|'.join(str(v['lat']) for v in via_pts)}"
-            f"&vianames={quote('|'.join(v['name'] for v in via_pts), safe='')}"
-        )
-    if platform == "android":
-        return f"amapuri://route/plan/?{common}"
-    return f"iosamap://path?{common}"
+    saddr, daddr = pt(start), pt(end)
+    parts = [f"saddr={saddr}", f"daddr={daddr}", "sort=dist"]
+    if len(vias) == 1:
+        parts.append(f"maddr={pt(vias[0])}")
+    elif len(vias) > 1:
+        return None
+    return f"https://m.amap.com/navigation/carmap/{'&'.join(parts)}"
 
 
-def dir_url(start, vias, end, hotel_name: str, *, callnative: bool = False) -> str:
+def dir_url(start, vias, end, hotel_name: str) -> str:
     ts = 1_781_792_351_000
 
     def endpoint(role, p, eid):
@@ -177,8 +203,6 @@ def dir_url(start, vias, end, hotel_name: str, *, callnative: bool = False) -> s
         + [via_pt(v, i) for i, v in enumerate(vias)]
         + ["type=car", "src=uriapi", "innersrc=uriapi", "policy=1"]
     )
-    if callnative:
-        q.append("callnative=1")
     return f"https://ditu.amap.com/dir?{'&'.join(q)}"
 
 
@@ -197,35 +221,27 @@ def main() -> int:
             if not route:
                 print(f"  Day {day['day']}: skip (no route)")
                 continue
-            same = same_coords(route["start"], route["end"])
-            desktop = dir_url(route["start"], route["vias"], route["end"], hotel_name)
-            fallback = dir_url(route["start"], route["vias"], route["end"], hotel_name, callnative=True)
-            ios = native_url(route["start"], route["vias"], route["end"], hotel_name, "ios")
-            android = native_url(route["start"], route["vias"], route["end"], hotel_name, "android")
+            stops = [route["start"], *route["vias"], route["end"]]
+            names = [navi_place_name(p, hotel_name) for p in stops]
             issues = []
-            if same:
+            if same_coords(route["start"], route["end"]):
                 issues.append("SAME_START_END")
+            if len(set(names)) < len([n for n in names if hotel_name in n or n == "酒店"]) and names.count(hotel_name) > 1:
+                issues.append("DUP_HOTEL")
+            if any(re.search(r"^(?:出发去|前往|退房)", n) for n in names):
+                issues.append("ACTIVITY_NAME")
+            desktop = dir_url(route["start"], route["vias"], route["end"], hotel_name)
             if len(route["vias"]) > 1 and "via[1]" not in desktop:
                 issues.append("MISSING_MULTI_VIA")
-            if len(route["vias"]) > 0 and "via[0]" not in desktop:
-                issues.append("MISSING_VIA0")
-            if "callnative=1" not in fallback:
-                issues.append("MISSING_CALLNATIVE")
-            if not ios.startswith("iosamap://path?"):
-                issues.append("BAD_IOS_PREFIX")
-            if not android.startswith("amapuri://route/plan/?"):
-                issues.append("BAD_ANDROID_PREFIX")
-            if len(route["vias"]) > 0 and f"vian={len(route['vias'])}" not in ios:
-                issues.append("BAD_IOS_VIAN")
-            if len(route["vias"]) > 1 and ios.count("|") < 2:
-                issues.append("MISSING_MULTI_NATIVE_VIA")
+            mobile = mobile_url(route["start"], route["vias"], route["end"], hotel_name)
+            if len(route["vias"]) <= 1 and not (mobile or "").startswith("https://m.amap.com/"):
+                issues.append("BAD_MOBILE")
             status = "OK" if not issues else "FAIL " + ",".join(issues)
             if issues:
                 failed += 1
             print(
-                f"  Day {day['day']}: {status} vias={len(route['vias'])} "
-                f"start={navi_place_name(route['start'], hotel_name)[:16]} "
-                f"end={navi_place_name(route['end'], hotel_name)[:16]}"
+                f"  Day {day['day']}: {status} stops={len(stops)} "
+                f"names={' → '.join(n[:12] for n in names)}"
             )
     return 1 if failed else 0
 
