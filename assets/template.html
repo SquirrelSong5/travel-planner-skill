@@ -849,6 +849,18 @@
       color: var(--fg-subtle);
       font-size: var(--fs-xs);
     }
+    ol.timeline li.time-block .next-leg .next-leg-nav {
+      font-size: var(--fs-xs);
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 2px 8px;
+      border: 1px solid var(--accent-soft);
+      border-radius: 4px;
+      background: var(--accent-soft);
+      margin-left: var(--sp-1);
+    }
+    ol.timeline li.time-block .next-leg .next-leg-nav:hover { text-decoration: underline; }
 
     ol.timeline li.time-block .meal-leg {
       display: flex;
@@ -1346,21 +1358,13 @@
           const why = p.why ? `<p class="why">→ ${esc(p.why)}</p>` : '';
           const links = p.links || {};
           const linkParts = [];
-          const prevPoi = poiArrIdx > 0 ? d.pois[poiArrIdx - 1] : null;
-          let navUrl = links.amap_navi;
-          if (!isAmapNaviUrl(navUrl)) {
-            if (prevPoi) navUrl = buildAmapNaviUrl(prevPoi, p, 'walking');
-            else {
-              const c = poiCoords(p);
-              if (c) navUrl = `https://uri.amap.com/marker?position=${c.lng},${c.lat}&name=${encodeURIComponent(p.name || '')}`;
-            }
-          }
-          if (navUrl) linkParts.push(`<a href="${esc(navUrl)}" target="_blank" rel="noopener">导航</a>`);
+          // 删：POI 卡片"导航"按钮（v2.0.1 改：next-leg 卡片已自带导航，POI 卡片不再重复）
+          // 保留：小红书 / 大众点评（POI 维度的第三方参考）
           if (links.xhs) linkParts.push(`<a href="${esc(links.xhs)}" target="_blank" rel="noopener">小红书</a>`);
           if (links.dianping) linkParts.push(`<a href="${esc(links.dianping)}" target="_blank" rel="noopener">大众点评</a>`);
           const linksHtml = linkParts.length ? `<div class="links">${linkParts.join('')}</div>` : '';
 
-          // "下一站"小条（从本 POI 出发的 transport；v2.0.1 去掉冗余的"导航"按钮，POI 卡片已有一个）
+          // "下一站"小条（从本 POI 出发的 transport）
           const nextTransport = d.transports && d.transports.find(t => t.from_idx === p.idx);
           let nextLegHtml = '';
           if (nextTransport) {
@@ -1369,11 +1373,18 @@
             const toName = toPoi ? toPoi.name : '?';
             const desc = nextTransport.description || `${fmtMode(nextTransport.mode)} ${nextTransport.duration_min} 分钟`;
             const legTime = inferLegTime(nextTransport, d.pois);
+            const navUrl2 = isAmapNaviUrl(nextTransport.links && nextTransport.links.amap_navi)
+              ? nextTransport.links.amap_navi
+              : buildAmapNaviUrl(p, toPoi, nextTransport.mode);
+            const navLink = navUrl2
+              ? `<a class="next-leg-nav" href="${esc(navUrl2)}" target="_blank" rel="noopener">导航</a>`
+              : '';
             const ariaLabel = `从 ${fromName} 到 ${toName}，${desc}`;
             nextLegHtml = `<div class="next-leg" data-mode="${esc(nextTransport.mode)}" aria-label="${esc(ariaLabel)}">
               <span class="next-leg-icon">${fmtMode(nextTransport.mode) === '驾车' ? '🚗' : (fmtMode(nextTransport.mode) === '骑行' ? '🚴' : (fmtMode(nextTransport.mode) === '公交' || fmtMode(nextTransport.mode) === '地铁' || fmtMode(nextTransport.mode) === '火车' || fmtMode(nextTransport.mode) === 'JR' ? '🚌' : '🚶'))}</span>
               <span class="next-leg-text">${esc(desc)} · ${esc(toName)}</span>
               <span class="leg-time">${esc(legTime)}</span>
+              ${navLink}
             </div>`;
           }
 
