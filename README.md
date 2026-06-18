@@ -190,9 +190,10 @@ git clone <repo-url> ~/.claude/skills/travel-planner
 - 服务平台选 **「Web 端 (JS API)」**（注意：是 JS API，不是 Web 服务）
 - 创建后复制 Key
 
-**Step 2**：填到 HTML 里
-- AI 生成的 HTML 里有 `window.AMAP_KEY = "";` 一行
-- 把你的 Web JS Key 填进去：`window.AMAP_KEY = "你的Key";`
+**Step 2**：通过 URL 注入 Key（v2.0.5 起，不写入 HTML）
+- HTML 通过 `?k=你的Key` 参数或 `localStorage.amap_web_key` 注入地图 Key
+- 部署到 GitHub Pages 后，访问 `https://yourname.github.io/travel-plans/trip.html?k=你的Key`
+- **不要把 Key 写进 HTML 或提交到 git**
 
 **Step 3**：配置域名白名单（重要！）
 - 控制台 → 我的应用 → 找到刚创建的应用 → 设置

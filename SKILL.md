@@ -702,15 +702,16 @@ gh api -X POST repos/SquirrelSong5/travel-plans/pages \
 
 ```bash
 # 1. 渲染 HTML（按 examples/{demo}.json 的 schema 填占位符）
-# 注入高德 Web JS Key（顺序：~/.travel-planner/config > 环境变量 > 空字符串）
-AMAP_KEY="${AMAP_WEB_KEY:-$(grep ^AMAP_WEB_KEY= ~/.travel-planner/config | cut -d= -f2-)}"
+# ⚠️ v2.0.5 安全：HTML 不内嵌 AMAP_WEB_KEY（防 git 泄露）
+#    - 渲染时删除 tripData.amap_key 顶层字段
+#    - template.html IIFE 从 URL ?k= / localStorage 注入 window.AMAP_KEY
 
 # 2. 复制到工作副本
 cp /tmp/{trip_name}-{date}.html ~/.travel-planner/travel-plans/{trip_name}-{date}.html
 
-# 3. 提交 + 推送
+# 3. 提交 + 推送（HTML/JSON 里不得出现真实 Key）
 cd ~/.travel-planner/travel-plans
-git add {trip_name}-{date}.html
+git add {trip_name}-{date}.html {trip_name}-draft.json
 git commit -m "trip: {trip_name} {date}"
 git push -u origin main
 ```
@@ -718,8 +719,8 @@ git push -u origin main
 #### 7.3 输出契约（聊天里给用户）
 
 ```
-🌐 行程已上线：https://squirrelsong5.github.io/travel-plans/{trip_name}-{date}.html
-📱 手机点链接直接看（含高德地图 / 每日行程 / 餐厅候选）
+🌐 行程已上线：https://squirrelsong5.github.io/travel-plans/{trip_name}-{date}.html?k={AMAP_WEB_KEY}
+📱 手机点带 ?k= 的链接直接看（含高德地图 / 每日行程 / 餐厅候选）
 📄 Markdown 参考文档：[贴聊天]
 🗂 本地副本：~/.travel-planner/travel-plans/{trip_name}-{date}.html
 
@@ -730,7 +731,8 @@ git push -u origin main
 - Pages 首次构建约 1 分钟，期间 URL 可能 404，提示用户稍等
 - 公开仓库 = 任何拿到 URL 的人都能看行程（GitHub Pages 私有仓需 Pro）。Step 7 提醒用户
 - 高德地图需要 Web (JS) Key 已配置 + 域名白名单已加 `squirrelsong5.github.io`（详见 `references/setup-guide.md` §4）
-- 无 Key 时 HTML 仍能部署，地图降级为「按 Tab 切换文字版行程」，其他功能正常
+- **v2.0.5**：交付 URL 必须带 `?k=` 参数（Key 从 `~/.travel-planner/config` 读取，**不写入 HTML/git**）
+- 不带 `?k=` 的公开 URL 仍可分享行程文字版；地图需带 Key 的 URL 或 localStorage 设置 `amap_web_key`
 - 备选：若 `github.io` 手机端慢，可连 Vercel 自动部署（URL 形如 `travel-plans.vercel.app`，白名单同步加）
 
 ---
@@ -756,7 +758,7 @@ git push -u origin main
 
 完成 Step 6 + Step 7 后，AI **只输出 4 项**：
 
-1. **GitHub Pages 公开 URL**（主交付物，手机/电脑点开即看）
+1. **GitHub Pages URL（带 `?k=` 地图 Key）**（主交付物，手机/电脑点开即看完整地图）
 2. **本地 HTML 副本路径**（`~/.travel-planner/travel-plans/{trip_name}-{date}.html`）
 3. **Markdown 参考文档**（贴聊天，便于复制到笔记/分享）
 4. **修改入口提示**（"想改任何地方直接说，比如：换 X、加一天、删一天"）

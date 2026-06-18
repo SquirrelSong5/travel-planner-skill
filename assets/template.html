@@ -1094,7 +1094,24 @@
                      缺省则取 days[0].center，再缺省兜底北京
   -->
   <script>
-    window.AMAP_KEY = "";  // 例："a1b2c3d4e5f6..." —— 申请：https://lbs.amap.com/dev/key/app
+    // v2.0.5 安全：AMAP_WEB_KEY 不内嵌到 HTML（防 git 泄露）
+    // 三种 runtime 注入方式（按优先级）：
+    // 1. URL 加 ?k=YOUR_KEY 参数（如 https://xxx.github.io/.../x.html?k=YOUR_KEY）
+    // 2. localStorage 设置 amap_web_key（持久化，一次设置永久）
+    // 3. 空 → 地图降级为文字版行程
+    (function injectAmapKey() {
+      if (window.AMAP_KEY) return;  // 已注入
+      // 1. URL 参数 ?k=KEY
+      const urlKey = new URLSearchParams(location.search).get('k');
+      if (urlKey) { window.AMAP_KEY = urlKey; return; }
+      // 2. localStorage
+      try {
+        const lsKey = localStorage.getItem('amap_web_key');
+        if (lsKey) { window.AMAP_KEY = lsKey; return; }
+      } catch (e) {}
+      // 3. 空（地图降级文字版）
+      window.AMAP_KEY = "";
+    })();
     window.tripData = {
       weather_plan: "",
       trip_center: null,   // 例：[116.397, 39.908] 整个行程的中心点

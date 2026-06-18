@@ -453,7 +453,7 @@ skill 会自动降级为"**高德 POI 详情 + 美团攻略 WebFetch + 小红书
 
 ### 4.4 Key 复用：存到本地配置
 
-把 Web JS Key 存到 `~/.travel-planner/config`，Step 7 部署时自动注入到 HTML 的 `window.AMAP_KEY`，不用每次手填。
+把 Web JS Key 存到 `~/.travel-planner/config`，Step 7 交付时在 URL 加 `?k=` 参数注入地图 Key（**不写入 HTML/git**，防泄露）。
 
 ```bash
 mkdir -p ~/.travel-planner
@@ -467,10 +467,12 @@ EOF
 chmod 600 ~/.travel-planner/config
 ```
 
-**加载顺序**（Step 7 部署时）：
-1. 优先读 `~/.travel-planner/config` 的 `AMAP_WEB_KEY`
-2. 没有再读环境变量 `AMAP_WEB_KEY`
-3. 都没有 → 部署照样成功，地图降级为「按 Tab 切换文字版行程」
+**加载顺序**（浏览器运行时，template.html IIFE）：
+1. URL 参数 `?k=YOUR_KEY`（Step 7 交付 URL 用这个）
+2. `localStorage.amap_web_key`（一次设置，后续免带参数）
+3. 都没有 → 地图降级为「按 Tab 切换文字版行程」（HTML 仍可正常部署）
+
+**AI 部署时**：从 `~/.travel-planner/config` 或环境变量 `AMAP_WEB_KEY` 读取 Key，拼到交付 URL 的 `?k=` 参数，**禁止写入 HTML/JSON/git**。
 
 ### 4.5 Vercel 备选
 
