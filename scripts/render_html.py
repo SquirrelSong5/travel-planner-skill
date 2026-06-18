@@ -3,6 +3,7 @@
 
 用法：
   python scripts/render_html.py assets/template.html trip.json -o out.html
+  python scripts/render_html.py assets/template.html trip.json --auto-dir ~/.travel-planner/travel-plans
 """
 from __future__ import annotations
 
@@ -11,6 +12,8 @@ import json
 import re
 import sys
 from pathlib import Path
+
+from trip_slug import trip_paths
 
 
 def inject_trip_data(html: str, trip: dict) -> str:
@@ -62,12 +65,39 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("template", type=Path)
     ap.add_argument("trip_json", type=Path)
-    ap.add_argument("-o", "--output", type=Path, required=True)
+    ap.add_argument("-o", "--output", type=Path, help="输出 HTML 路径")
+    ap.add_argument(
+        "--auto-dir",
+        type=Path,
+        help="按 {城市拼音}-{出发日} 写入该目录下的 .html（及 --sync-json 时的 .json）",
+    )
+    ap.add_argument(
+        "--sync-json",
+        action="store_true",
+        help="与 --auto-dir 联用：将 JSON 同步为同名 {slug}.json",
+    )
     args = ap.parse_args()
 
     html = args.template.read_text(encoding="utf-8")
     trip = json.loads(args.trip_json.read_text(encoding="utf-8"))
     out = inject_trip_data(html, trip)
+
+    if args.auto_dir:
+        _, html_path = trip_paths(trip, args.auto_dir)
+        html_path.parent.mkdir(parents=True, exist_ok=True)
+        html_path.write_text(out, encoding="utf-8")
+        print(f"✅ wrote {html_path}")
+        if args.sync_json:
+            json_path, _ = trip_paths(trip, args.auto_dir)
+            json_path.write_text(
+                json.dumps(trip, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            print(f"✅ wrote {json_path}")
+        return 0
+
+    if not args.output:
+        ap.error("请指定 -o/--output 或 --auto-dir")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(out, encoding="utf-8")
     print(f"✅ wrote {args.output}")

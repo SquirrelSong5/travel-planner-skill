@@ -111,7 +111,7 @@ python scripts/validate.py trip_data.json --round 1 --pretty
 
 ### AI 必做
 
-1. 对每对相邻 POI **及酒店早晚段**（`idx=0`）调 `maps_direction_*` → `duration_min` + `transports[].path` + `source`
+1. 对每对相邻 POI **及酒店早晚段**（`idx=0`）调 `maps_direction_*` → `duration_min` + `transports[].path` + `source`（**市内默认 `transit_integrated`，见 `planning.md` §3.5**）
 2. 用高德 route 结果填 V2（🤖 `source: "ai-amap"`）
 3. 检查累计通勤是否「赶死」（🤖 critique）
 

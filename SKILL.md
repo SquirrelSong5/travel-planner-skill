@@ -341,7 +341,7 @@ Step 7：渲染 HTML（assets/template.html + demo 数据 schema）
 **根据选择**：
 
 - 选 A → AI **主导**走 `references/setup-guide.md` 的"高德（必需）+ 小红书（推荐，B 方案唯一）+ 大众点评（v1.2.0 起**非必需**）"流程，前提是用户已装 [Playwright MCP](https://github.com/microsoft/playwright-mcp)（**按客户端走对应安装命令**：CC `claude mcp add playwright npx @playwright/mcp@latest` / Hermes `hermes mcp install playwright` / Cursor 编辑 `~/.cursor/mcp.json` / Codex `codex mcp add playwright -- npx @playwright/mcp@latest` / Trae-CodeBuddy IDE 设置面板）。整个过程用户只介入 2-3 次（收短信、扫码、**按客户端重启方式让 MCP 生效**）。**大众点评深度档只在用户明确要求"必吃榜 + 评价数"时才装**
-- 选 B → 渲染 `examples/chengdu-3d.json`（默认国内示例）让用户看效果，结尾再问"效果 OK 吗？OK 的话花 5 分钟配一下，以后就是做自己的行程了"
+- 选 B → 渲染 `examples/chengdu-2026-09-18.json`（默认国内示例）让用户看效果，结尾再问"效果 OK 吗？OK 的话花 5 分钟配一下，以后就是做自己的行程了"
 - 选 C → 重新检测，确认就绪后进 Step 1
 
 > **没有 Playwright MCP 的退化**：退到"半自动"模式，shell 步骤 AI 跑，浏览器步骤给命令用户手点（见 [references/multi-turn-protocol.md](references/multi-turn-protocol.md) §场景六·退路）。
@@ -401,7 +401,7 @@ codex mcp add playwright -- npx @playwright/mcp@latest
   - **Trae / CodeBuddy**：AI **改不了配置**，引导用户 IDE 设置面板里加 → 用户回「加好了」→ AI 引导用户「重启 IDE」→ 用户回「重启好了」→ AI 重新自检
   - 若 `mcp__playwright__*` 出现 → 进 Step 1；若仍未出现 → 引导排查（见场景八）
 - 选 B → AI 显式记录「用户主动降级，Playwright 未装」→ **进入 §0.3 情况 A 的"半自动"模式**（shell 步骤 AI 跑，浏览器步骤给命令用户手点；见 `references/multi-turn-protocol.md` §场景六·退路）
-- 选 C → 渲染 `examples/chengdu-3d.json` 演示，**不进入正式规划流程**
+- 选 C → 渲染 `examples/chengdu-2026-09-18.json` 演示，**不进入正式规划流程**
 
 > **为什么不能默认降级**：降级意味着小红书 / 大众点评配置从"AI 全程开浏览器"退到"每步用户手点"，每次配耗时 15-20 分钟；装 Playwright 一次 1 分钟，长期受益。**默认走"推装"才能保护用户不被"自检→跳过"的温水煮青蛙体验反复降级**。
 
@@ -618,10 +618,14 @@ python scripts/validate.py trip_data.json --round 1 --pretty
 
 | 距离/场景 | MCP 工具 | REST（polyline 兜底） |
 |----------|---------|----------------------|
-| < 1.5km 步行 | `maps_direction_walking` | `/v3/direction/walking` |
-| 1.5-10km 市内 | `maps_direction_transit_integrated` | `/v3/direction/transit/integrated` + `city` |
-| 骑行 | `maps_bicycling` | `/v3/direction/bicycling` |
-| > 10km / 跨城 | `maps_direction_driving` | `/v3/direction/driving` |
+| < 1.5km | `maps_direction_walking` | `/v3/direction/walking` |
+| **1.5–4km** | **`maps_bicycling`**（骑行优先于公交） | `/v3/direction/bicycling` |
+| **4–25km 市内** | **`maps_direction_transit_integrated`** | `/v3/direction/transit/integrated` + `city` |
+| 机场/高铁站（有地铁/机场快线） | **`maps_direction_transit_integrated`** | 同上；无方案再 `driving` |
+| 远郊无公交 / 深夜 / 用户明确要打车 | `maps_direction_driving` | `/v3/direction/driving` |
+| 骑行（用户要） | `maps_bicycling` | `/v3/direction/bicycling` |
+
+> **公共交通优先（默认）**：市内段先调 `transit_integrated`；仅当**无公交方案**、**末班后**、**带大件行李且换乘>3次**、或**用户明确要打车**时，才写 `driving` 并在 `description` 注明原因。
 
 完整提取代码见 `references/amap-mcp-usage.md` §2.3–2.4。
 
@@ -740,7 +744,19 @@ python scripts/validate.py trip_data.json --round 3 --pretty
 > **目标**：返回一个手机能直接点开的公开 URL。
 > 工作目录：`~/.travel-planner/travel-plans/`（本地工作副本，承载所有历史行程）
 > 部署仓库：`SquirrelSong5/travel-plans`（公开）
-> URL 形如：`https://squirrelsong5.github.io/travel-plans/{trip}.html`
+> URL 形如：`https://squirrelsong5.github.io/travel-plans/{slug}.html`  
+> **`{slug}` = `{城市拼音小写}-{出发日}`**，例：`chengdu-2026-09-18`（出发日 = Day 1 的 `date`）
+
+#### 文件命名（强制）
+
+| 文件 | 规范 | 示例 |
+|------|------|------|
+| JSON 草稿 | `{slug}.json` | `chengdu-2026-09-18.json` |
+| 部署 HTML | `{slug}.html` | `chengdu-2026-09-18.html` |
+
+- **禁止** `chengdu-3d`、`qingdao-4d-draft`、`xiamen-4d3n` 等非日期后缀
+- 城市拼音见 `scripts/trip_slug.py`；未知城市在 JSON 顶层写 `trip_slug`
+- 计算 slug：`python scripts/trip_slug.py trip.json`
 
 #### 7.1 准备阶段（只跑一次）
 
@@ -764,28 +780,28 @@ gh api -X POST repos/SquirrelSong5/travel-plans/pages \
 #### 7.2 每次行程的部署流程
 
 ```bash
-# 1. 渲染 HTML（按 examples/{demo}.json 的 schema 填占位符）
-# ⚠️ v2.0.5 安全：HTML 不内嵌 AMAP_WEB_KEY（防 git 泄露）
-#    - 渲染时删除 tripData.amap_key 顶层字段
-#    - template.html IIFE 从 URL ?k= / localStorage 注入 window.AMAP_KEY
+# 1. 渲染 + 写入工作副本（自动按 slug 命名）
+python scripts/render_html.py assets/template.html /tmp/trip.json \
+  --auto-dir ~/.travel-planner/travel-plans --sync-json
 
-# 2. 复制到工作副本
-cp /tmp/{trip_name}-{date}.html ~/.travel-planner/travel-plans/{trip_name}-{date}.html
+# 或手动指定输出（须符合 {slug}.html）：
+# python scripts/render_html.py assets/template.html trip.json \
+#   -o ~/.travel-planner/travel-plans/chengdu-2026-09-18.html
 
-# 3. 提交 + 推送（HTML/JSON 里不得出现真实 Key）
+# 2. 提交 + 推送（HTML/JSON 里不得出现真实 Key）
 cd ~/.travel-planner/travel-plans
-git add {trip_name}-{date}.html {trip_name}-draft.json
-git commit -m "trip: {trip_name} {date}"
+git add chengdu-2026-09-18.html chengdu-2026-09-18.json
+git commit -m "trip: chengdu 2026-09-18"
 git push -u origin main
 ```
 
 #### 7.3 输出契约（聊天里给用户）
 
 ```
-🌐 行程已上线：https://squirrelsong5.github.io/travel-plans/{trip_name}-{date}.html?k={AMAP_WEB_KEY}
+🌐 行程已上线：https://squirrelsong5.github.io/travel-plans/{slug}.html?k={AMAP_WEB_KEY}
 📱 手机点带 ?k= 的链接直接看（含高德地图 / 每日行程 / 餐厅候选）
 📄 Markdown 参考文档：[贴聊天]
-🗂 本地副本：~/.travel-planner/travel-plans/{trip_name}-{date}.html
+🗂 本地副本：~/.travel-planner/travel-plans/{slug}.html
 
 修改入口：直接说"Day 2 的 X 换成 Y"、"加一天京都" 等，AI 会重新渲染 + 重新部署。
 ```
@@ -822,7 +838,7 @@ git push -u origin main
 完成 Step 6 + Step 7 后，AI **只输出 4 项**：
 
 1. **GitHub Pages URL（带 `?k=` 地图 Key）**（主交付物，手机/电脑点开即看完整地图）
-2. **本地 HTML 副本路径**（`~/.travel-planner/travel-plans/{trip_name}-{date}.html`）
+2. **本地 HTML 副本路径**（`~/.travel-planner/travel-plans/{slug}.html`）
 3. **Markdown 参考文档**（贴聊天，便于复制到笔记/分享）
 4. **修改入口提示**（"想改任何地方直接说，比如：换 X、加一天、删一天"）
 
@@ -846,10 +862,11 @@ git push -u origin main
 1. **先删后排**（明说删什么 + 为什么）
 2. **一天一区 + 一日一重预约**
 3. **首末日按航站楼和返程时间倒推**
-4. **餐厅是补给不是锚点**
-5. **四拍交互 + Smart skip**
-6. **每轮迭代必须跑当轮验证**（`validate.py --round N`；交付前全量复检）
-7. **增量修改必须重验证**（一致性不允许被改坏而不报警）
+4. **市内公共交通优先**（地铁/公交/机场快线；打车仅作无公交或用户明确要求时的备选）
+5. **餐厅是补给不是锚点**
+6. **四拍交互 + Smart skip**
+7. **每轮迭代必须跑当轮验证**（`validate.py --round N`；交付前全量复检）
+8. **增量修改必须重验证**（一致性不允许被改坏而不报警）
 
 参考 `references/planning.md` 看完整方法论。
 
@@ -877,4 +894,5 @@ git push -u origin main
 - `references/meituan-guide-research.md` — 美团攻略 WebFetch 模式（v1.2.0 新增）
 - `references/hotel-planning.md` — 酒店候选筛选
 - `assets/template.html` — HTML 输出模板
-- `examples/chengdu-3d.json` — 默认国内静态 demo（成都 3 日）
+- `examples/chengdu-2026-09-18.json` — 默认国内静态 demo（成都 3 日）
+- `scripts/trip_slug.py` — 文件命名 `{城市拼音}-{出发日}`

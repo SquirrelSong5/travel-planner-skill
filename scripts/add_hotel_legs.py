@@ -83,11 +83,15 @@ def pick_mode(dist_m: float, hint: str) -> str:
     h = (hint or "").lower()
     if "步行" in hint or "walk" in h:
         return "walking"
-    if "地铁" in hint or "公交" in hint or "transit" in h:
-        return "transit"
+    if "骑行" in hint or "bike" in h or "bicycling" in h or "ride" in h:
+        return "biking"
     if "打车" in hint or "驾车" in hint or "taxi" in h or "drive" in h:
         return "driving"
-    if dist_m < 10000:
+    if "地铁" in hint or "公交" in hint or "transit" in h:
+        return "transit"
+    if dist_m < 4000:
+        return "biking"
+    if dist_m < 25000:
         return "transit"
     return "driving"
 
@@ -100,7 +104,7 @@ def amap_direction(
     city: str,
 ) -> dict[str, Any]:
     modes_try = [mode]
-    for m in ("walking", "transit", "driving"):
+    for m in ("walking", "biking", "transit", "driving"):
         if m not in modes_try:
             modes_try.append(m)
     last_err: Exception | None = None
@@ -241,11 +245,18 @@ def finalize_route(
     dest: tuple[float, float],
     city: str,
 ) -> dict[str, Any]:
-    """步行过久改公交/驾车；公交无 polyline 时用步行路网补 path。"""
+    """步行过久改骑行/公交；缺 polyline 时用步行/驾车路网补 path（不改变已选 mode）。"""
     if route.get("mode") == "walking" and route.get("duration_min", 0) > 25:
-        route = amap_direction(key, "transit", origin, dest, city)
-    if route.get("mode") == "transit" and route.get("duration_min", 0) > 50:
-        route = amap_direction(key, "driving", origin, dest, city)
+        dist_m = haversine_m(origin, dest)
+        next_mode = "biking" if dist_m < 4000 else "transit"
+        try:
+            route = amap_direction(key, next_mode, origin, dest, city)
+        except Exception:
+            if next_mode == "biking":
+                try:
+                    route = amap_direction(key, "transit", origin, dest, city)
+                except Exception:
+                    pass
     path = route.get("path") or []
     if len(path) < 3:
         try:

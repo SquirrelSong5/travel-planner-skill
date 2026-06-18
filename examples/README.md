@@ -2,7 +2,7 @@
 
 本目录是 `assets/template.html` 模板的填充示例，方便：
 
-1. **开发期验证模板渲染** —— 用 `chengdu-3d.json` 的数据填模板，能看到完整的最终 HTML 效果
+1. **开发期验证模板渲染** —— 用 `chengdu-2026-09-18.json` 的数据填模板，能看到完整的最终 HTML 效果
 2. **作为 AI 输出参考** —— AI 生成方案时，对照本 JSON 的结构填字段，不要漏字段、不要多字段
 3. **测试增量修改** —— 改本 JSON 后重新渲染模板，验证修改后的效果
 
@@ -10,13 +10,28 @@
 
 ## 文件清单
 
-- `chengdu-3d.json` — 成都 3 日 2 晚静态 demo（国内默认示例，含地图数据）
+- `chengdu-2026-09-18.json` — 成都 3 日 2 晚静态 demo（国内默认示例）
+
+## 文件命名（部署用）
+
+工作副本与 GitHub Pages 统一：
+
+```
+{城市拼音小写}-{出发日 YYYY-MM-DD}.json
+{城市拼音小写}-{出发日 YYYY-MM-DD}.html
+```
+
+例：`chengdu-2026-09-18.html`（出发日 = `days[0].date`）。
+
+- 工具：`python scripts/trip_slug.py trip.json`
+- 未知城市：JSON 顶层加 `trip_slug: "mytrip-2026-09-18"`
+- **禁止** `*-draft.json`、`*-3d`、`*-4d3n` 等旧后缀
 
 ---
 
 ## Schema
 
-> ⚠️ 这是简化的中文说明文档，不是机器可读的 JSON Schema。完整字段以 `chengdu-3d.json` 实例为准。
+> ⚠️ 这是简化的中文说明文档，不是机器可读的 JSON Schema。完整字段以 `chengdu-2026-09-18.json` 实例为准。
 
 ```typescript
 {
@@ -26,6 +41,7 @@
   date_range: string             // 例："2026-09-12 ~ 2026-09-16"
   n_days: string                 // 例："4 泊 5 日" / "3 泊 4 日"
   city: string                   // 主城市
+  trip_slug?: string             // 可选；规范文件名，如 chengdu-2026-09-18（缺省由 scripts/trip_slug.py 推算）
   summary: string                // 一句话总结（带取舍说明），≤ 100 字
   party_size: number             // v2.1.0 必填：出行人数（价格 quantity 默认）
 
@@ -200,8 +216,10 @@
 | `bus` | 公交 | 蓝色 | 否 |
 | `train` | 火车 | 蓝色 | 否 |
 | `jr` | JR（日本） | 蓝色 | 否 |
-| `driving` | 驾车 | 红色 | 否 |
+| `driving` | 驾车/打车（**备选**；市内默认先用 `transit`） | 红色 | 否 |
 | `biking` | 骑行 | 橙色 | 是 |
+
+> **模式选择（默认）**：< 1.5km `walking` → 1.5–4km `biking` → 4–25km `transit` → 打车仅备选。详见 `references/planning.md` §3.5。
 
 ### 路径渲染 v1.3.0
 
@@ -261,7 +279,7 @@
 import json
 from pathlib import Path
 
-data = json.loads(Path("examples/chengdu-3d.json").read_text())
+data = json.loads(Path("examples/chengdu-2026-09-18.json").read_text())
 tpl = Path("assets/template.html").read_text()
 
 # 1. 顶层占位符
@@ -303,7 +321,7 @@ trip_data_js = json.dumps(data, ensure_ascii=False, indent=2)
 
 ### 测试"Day 2 的 X 换成 Y"
 
-1. 复制 `chengdu-3d.json` → `chengdu-3d-modified.json`
+1. 复制 `chengdu-2026-09-18.json` → 按 `python scripts/trip_slug.py` 输出命名
 2. 修改 `days[1].pois` 里某个 POI（name / 坐标 / links 等）
 3. 重新跑模板渲染
 4. 对比修改前后的 HTML

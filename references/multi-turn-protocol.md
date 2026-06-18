@@ -93,7 +93,7 @@
 |--------|---------|
 | **A. 装** | AI 按**§客户端适配层 探测到的客户端 X** 走对应分支：<br>• CC / Codex：跑对应 `mcp add` 命令 → 提醒用户按客户端重启（CC 完全退出 / Codex 项目级自动）<br>• Hermes：跑 `hermes mcp install playwright`（或 `hermes mcp add playwright -- npx @playwright/mcp@latest`）→ 不需要告诉用户重启<br>• Cursor / Cloud Code：编辑对应 JSON → 引导 Cmd+Shift+P Reload / 重开会话<br>• Trae / CodeBuddy：引导用户 IDE 内加 + 重启 IDE<br>→ 用户回「好了」→ AI 重做自检 → `mcp__playwright__*` 出现则进 Step 1，仍未出现则引导排查（场景八）|
 | **B. 我明白降级影响，仍要降级** | AI 显式记录「用户主动降级（Playwright 未装）」到对话历史；进 §0.3.3 半自动模式 |
-| **C. 先用 demo 演示** | 渲染 `examples/chengdu-3d.json` 演示，**不进入正式规划流程**；演示完再问一次要不要装 |
+| **C. 先用 demo 演示** | 渲染 `examples/chengdu-2026-09-18.json` 演示，**不进入正式规划流程**；演示完再问一次要不要装 |
 
 > **B 选项的措辞必须用户说出来**——"算了"、"不用了"、"太麻烦"、"不配了" 这些**都算显式降级**；**沉默 / 不回 / 继续提需求** ≠ 降级，AI 必须继续等或再次提示。
 
@@ -505,7 +505,7 @@
      [shell: gh repo create SquirrelSong5/travel-plans --public --source=. --remote=upstream --push]
      [shell: gh repo edit --enable-pages --pages-source main --pages-path /]
      [shell: git push upstream main]
-     ✅ 部署完成，URL: https://squirrelsong5.github.io/travel-plans/chengdu-3d.html
+     ✅ 部署完成，URL: https://squirrelsong5.github.io/travel-plans/chengdu-2026-09-18.html
 ```
 
 ---
@@ -553,7 +553,7 @@ AI: 收到，你显式选了降级。后面 shell 步骤我跑，浏览器步骤
 
 ```
 AI: OK，先用成都 3 日示例给你看效果。
-    [渲染 examples/chengdu-3d.json]
+    [渲染 examples/chengdu-2026-09-18.json]
     [输出 HTML 路径]
     
     这是没配 MCP 时也能达到的效果 —— 基于示例数据。
@@ -593,7 +593,7 @@ AI: OK，先用成都 3 日示例给你看效果。
 🟢 AI: 最终全量复检：
      [shell: python scripts/validate.py /tmp/chengdu.json --pretty]
      合并 rules → 部署 GitHub Pages
-     https://squirrelsong5.github.io/travel-plans/chengdu-3d.html
+     https://squirrelsong5.github.io/travel-plans/chengdu-2026-09-18.html
 
 用户: （点开 HTML）底部能看到 Round 1/2/3 三阶段报告
 ```

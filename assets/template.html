@@ -648,6 +648,47 @@
       height: 3px;
       border-radius: 1px;
     }
+    .legend-item .legend-line {
+      display: inline-block;
+      width: 26px;
+      height: 0;
+      border: none;
+      vertical-align: middle;
+    }
+    .legend-line-walk {
+      border-top: 2px dashed var(--c-walk);
+    }
+    .legend-line-subway {
+      border-top: 3px solid var(--c-transit);
+    }
+    .legend-line-bus {
+      height: 2px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--c-transit) 0 10px,
+        transparent 10px 14px
+      );
+    }
+    .legend-line-bike {
+      height: 2px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--c-bike) 0 5px,
+        transparent 5px 7px,
+        var(--c-bike) 7px 9px,
+        transparent 9px 12px
+      );
+    }
+    .legend-line-drive {
+      height: 2px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--c-drive) 0 12px,
+        transparent 12px 15px,
+        var(--c-drive) 15px 17px,
+        transparent 17px 20px
+      );
+    }
     .route-summary {
       display: flex;
       flex-wrap: wrap;
@@ -760,6 +801,19 @@
       color: var(--fg-muted);
       font-weight: 600;
       letter-spacing: 0.02em;
+    }
+    ol.timeline .slot-num {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: var(--fs-sm);
+      font-weight: 700;
+      color: var(--accent);
+      margin-right: 0.25em;
+    }
+    .drawer .hotel-card .hotel-emoji {
+      display: inline-block;
+      font-size: 22px;
+      margin-right: 4px;
+      vertical-align: -3px;
     }
     .place h4 {
       margin: 4px 0 6px;
@@ -1196,10 +1250,12 @@
             <span>显示路线</span>
           </label>
           <div class="legend">
-            <span class="legend-item"><span class="dot" style="background:var(--c-walk)"></span>步行</span>
-            <span class="legend-item"><span class="dot" style="background:var(--c-transit)"></span>地铁/公交/JR</span>
-            <span class="legend-item"><span class="dot" style="background:var(--c-drive)"></span>驾车</span>
-            <span class="legend-item"><span class="dot" style="background:var(--c-bike)"></span>骑行</span>
+            <span class="legend-item"><span class="legend-line legend-line-walk"></span>步行</span>
+            <span class="legend-item"><span class="legend-line legend-line-subway"></span>地铁</span>
+            <span class="legend-item"><span class="legend-line legend-line-bus"></span>公交</span>
+            <span class="legend-item"><span class="legend-line legend-line-bike"></span>骑行</span>
+            <span class="legend-item"><span class="legend-line legend-line-drive"></span>打车</span>
+            <span class="legend-item" style="opacity:0.85">· 路段异色</span>
           </div>
           <div class="route-summary" id="route-summary" aria-live="polite"></div>
         </div>
@@ -1251,7 +1307,7 @@
           酒店
         </h3>
         <div class="hotel-card" id="hotel-card">
-          <h4 id="hotel-name">{{HOTEL_NAME}}</h4>
+          <h4 id="hotel-name"><span class="hotel-emoji">🏨</span> {{HOTEL_NAME}}</h4>
           <p class="address" id="hotel-address">{{HOTEL_ADDRESS}}</p>
           <p class="why" id="hotel-why">{{HOTEL_WHY}}</p>
           <div class="links" id="hotel-links">
@@ -1364,6 +1420,12 @@
         shopping: '#b32c50',
         transport:'#2c5e8a'
       };
+
+      function fmtRouteMode(mode, transport) {
+        const n = normalizeRouteMode(mode, transport);
+        const map = { walking: '步行', subway: '地铁', bus: '公交', train: '火车', driving: '打车', biking: '骑行' };
+        return map[n] || fmtMode(mode);
+      }
 
       function fmtMode(mode) {
         const map = { walking:'步行', transit:'公交', subway:'地铁', metro:'地铁', bus:'公交', train:'火车', jr:'JR', driving:'驾车', biking:'骑行' };
@@ -2334,6 +2396,7 @@
         }
 
         const poiItems = d.pois.map((p, poiArrIdx) => {
+          const slotNum = p.idx != null ? p.idx : poiArrIdx + 1;
           const ws = p.weather_sensitive ? ' <span class="weather-sensitive">⚠️ 天气敏感</span>' : '';
           const note = p.note ? `<p class="note">${mdLite(p.note)}</p>` : '';
           const why = p.why ? `<p class="why">→ ${mdLite(p.why)}</p>` : '';
@@ -2390,7 +2453,7 @@
                   ${costUi.pillHtml}
                 </div>
                 <div class="place">
-                  <h4>${esc(p.name)} <span class="cat ${esc(p.cat)}">${esc(p.cat)}</span>${ws}</h4>
+                  <h4><span class="slot-num">${slotNum}.</span>${esc(p.name)} <span class="cat ${esc(p.cat)}">${esc(p.cat)}</span>${ws}</h4>
                   ${note}${why}${linksHtml}
                   ${nextLegHtml}
                   ${mealLegHtml}
@@ -2471,27 +2534,81 @@
         mapLayers = [];
       }
 
-      function colorForMode(mode) {
-        if (mode === 'walking') return getCss('--c-walk');
-        if (mode === 'driving') return getCss('--c-drive');
-        if (mode === 'biking')  return getCss('--c-bike');
+      function normalizeRouteMode(mode, transport) {
+        const m = (mode || 'transit').toLowerCase();
+        const desc = ((transport && transport.description) || '') + ((transport && transport.label) || '');
+        if (m === 'walk' || m === 'walking' || /步行/.test(desc)) return 'walking';
+        if (m === 'subway' || m === 'metro' || /地铁|轨道|号线/.test(desc)) return 'subway';
+        if (m === 'bus' || (/公交/.test(desc) && !/地铁/.test(desc))) return 'bus';
+        if (m === 'train' || m === 'jr') return 'train';
+        if (m === 'bike' || m === 'biking' || m === 'cycling' || m === 'ride' || /骑行|单车|自行车/.test(desc)) return 'biking';
+        if (m === 'drive' || m === 'driving' || m === 'taxi' || m === 'car' || /打车|驾车|出租/.test(desc)) return 'driving';
+        if (m === 'transit') return /地铁|轨道|号线/.test(desc) ? 'subway' : 'bus';
+        return 'bus';
+      }
+
+      function colorForMode(mode, transport) {
+        const n = normalizeRouteMode(mode, transport);
+        if (n === 'walking') return getCss('--c-walk');
+        if (n === 'driving') return getCss('--c-drive');
+        if (n === 'biking') return getCss('--c-bike');
         return getCss('--c-transit');
+      }
+
+      // 相邻路段（1→2、2→3…）用不同颜色；线型按交通方式
+      const SEGMENT_PALETTE = [
+        '#2563eb', '#ea580c', '#059669', '#dc2626',
+        '#7c3aed', '#ca8a04', '#0891b2', '#be185d',
+        '#4f46e5', '#d97706', '#0d9488', '#9333ea'
+      ];
+      function colorForSegment(segIdx) {
+        return SEGMENT_PALETTE[segIdx % SEGMENT_PALETTE.length];
       }
 
       function getCss(name) {
         return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
       }
 
-      function dashForMode(mode) {
-        if (mode === 'walking') return [6, 4];
-        if (mode === 'biking') return [8, 4];
-        return null;
+      /**
+       * 线型约定（颜色仍由路段序号决定）：
+       * - 地铁：实线
+       * - 步行：虚线
+       * - 公交 / 骑行 / 打车 / 火车：各一种虚线图案
+       */
+      function lineStyleForMode(mode, transport) {
+        const n = normalizeRouteMode(mode, transport);
+        if (n === 'subway') {
+          return { strokeStyle: 'solid' };
+        }
+        if (n === 'walking') {
+          return { strokeStyle: 'dashed', strokeDasharray: [4, 4] };
+        }
+        if (n === 'bus') {
+          return { strokeStyle: 'dashed', strokeDasharray: [14, 6] };
+        }
+        if (n === 'biking') {
+          return { strokeStyle: 'dashed', strokeDasharray: [6, 3, 2, 3] };
+        }
+        if (n === 'driving') {
+          return { strokeStyle: 'dashed', strokeDasharray: [16, 5, 4, 5] };
+        }
+        if (n === 'train') {
+          return { strokeStyle: 'dashed', strokeDasharray: [10, 4, 2, 4] };
+        }
+        return { strokeStyle: 'dashed', strokeDasharray: [12, 6] };
       }
 
-      function widthForMode(mode) {
-        if (mode === 'walking') return 6;
-        if (mode === 'biking') return 7;
-        return 8;
+      function widthForMode(mode, transport) {
+        const n = normalizeRouteMode(mode, transport);
+        if (n === 'walking') return 3;
+        if (n === 'biking') return 3;
+        if (n === 'driving') return 4;
+        if (n === 'subway') return 4;
+        return 3.5;
+      }
+
+      function outlineExtraForMode(mode) {
+        return 2; // 描边比主线略粗，保持细线可读
       }
 
       function updateRouteSummary(dayIdx) {
@@ -2502,14 +2619,12 @@
           el.innerHTML = '';
           return;
         }
-        const counts = {};
-        d.transports.forEach(t => {
-          const label = fmtMode(t.mode);
-          counts[label] = (counts[label] || 0) + 1;
-        });
-        el.innerHTML = Object.entries(counts)
-          .map(([label, n]) => `<span class="route-chip">${n} 段${label}</span>`)
-          .join('');
+        el.innerHTML = d.transports.map((t, segIdx) => {
+          const from = t.from_idx === 0 ? '酒店' : String(t.from_idx);
+          const to = t.to_idx === 0 ? '酒店' : String(t.to_idx);
+          const color = colorForSegment(segIdx);
+          return `<span class="route-chip" style="border-left:3px solid ${color}">${from}→${to} ${esc(fmtRouteMode(t.mode, t))}</span>`;
+        }).join('');
       }
 
       function updateMap(dayIdx) {
@@ -2520,6 +2635,38 @@
 
         if (d.center) {
           map.setZoomAndCenter(d.zoom || 14, d.center);
+        }
+
+        // 酒店 marker（每日都画，方便看锚点位置）
+        if (D.hotel && D.hotel.lng && D.hotel.lat) {
+          const hotelMarker = new AMap.Marker({
+            position: [D.hotel.lng, D.hotel.lat],
+            anchor: 'center',
+            offset: new AMap.Pixel(-18, -18),
+            content: `<div style="
+              background:#ff7a55;color:white;
+              width:36px;height:36px;
+              border-radius:8px;
+              display:flex;align-items:center;justify-content:center;
+              font-size:20px;
+              border:3px solid white;
+              box-shadow:0 3px 6px rgba(0,0,0,0.4);
+            ">🏨</div>`,
+            title: D.hotel.name || '酒店',
+            zIndex: 200
+          });
+          hotelMarker.on('click', () => {
+            const info = `<div style="padding:8px;max-width:240px;font-size:13px">
+              <strong>🏨 ${esc(D.hotel.name || '酒店')}</strong><br>
+              <span style="color:#888">${esc(D.hotel.address || '')}</span>
+              ${D.hotel.price ? `<p style="margin:6px 0;color:#666">${D.hotel.price.min}-${D.hotel.price.max} ${D.hotel.price.currency||'CNY'}/晚</p>` : ''}
+              ${D.hotel.why ? `<p style="margin:6px 0;color:#666">${esc(D.hotel.why)}</p>` : ''}
+            </div>`;
+            new AMap.InfoWindow({ content: info, offset: new AMap.Pixel(0, -36) })
+              .open(map, hotelMarker.getPosition());
+          });
+          map.add(hotelMarker);
+          mapLayers.push(hotelMarker);
         }
 
         (d.pois || []).forEach((p, i) => {
@@ -2537,7 +2684,7 @@
               border:2px solid white;
               box-shadow:0 2px 4px rgba(0,0,0,0.4);
               font-family:system-ui;
-            ">${i + 1}</div>`,
+            ">${p.idx != null ? p.idx : i + 1}</div>`,
             title: p.name,
             zIndex: 100 + i
           });
@@ -2557,33 +2704,42 @@
         const showRoute = document.getElementById('toggle-route').checked;
         if (showRoute && d.transports) {
           const outlineColor = getCss('--bg-elevated') || '#ffffff';
-          d.transports.forEach(t => {
+          d.transports.forEach((t, segIdx) => {
             const from = resolveTransportPoint(d, t.from_idx);
             const to = resolveTransportPoint(d, t.to_idx);
             if (!from || !to) return;
             const pathCoords = (Array.isArray(t.path) && t.path.length >= 2)
               ? t.path.map(coord => [coord[0], coord[1]])
               : [[from.lng, from.lat], [to.lng, to.lat]];
-            const weight = widthForMode(t.mode);
+            const weight = widthForMode(t.mode, t);
+            const segColor = colorForSegment(segIdx);
+            const outlineW = weight + outlineExtraForMode(t.mode);
+            const lineStyle = lineStyleForMode(t.mode, t);
             const outline = new AMap.Polyline({
               path: pathCoords,
               strokeColor: outlineColor,
-              strokeWeight: weight + 4,
-              strokeOpacity: 0.85,
+              strokeWeight: outlineW,
+              strokeOpacity: 0.9,
               lineJoin: 'round',
+              lineCap: 'round',
               zIndex: 10
             });
             map.add(outline);
             mapLayers.push(outline);
-            const polyline = new AMap.Polyline({
+            const lineOpts = {
               path: pathCoords,
-              strokeColor: colorForMode(t.mode),
+              strokeColor: segColor,
               strokeWeight: weight,
-              strokeOpacity: 1.0,
-              strokeStyle: dashForMode(t.mode) ? 'dashed' : 'solid',
+              strokeOpacity: 0.95,
               lineJoin: 'round',
-              zIndex: 11
-            });
+              lineCap: 'round',
+              zIndex: 11,
+              strokeStyle: lineStyle.strokeStyle
+            };
+            if (lineStyle.strokeDasharray) {
+              lineOpts.strokeDasharray = lineStyle.strokeDasharray;
+            }
+            const polyline = new AMap.Polyline(lineOpts);
             map.add(polyline);
             mapLayers.push(polyline);
           });

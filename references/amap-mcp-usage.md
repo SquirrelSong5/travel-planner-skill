@@ -93,14 +93,18 @@
 > 2. **地图折线 polyline**：若 MCP `steps` **无** `polyline`/`path` 坐标 → **同一段立刻调 REST** `/v3/direction/*`（同一 `AMAP_MCP_KEY`）拼接坐标
 > 3. **禁止**凭经验手工补中间点（V8 会判假路线 ❌）；**禁止**只连 POI 起终点当 path
 
-### 2.1 模式选择
+### 2.1 模式选择（公共交通优先）
 
 | 距离/场景 | MCP 工具（时间/费用） | REST endpoint（polyline 兜底） |
 |----------|---------------------|-------------------------------|
-| < 1.5km 步行 | `maps_direction_walking` | `/v3/direction/walking` |
-| 1.5-10km 市内 | `maps_direction_transit_integrated` | `/v3/direction/transit/integrated` + `city` |
-| 骑行 | `maps_bicycling` | `/v3/direction/bicycling` |
-| > 10km / 跨城 | `maps_direction_driving` | `/v3/direction/driving` |
+| < 1.5km | `maps_direction_walking` | `/v3/direction/walking` |
+| **1.5–4km** | **`maps_bicycling`** | `/v3/direction/bicycling` |
+| **4–25km 市内** | **`maps_direction_transit_integrated`** | `/v3/direction/transit/integrated` + `city` |
+| 机场/高铁（有快线/地铁） | **`maps_direction_transit_integrated`** | 同上；`transits` 为空再试 `driving` |
+| 远郊无公交 / 深夜 / 用户要打车 | `maps_direction_driving` | `/v3/direction/driving` |
+| 骑行（用户要） | `maps_bicycling` | `/v3/direction/bicycling` |
+
+> **AI 默认流程**：< 1.5km 步行 → **1.5–4km 先 `bicycling`** → 4–25km `transit_integrated` → 无方案或用户要打车才 `driving`。
 
 ### 2.2 MCP 实际返回（常无 polyline）
 

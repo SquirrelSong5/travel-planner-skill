@@ -6,7 +6,7 @@ travel-planner 自动验证脚本（v1.1.0 新增，v1.5.0 强化）
     python scripts/validate.py <trip_data.json> [--round 1|2|3] [--check V1,V2,...] [--pretty]
 
 行为：
-    - 读 tripData JSON（与 examples/chengdu-3d.json 同 schema）
+    - 读 tripData JSON（与 examples/chengdu-2026-09-18.json 同 schema）
     - 跑 V1/V3/V4/V5/V6 五条**纯数据可验**规则（V2 通勤粗算用 Haversine 距离假设速度；
       V7 用户禁忌**必须 AI 调上下文判断**，脚本不验）
     - **v1.5.0 三阶段分轮筛检**：--round 1=结构(V1,V4) 2=时空(V2,V5,V8,V9) 3=体验(V3,V6)
@@ -104,6 +104,7 @@ V3_FAIL_KM = 3.0
 # V2 时间可行性：粗算（直线距离 / 典型速度）
 WALK_KMH = 5.0       # 步行 5 km/h
 TRANSIT_KMH = 20.0   # 公交/地铁 20 km/h
+BIKE_KMH = 12.0      # 市内骑行 12 km/h
 DRIVE_KMH = 40.0     # 市内驾车 40 km/h
 # 通勤占当天行程 50% 阈值（v1.5.0 调整：远程日河口湖→新宿 80km 通勤本就占大头，30% 太严）
 V2_COMMUTE_RATIO_FAIL = 0.50
@@ -175,6 +176,8 @@ def commute_minutes(a: tuple[float, float], b: tuple[float, float], mode: str = 
     m = (mode or "").lower()
     if m in ("walk", "walking"):
         return d / WALK_KMH * 60
+    if m in ("bike", "biking", "cycling", "ride"):
+        return d / BIKE_KMH * 60
     if m in ("drive", "driving", "taxi", "car"):
         return d / DRIVE_KMH * 60
     if m in ("train", "jr", "metro", "subway"):

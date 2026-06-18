@@ -48,7 +48,7 @@
 | | |
 |:---:|:---|
 | **可分享的网页** | 唯一交付物 = GitHub Pages URL，手机 / 电脑浏览器直接打开 |
-| **真实数据驱动** | POI、通勤时间来自高德 MCP；路线 polyline 来自 REST `/v3/direction/*`（MCP 常无坐标）；禁止凭模型记忆编造 |
+| **真实数据驱动** | POI、通勤时间来自高德 MCP；市内默认公交/地铁方案，打车仅作备选 |
 | **攻略前置** | **v2.3.0**：Step 1.5 先搜小红书目的地攻略（必去/避雷/分区），再分组排线；Round 3 只做店级验证 |
 | **开箱引导** | Step 0 自动自检环境，缺高德 / 小红书时 AI 带着装，不用先啃教程 |
 | **可迭代** | 对话里改景点、加一天、换酒店 → 重校验、重渲染、重新部署 |
@@ -137,7 +137,7 @@ AI → （缺什么就带着装：高德 Key、小红书扫码…）
 AI → 问硬约束 → **小红书目的地攻略（Step 1.5）** → 分组排线 → 三阶段规划 → validate → 渲染 HTML → 部署 → 给你 URL
 ```
 
-零配置想先看效果？说 **「先用 demo 演示」** → AI 渲染内置 [成都示例](examples/chengdu-3d.json)。
+零配置想先看效果？说 **「先用 demo 演示」** → AI 渲染内置 [成都示例](examples/chengdu-2026-09-18.json)。
 
 ### Step 1.5 做什么？（v2.3.0）
 
@@ -230,7 +230,8 @@ travel-planner/
 │   ├── render_html.py       # JSON → HTML
 │   ├── add_hotel_legs.py    # 酒店早晚通勤（idx=0）
 │   └── seed_prices.py       # 示例价格回填
-├── examples/chengdu-3d.json   # 国内 demo
+├── examples/chengdu-2026-09-18.json   # 国内 demo（命名：城市拼音-出发日）
+├── scripts/trip_slug.py     # 生成 {slug} 文件名
 └── references/                # 规划与集成文档
 ```
 
@@ -238,13 +239,15 @@ travel-planner/
 
 ```bash
 # 校验示例
-python3 scripts/validate.py examples/chengdu-3d.json --pretty
+python3 scripts/validate.py examples/chengdu-2026-09-18.json --pretty
 
 # 分轮校验
 python3 scripts/validate.py trip.json --round 1
 
 # 渲染 HTML
-python3 scripts/render_html.py assets/template.html trip.json -o out.html
+python3 scripts/render_html.py assets/template.html trip.json \
+  --auto-dir ~/.travel-planner/travel-plans --sync-json
+# 输出：{城市拼音}-{出发日}.html / .json，如 chengdu-2026-09-18.html
 ```
 
 ### 网页地图 Key（交付后）
@@ -312,7 +315,7 @@ python3 scripts/render_html.py assets/template.html trip.json -o out.html
 提交前建议：
 
 ```bash
-python3 scripts/validate.py examples/chengdu-3d.json --pretty
+python3 scripts/validate.py examples/chengdu-2026-09-18.json --pretty
 ```
 
 ---
