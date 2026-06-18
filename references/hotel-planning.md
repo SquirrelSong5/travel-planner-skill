@@ -189,12 +189,9 @@ Day 5 主区域：机场方向
   <p class="why">JR 新宿步行 5 分钟，三条地铁交汇，去各区都顺</p>
   <div class="links">
     <a href="https://uri.amap.com/marker?position=lng,lat&name=...">高德</a>
-    <a href="https://maps.apple.com/?daddr=lat,lng&dirflg=w">Apple Maps</a>
-    <a href="https://www.google.com/maps/dir/?api=1&destination=lat,lng">Google Maps</a>
-    <a href="https://www.booking.com/search.html?ss=...">预订</a>
   </div>
-  <details>
-    <summary>每天通勤</summary>
+  <details class="hotel-commute">
+    <summary>每天通勤（点击展开）</summary>
     <ul>
       <li>Day 1 新宿：步行 5 分钟</li>
       <li>Day 2 浅草：地铁 25 分钟</li>
@@ -203,6 +200,8 @@ Day 5 主区域：机场方向
   </details>
 </div>
 ```
+
+> **v2.0.6**：酒店卡片只保留「高德」导航按钮。预订走 `prebook[]` 携程/美团深链，不在酒店卡片重复放 OTA 按钮。
 
 ---
 

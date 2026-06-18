@@ -13,9 +13,6 @@
     "lng": 139.7036,
     "lat": 35.6938,
     "amap_uri": "https://uri.amap.com/marker?position=139.7036,35.6938&name=新宿王子大饭店",
-    "apple_uri": "https://maps.apple.com/?daddr=35.6938,139.7036&dirflg=w",
-    "google_uri": "https://www.google.com/maps/dir/?api=1&destination=35.6938,139.7036",
-    "booking_uri": "https://www.booking.com/search.html?ss=Shinjuku+Prince+Hotel",
     "why": "JR 新宿步行 5 分钟，三条地铁交汇（丸之内 / 副都心 / 大江户），去各区都顺。歌舞伎町 24h 餐饮充足。",
     "commute": [
       {

@@ -37,10 +37,7 @@
     address: string
     lng: number                  // 经度（用于地图）
     lat: number                  // 纬度
-    amap_uri: string             // 高德地图 link
-    apple_uri: string            // Apple Maps link
-    google_uri: string           // Google Maps link
-    booking_uri: string          // 预订跳转
+    amap_uri: string             // 高德地图 link（酒店卡片唯一按钮）
     why: string                  // 推荐理由 2-3 句
     commute: [                   // 每天通勤表
       {
@@ -236,9 +233,6 @@ top_replacements = {
     "{{HOTEL_ADDRESS}}": data["hotel"]["address"],
     "{{HOTEL_WHY}}": data["hotel"]["why"],
     "{{HOTEL_AMAP_URI}}": data["hotel"]["amap_uri"],
-    "{{HOTEL_APPLE_URI}}": data["hotel"]["apple_uri"],
-    "{{HOTEL_GOOGLE_URI}}": data["hotel"]["google_uri"],
-    "{{HOTEL_BOOKING_URI}}": data["hotel"]["booking_uri"],
 }
 
 # 2. deleted 块

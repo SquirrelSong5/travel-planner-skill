@@ -17,9 +17,6 @@
     "lng": 104.081,
     "lat": 30.658,
     "amap_uri": "https://uri.amap.com/marker?position=104.0810,30.6580&name=春熙路亚朵酒店",
-    "apple_uri": "https://maps.apple.com/?daddr=30.6580,104.0810&dirflg=w",
-    "google_uri": "https://www.google.com/maps/dir/?api=1&destination=30.6580,104.0810",
-    "booking_uri": "https://www.booking.com/search.html?ss=Atour+Hotel+Chengdu+Chunxi+Road",
     "why": "地铁 2/3 号线春熙路站步行 3 分钟；春熙路/太古里商圈内，IFS/远洋太古里吃购一站。",
     "commute": [
       {
