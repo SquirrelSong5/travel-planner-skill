@@ -167,53 +167,6 @@ def collect_and_finalize(trip: dict, day: dict):
     return {"start": start, "vias": vias, "end": end}
 
 
-def encode_amap_nav_name(name: str) -> str:
-    return quote(name or "地点", safe="").replace("%28", "(").replace("%29", ")")
-
-
-def mobile_url(start, vias, end, hotel_name: str) -> str | None:
-    def pt(p):
-        c = poi_coords(p)
-        return f"{c['lng']},{c['lat']},{encode_amap_nav_name(navi_place_name(p, hotel_name) or '地点')}"
-
-    saddr, daddr = pt(start), pt(end)
-    parts = [f"saddr={saddr}", f"daddr={daddr}", "sort=dist"]
-    if len(vias) == 1:
-        parts.append(f"maddr={pt(vias[0])}")
-    elif len(vias) > 1:
-        return None
-    return f"https://m.amap.com/navigation/carmap/{'&'.join(parts)}"
-
-
-def native_url(start, vias, end, hotel_name: str, platform: str = "ios") -> str:
-    def pt(p):
-        c = poi_coords(p)
-        return {
-            "lat": c["lat"],
-            "lon": c["lng"],
-            "name": navi_place_name(p, hotel_name) or "地点",
-        }
-
-    s, e = pt(start), pt(end)
-    common = (
-        f"sourceApplication={quote('travel-planner', safe='')}"
-        f"&sid=&slat={s['lat']}&slon={s['lon']}&sname={quote(s['name'], safe='')}"
-        f"&did=&dlat={e['lat']}&dlon={e['lon']}&dname={quote(e['name'], safe='')}"
-        "&dev=0&t=0"
-    )
-    if vias:
-        via_pts = [pt(v) for v in vias]
-        common += (
-            f"&vian={len(via_pts)}"
-            f"&vialons={'|'.join(str(v['lon']) for v in via_pts)}"
-            f"&vialats={'|'.join(str(v['lat']) for v in via_pts)}"
-            f"&vianames={'|'.join(quote(v['name'], safe='') for v in via_pts)}"
-        )
-    if platform == "android":
-        return f"amapuri://route/plan/?{common}"
-    return f"iosamap://path?{common}"
-
-
 def dir_url(start, vias, end, hotel_name: str) -> str:
     ts = 1_781_792_351_000
 
@@ -259,18 +212,11 @@ def main() -> int:
                 issues.append("DUP_HOTEL")
             if any(re.search(r"^(?:出发去|前往|退房)", n) for n in names):
                 issues.append("ACTIVITY_NAME")
-            desktop = dir_url(route["start"], route["vias"], route["end"], hotel_name)
-            if len(route["vias"]) > 1 and "via[1]" not in desktop:
-                issues.append("MISSING_MULTI_VIA")
-            mobile = mobile_url(route["start"], route["vias"], route["end"], hotel_name)
-            if len(route["vias"]) <= 1 and not (mobile or "").startswith("https://m.amap.com/"):
-                issues.append("BAD_MOBILE")
-            if len(route["vias"]) > 1:
-                ios = native_url(route["start"], route["vias"], route["end"], hotel_name, "ios")
-                if f"vian={len(route['vias'])}" not in ios:
-                    issues.append("BAD_VIAN")
-                if "%7C" in ios.split("vianames=")[-1]:
-                    issues.append("VIANAMES_PIPE_ENCODED")
+            url = dir_url(route["start"], route["vias"], route["end"], hotel_name)
+            if not url.startswith("https://ditu.amap.com/dir?"):
+                issues.append("BAD_URL")
+            if route["vias"] and f"via[{len(route['vias']) - 1}]" not in url:
+                issues.append("MISSING_VIA")
             status = "OK" if not issues else "FAIL " + ",".join(issues)
             if issues:
                 failed += 1

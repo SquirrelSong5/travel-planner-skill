@@ -1647,58 +1647,6 @@
         return { start: s, vias: v, end: e };
       }
 
-      function encodeAmapNavName(name) {
-        return encodeURIComponent(name || '地点').replace(/%28/g, '(').replace(/%29/g, ')');
-      }
-
-      function mobileNavPoint(p) {
-        const c = poiCoords(p);
-        if (!c) return '';
-        return `${c.lng},${c.lat},${encodeAmapNavName(naviPlaceName(p) || '地点')}`;
-      }
-
-      /** 手机 m.amap 驾车最多 3 点（起点 + 1 途经 + 终点） */
-      function buildDayAmapMobileUrl(start, vias, end) {
-        const saddr = mobileNavPoint(start);
-        const daddr = mobileNavPoint(end);
-        if (!saddr || !daddr) return null;
-        const parts = [`saddr=${saddr}`, `daddr=${daddr}`, 'sort=dist'];
-        if (vias.length === 1) {
-          const m = mobileNavPoint(vias[0]);
-          if (m) parts.push(`maddr=${m}`);
-        } else if (vias.length > 1) {
-          return null;
-        }
-        return `https://m.amap.com/navigation/carmap/${parts.join('&')}`;
-      }
-
-      function amapRoutePointParams(p) {
-        const c = poiCoords(p);
-        if (!c) return null;
-        return { lat: c.lat, lon: c.lng, name: naviPlaceName(p) || '地点' };
-      }
-
-      function buildDayAmapNativeUrls(start, vias, end) {
-        const s = amapRoutePointParams(start);
-        const e = amapRoutePointParams(end);
-        if (!s || !e) return null;
-        const viaPts = vias.map(amapRoutePointParams).filter(Boolean);
-        let common = `sourceApplication=${encodeURIComponent('travel-planner')}`
-          + `&sid=&slat=${s.lat}&slon=${s.lon}&sname=${encodeURIComponent(s.name)}`
-          + `&did=&dlat=${e.lat}&dlon=${e.lon}&dname=${encodeURIComponent(e.name)}`
-          + '&dev=0&t=0';
-        if (viaPts.length) {
-          common += `&vian=${viaPts.length}`
-            + `&vialons=${viaPts.map(v => v.lon).join('|')}`
-            + `&vialats=${viaPts.map(v => v.lat).join('|')}`
-            + `&vianames=${viaPts.map(v => encodeURIComponent(v.name)).join('|')}`;
-        }
-        return {
-          ios: `iosamap://path?${common}`,
-          android: `amapuri://route/plan/?${common}`,
-        };
-      }
-
       function dirEndpointQuery(role, p, id) {
         const c = poiCoords(p);
         if (!c) return '';
@@ -1713,9 +1661,8 @@
         return `via[${index}][lnglat]=${c.lng},${c.lat}&via[${index}][name]=${name}`;
       }
 
-      /** 高德地图路线规划页（ditu.amap.com/dir，支持 via[0]…via[n] 多途经点） */
-      function buildDayAmapDirUrl(start, vias, end, opts) {
-        const callnative = opts && opts.callnative;
+      /** 高德地图路线规划页（ditu.amap.com/dir；via[0]…via[n] 表达多途经点，无硬上限） */
+      function buildDayAmapDirUrl(start, vias, end) {
         const ts = Date.now();
         const q = [
           dirEndpointQuery('from', start, `${ts}-from`),
@@ -1726,17 +1673,8 @@
           'innersrc=uriapi',
           'policy=1',
         ];
-        if (callnative) q.push('callnative=1');
         if (q.length < 5) return null;
         return `https://ditu.amap.com/dir?${q.filter(Boolean).join('&')}`;
-      }
-
-      function isIosAmapDevice() {
-        return /iPhone|iPad|iPod/i.test(navigator.userAgent);
-      }
-
-      function isMobileAmapDevice() {
-        return isIosAmapDevice() || /Android/i.test(navigator.userAgent);
       }
 
       function openAmapUrl(url) {
@@ -1751,19 +1689,7 @@
       }
 
       function openAmapDayRoute(route) {
-        if (!isMobileAmapDevice()) {
-          openAmapUrl(buildDayAmapDirUrl(route.start, route.vias, route.end));
-          return;
-        }
-        const totalPoints = 2 + route.vias.length;
-        const mobileUrl = buildDayAmapMobileUrl(route.start, route.vias, route.end);
-        if (mobileUrl && totalPoints <= 3) {
-          window.location.href = mobileUrl;
-          return;
-        }
-        const native = buildDayAmapNativeUrls(route.start, route.vias, route.end);
-        if (!native) return;
-        window.location.href = isIosAmapDevice() ? native.ios : native.android;
+        openAmapUrl(buildDayAmapDirUrl(route.start, route.vias, route.end));
       }
 
       function bindDayRouteButtons() {

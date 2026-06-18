@@ -272,10 +272,12 @@ MCP 无 `distance`/`duration` 时，同参数调 REST；`source` 写 `amap-rest-
 | 场景 | 实现 | 说明 |
 |------|------|------|
 | **逐段导航**（时间轴「导航」） | `https://uri.amap.com/navigation?from=…&to=…&mode=…` | 跟 `transports[].mode` 一致（步行/公交/驾车）；每段一对起终点 |
-| **全天路线**（Day 卡片「全天路线」按钮） | 桌面 [`ditu.amap.com/dir`](https://ditu.amap.com/dir)；手机 ≤3 点 `m.amap.com`，>3 点 `iosamap://path` / `amapuri://route/plan`（`vian`+`vialons|vialats|vianames`） | 手机勿降级 `ditu`（多途经仅 3 点）；途经名逐个 encode 后用 `\|` 拼接 |
+| **全天路线**（Day 卡片「全天路线」按钮） | 一律 `https://ditu.amap.com/dir`，`via[0]…via[n]` 表达多途经点，**无点数上限** | 微信/微博/QQ 内置浏览器拦 `iosamap://` / `amapuri://` scheme 唤端，统一走 H5 是唯一可靠路径 |
 | **酒店往返** | `finalizeDayRouteStops` | 起终点同坐标时末站作终点；不以「回酒店」重复作终点 |
 
-全天路线由模板 `collectDayRouteStops()` 从 JSON 自动推导。桌面 `ditu.amap.com/dir`；手机 ≤3 点用 `m.amap.com`，超过 3 点用原生唤端（`vianames` 为 `encodeURIComponent(名1)|encodeURIComponent(名2)|…`，**勿**整串 encode 以免 `|` 变 `%7C`），**不**降级 `ditu`（手机端多途经会截断为 3 点）。
+全天路线由模板 `collectDayRouteStops()` 从 JSON 自动推导，**桌面与移动端统一走 `https://ditu.amap.com/dir`**（`from[...]/to[...]/via[0]...[via[n]]...`，`type=car`）。
+
+> **不**再走 `m.amap.com`（硬限 3 点，>3 点会丢途经点）和 `iosamap://path` / `amapuri://route/plan`（微信/微博/QQ 内置浏览器拦 scheme，无法唤起高德 App）。ditu 网页本身就是高德 H5，途经点/方案全在网页展示，用户可手动点"打开 App"继续导航。
 
 ### 高德 MCP 唤端（可选）
 
