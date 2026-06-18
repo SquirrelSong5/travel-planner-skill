@@ -1196,6 +1196,16 @@
           .replace(/'/g, '&#39;');
       }
 
+      // v2.0.4 mini markdown parser：处理 **xx** → <strong>xx</strong> + 换行 → <br>
+      // 复用 esc() 防 XSS，零新依赖
+      function mdLite(s) {
+        if (s === null || s === undefined) return '';
+        let out = esc(s);
+        out = out.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+        out = out.replace(/\n/g, '<br>');
+        return out;
+      }
+
       // ===== Drawer 交互 =====
       function openDrawer() {
         const drawer = document.getElementById('drawer');
@@ -1256,7 +1266,7 @@
           return;
         }
         document.getElementById('weather-section').style.display = '';
-        document.getElementById('weather-plan-text').textContent = wp;
+        document.getElementById('weather-plan-text').innerHTML = mdLite(wp);
       }
 
       // ===== Tabs =====
@@ -1357,7 +1367,7 @@
         })();
 
         const wsTag = d.weather_decision ?
-          `<p class="note" style="margin-top:8px">📋 ${esc(d.weather_decision)}</p>` : '';
+          `<p class="note" style="margin-top:8px">📋 ${mdLite(d.weather_decision)}</p>` : '';
 
         // 收集要"嵌入"到 POI 卡片末尾的 meal：按时段匹配第一个符合的 POI，
         // 没匹配到的 fallback 到最后 POI
@@ -1373,8 +1383,8 @@
 
         const poiItems = d.pois.map((p, poiArrIdx) => {
           const ws = p.weather_sensitive ? ' <span class="weather-sensitive">⚠️ 天气敏感</span>' : '';
-          const note = p.note ? `<p class="note">${esc(p.note)}</p>` : '';
-          const why = p.why ? `<p class="why">→ ${esc(p.why)}</p>` : '';
+          const note = p.note ? `<p class="note">${mdLite(p.note)}</p>` : '';
+          const why = p.why ? `<p class="why">→ ${mdLite(p.why)}</p>` : '';
           const links = p.links || {};
           const linkParts = [];
           // 删：POI 卡片"导航"按钮（v2.0.1 改：next-leg 卡片已自带导航，POI 卡片不再重复）
@@ -1490,7 +1500,7 @@
               : `<a href="${esc(link.href)}" target="_blank" rel="noopener">${title}</a>`;
             return `<li>
               <span class="item-title">${titleHtml}<span class="item-deadline">· ${esc(x.deadline)}</span></span>
-              ${x.note ? `<span class="item-meta">${esc(x.note)}</span>` : ''}
+              ${x.note ? `<span class="item-meta">${mdLite(x.note)}</span>` : ''}
             </li>`;
           }).join('');
           document.getElementById('prebook-count').textContent = `${D.prebook.length} 项`;
