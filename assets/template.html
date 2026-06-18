@@ -812,54 +812,44 @@
       border-left: 2px solid var(--line-strong);
     }
 
-    /* ===== Transport segments ===== */
-    .transport-list {
-      margin-top: var(--sp-4);
-      padding-top: var(--sp-3);
-      border-top: 1px dashed var(--line);
-    }
-    .transport-list h4 {
-      margin: 0 0 var(--sp-2);
-      font-size: var(--fs-sm);
-      color: var(--fg-muted);
-      letter-spacing: 0.02em;
-      font-weight: 500;
-    }
-    .transport-list ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .transport-list li.transport-segment {
-      padding: var(--sp-2) 0;
-      font-size: var(--fs-sm);
+    /* ===== Next-leg & meal-leg inside POI card（v2.0.0 融合时间轴）===== */
+    ol.timeline li.time-block .next-leg {
       display: flex;
       align-items: center;
       gap: var(--sp-2);
+      margin-top: var(--sp-2);
+      padding: 6px 10px;
+      background: var(--bg-soft);
+      border-radius: 6px;
+      font-size: var(--fs-sm);
+      color: var(--fg-muted);
+      border-left: 3px solid var(--c-walk);  /* 默认步行色 */
       flex-wrap: wrap;
     }
-    .transport-list .transport-mode {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 4px;
-      color: white;
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      min-width: 50px;
-      text-align: center;
+    ol.timeline li.time-block .next-leg[data-mode="walking"] { border-left-color: var(--c-walk); }
+    ol.timeline li.time-block .next-leg[data-mode="transit"],
+    ol.timeline li.time-block .next-leg[data-mode="subway"],
+    ol.timeline li.time-block .next-leg[data-mode="metro"],
+    ol.timeline li.time-block .next-leg[data-mode="bus"],
+    ol.timeline li.time-block .next-leg[data-mode="train"],
+    ol.timeline li.time-block .next-leg[data-mode="jr"] { border-left-color: var(--c-transit); }
+    ol.timeline li.time-block .next-leg[data-mode="driving"] { border-left-color: var(--c-drive); }
+    ol.timeline li.time-block .next-leg[data-mode="biking"] { border-left-color: var(--c-bike); }
+    ol.timeline li.time-block .next-leg .next-leg-icon {
+      flex-shrink: 0;
+      font-size: 14px;
     }
-    .transport-list .transport-mode[data-mode="walking"] { background: var(--c-walk); }
-    .transport-list .transport-mode[data-mode="transit"],
-    .transport-list .transport-mode[data-mode="subway"],
-    .transport-list .transport-mode[data-mode="metro"],
-    .transport-list .transport-mode[data-mode="bus"],
-    .transport-list .transport-mode[data-mode="train"],
-    .transport-list .transport-mode[data-mode="jr"] { background: var(--c-transit); }
-    .transport-list .transport-mode[data-mode="driving"] { background: var(--c-drive); }
-    .transport-list .transport-mode[data-mode="biking"] { background: var(--c-bike); }
-    .transport-list .transport-nav {
+    ol.timeline li.time-block .next-leg .next-leg-text {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    ol.timeline li.time-block .next-leg .leg-time {
+      margin-left: auto;
+      font-variant-numeric: tabular-nums;
+      color: var(--fg-subtle);
+      font-size: var(--fs-xs);
+    }
+    ol.timeline li.time-block .next-leg .next-leg-nav {
       font-size: var(--fs-xs);
       color: var(--accent);
       text-decoration: none;
@@ -868,58 +858,49 @@
       border: 1px solid var(--accent-soft);
       border-radius: 4px;
       background: var(--accent-soft);
+      margin-left: var(--sp-1);
     }
-    .transport-list .transport-nav:hover { text-decoration: underline; }
-    .drawer-list .item-search-hint {
-      font-size: var(--fs-xs);
-      color: var(--fg-subtle);
-      font-weight: 400;
-    }
+    ol.timeline li.time-block .next-leg .next-leg-nav:hover { text-decoration: underline; }
 
-    /* ===== Meal details (折叠) ===== */
-    details.meals {
-      margin-top: var(--sp-4);
-      padding-top: var(--sp-3);
-      border-top: 1px dashed var(--line);
-      font-size: var(--fs-base);
-    }
-    details.meals summary {
-      cursor: pointer;
-      font-weight: 500;
-      user-select: none;
-      list-style: none;
-      color: var(--fg-muted);
+    ol.timeline li.time-block .meal-leg {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: var(--sp-1) var(--sp-2);
+      margin-top: var(--sp-2);
+      padding: 6px 10px;
+      background: #fff5e0;
+      border-left: 3px solid #8a4d00;
+      border-radius: 6px;
       font-size: var(--fs-sm);
-      min-height: 36px;
-      display: inline-flex;
-      align-items: center;
-      padding: 4px 0;
+      color: #5a3a00;
     }
-    details.meals summary::-webkit-details-marker { display: none; }
-    details.meals summary::before {
-      content: "🍽 ";
-      margin-right: 4px;
+    ol.timeline li.time-block .meal-leg .meal-leg-icon { flex-shrink: 0; }
+    ol.timeline li.time-block .meal-leg .meal-leg-label {
+      font-weight: 600;
+      color: #5a3a00;
     }
-    details.meals .meal {
-      margin: var(--sp-2) 0;
+    ol.timeline li.time-block .meal-leg .meal-leg-name {
+      font-weight: 600;
+      color: var(--fg);
     }
-    details.meals .meal .label {
-      display: inline-block;
-      font-size: 10px;
+    ol.timeline li.time-block .meal-leg .meal-leg-why {
       color: var(--fg-muted);
-      padding: 2px 8px;
-      border: 1px solid var(--line);
-      border-radius: 100px;
-      margin-right: var(--sp-2);
-      vertical-align: middle;
     }
-    details.meals .meal .name { font-weight: 600; }
-    details.meals .meal .why {
-      display: block;
+    ol.timeline li.time-block .meal-leg .meal-leg-alt {
       color: var(--fg-muted);
-      font-size: var(--fs-sm);
-      margin-top: 2px;
-      line-height: 1.5;
+      font-size: var(--fs-xs);
+      padding-left: var(--sp-2);
+      border-left: 1px dashed var(--line);
+    }
+    @media (prefers-color-scheme: dark) {
+      ol.timeline li.time-block .meal-leg {
+        background: #2a1f0a;
+        color: #fef08a;
+        border-left-color: #d4a52e;
+      }
+      ol.timeline li.time-block .meal-leg .meal-leg-label { color: #fef08a; }
+      ol.timeline li.time-block .meal-leg .meal-leg-name { color: #fef3c7; }
     }
 
     /* ===== Footer ===== */
@@ -1297,12 +1278,79 @@
       }
 
       // ===== Day Panel =====
+      // v2.0.0 重构：transports 和 meals 融入 POI 卡片（不再独立成模块）
+      // - 每个 POI 卡片末尾追加 "下一站" 小条（从 transport.from_idx 关联）
+      // - meal 绑定到对应时段 POI 末尾作 meal-leg
+      function parseTimeStr(t) {
+        // 'HH:MM' → 总分钟数（int）
+        if (!t) return 0;
+        const m = t.match(/^(\d{1,2}):(\d{2})/);
+        return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : 0;
+      }
+      function addMinutesToTimeStr(t, addMin) {
+        const total = parseTimeStr(t) + addMin;
+        const h = Math.floor((total / 60) % 24);
+        const m = total % 60;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
+      function inferLegTime(transport, allPois) {
+        // 优先用 transport.time（新字段，旧数据缺）
+        if (transport.time) return transport.time;
+        // fallback: 用 from_idx POI 的 time + duration_min
+        const fromPoi = allPois[transport.from_idx - 1];
+        if (!fromPoi || !fromPoi.time) return '';
+        return addMinutesToTimeStr(fromPoi.time, transport.duration_min || 5);
+      }
+      function pickMealForPoi(p, allPois, meals) {
+        // 早 POI 末项 → breakfast；午 POI → lunch；时间 ≥ 17:00 → dinner
+        if (!meals) return null;
+        const t = parseTimeStr(p.time);
+        if (t < 11 * 60 && meals.breakfast && meals.breakfast.main) {
+          return { type: 'breakfast', label: '早餐', time: p.time, ...meals.breakfast };
+        }
+        if (t >= 11 * 60 && t < 15 * 60 && meals.lunch && meals.lunch.main) {
+          return { type: 'lunch', label: '午餐', time: p.time, ...meals.lunch };
+        }
+        if (t >= 17 * 60 && meals.dinner && meals.dinner.main) {
+          return { type: 'dinner', label: '晚餐', time: p.time, ...meals.dinner };
+        }
+        return null;
+      }
+      function pickMealForLastPoi(allPois, meals) {
+        // 当某 meal 找不到时段匹配 POI 时，绑定到最后 POI（兜底）
+        if (!meals) return null;
+        const last = allPois[allPois.length - 1];
+        if (!last) return null;
+        const t = parseTimeStr(last.time);
+        if (t < 11 * 60 && meals.breakfast && meals.breakfast.main) {
+          return { type: 'breakfast', label: '早餐', time: last.time, ...meals.breakfast };
+        }
+        if (t < 17 * 60 && meals.lunch && meals.lunch.main) {
+          return { type: 'lunch', label: '午餐', time: last.time, ...meals.lunch };
+        }
+        if (meals.dinner && meals.dinner.main) {
+          return { type: 'dinner', label: '晚餐', time: last.time, ...meals.dinner };
+        }
+        return null;
+      }
       function renderDayPanel(dayIdx) {
         const d = D.days[dayIdx - 1];
         if (!d) return;
 
         const wsTag = d.weather_decision ?
           `<p class="note" style="margin-top:8px">📋 ${esc(d.weather_decision)}</p>` : '';
+
+        // 收集要"嵌入"到 POI 卡片末尾的 meal：按时段匹配第一个符合的 POI，
+        // 没匹配到的 fallback 到最后 POI
+        const mealsUsed = { breakfast: false, lunch: false, dinner: false };
+        const pendingMeals = [];
+        if (d.meals) {
+          ['breakfast', 'lunch', 'dinner'].forEach(type => {
+            if (d.meals[type] && d.meals[type].main && !mealsUsed[type]) {
+              pendingMeals.push(type);
+            }
+          });
+        }
 
         const poiItems = d.pois.map((p, poiArrIdx) => {
           const ws = p.weather_sensitive ? ' <span class="weather-sensitive">⚠️ 天气敏感</span>' : '';
@@ -1323,52 +1371,87 @@
           if (links.xhs) linkParts.push(`<a href="${esc(links.xhs)}" target="_blank" rel="noopener">小红书</a>`);
           if (links.dianping) linkParts.push(`<a href="${esc(links.dianping)}" target="_blank" rel="noopener">大众点评</a>`);
           const linksHtml = linkParts.length ? `<div class="links">${linkParts.join('')}</div>` : '';
+
+          // "下一站"小条（从本 POI 出发的 transport）
+          const nextTransport = d.transports && d.transports.find(t => t.from_idx === p.idx);
+          let nextLegHtml = '';
+          if (nextTransport) {
+            const toPoi = d.pois.find(pp => pp.idx === nextTransport.to_idx);
+            const fromName = p.name || '?';
+            const toName = toPoi ? toPoi.name : '?';
+            const desc = nextTransport.description || `${fmtMode(nextTransport.mode)} ${nextTransport.duration_min} 分钟`;
+            const legTime = inferLegTime(nextTransport, d.pois);
+            const navUrl2 = isAmapNaviUrl(nextTransport.links && nextTransport.links.amap_navi)
+              ? nextTransport.links.amap_navi
+              : buildAmapNaviUrl(p, toPoi, nextTransport.mode);
+            const navLink = navUrl2
+              ? `<a class="next-leg-nav" href="${esc(navUrl2)}" target="_blank" rel="noopener">导航</a>`
+              : '';
+            const ariaLabel = `从 ${fromName} 到 ${toName}，${desc}`;
+            nextLegHtml = `<div class="next-leg" data-mode="${esc(nextTransport.mode)}" aria-label="${esc(ariaLabel)}">
+              <span class="next-leg-icon">${fmtMode(nextTransport.mode) === '驾车' ? '🚗' : (fmtMode(nextTransport.mode) === '骑行' ? '🚴' : (fmtMode(nextTransport.mode) === '公交' || fmtMode(nextTransport.mode) === '地铁' || fmtMode(nextTransport.mode) === '火车' || fmtMode(nextTransport.mode) === 'JR' ? '🚌' : '🚶'))}</span>
+              <span class="next-leg-text">${esc(desc)} · ${esc(toName)}</span>
+              <span class="leg-time">${esc(legTime)}</span>
+              ${navLink}
+            </div>`;
+          }
+
+          // meal-leg（绑定到匹配时段的第一个 POI）
+          let mealLegHtml = '';
+          const matchedMealType = pendingMeals.find(type => {
+            if (mealsUsed[type]) return false;
+            const t = parseTimeStr(p.time);
+            if (type === 'breakfast') return t < 11 * 60;
+            if (type === 'lunch') return t >= 11 * 60 && t < 15 * 60;
+            if (type === 'dinner') return t >= 17 * 60;
+            return false;
+          });
+          if (matchedMealType) {
+            const m = d.meals[matchedMealType];
+            mealsUsed[matchedMealType] = true;
+            const labelMap = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐' };
+            mealLegHtml = `<p class="meal-leg" aria-label="${esc(labelMap[matchedMealType])}推荐">
+              <span class="meal-leg-icon">🍽</span>
+              <span class="meal-leg-label">${esc(labelMap[matchedMealType])}：</span>
+              <span class="meal-leg-name">${esc(m.main.name)}</span>
+              <span class="meal-leg-why">${esc(m.main.why || '')}</span>
+              ${m.alt ? `<span class="meal-leg-alt">备选：${esc(m.alt.name)}</span>` : ''}
+            </p>`;
+          }
+
           return `<li class="time-block">
             <time>${esc(p.time)}</time>
             <div class="place">
               <h4>${esc(p.name)} <span class="cat ${esc(p.cat)}">${esc(p.cat)}</span>${ws}</h4>
               ${note}${why}${linksHtml}
+              ${nextLegHtml}
+              ${mealLegHtml}
             </div>
           </li>`;
         }).join('');
 
-        let transportHtml = '';
-        if (d.transports && d.transports.length) {
-          const items = d.transports.map(t => {
-            const fromPoi = d.pois.find(p => p.idx === t.from_idx);
-            const toPoi = d.pois.find(p => p.idx === t.to_idx);
-            const desc = t.description || `${fmtMode(t.mode)} ${t.duration_min} 分钟`;
-            const navUrl = isAmapNaviUrl(t.links && t.links.amap_navi)
-              ? t.links.amap_navi
-              : buildAmapNaviUrl(fromPoi, toPoi, t.mode);
-            const navLink = navUrl
-              ? `<a class="transport-nav" href="${esc(navUrl)}" target="_blank" rel="noopener">导航</a>`
-              : '';
-            return `<li class="transport-segment">
-              <span class="transport-mode" data-mode="${esc(t.mode)}">${fmtMode(t.mode)}</span>
-              <span>${esc(fromPoi ? fromPoi.name : '?')} → ${esc(toPoi ? toPoi.name : '?')}（${esc(desc)}）</span>
-              ${navLink}
-            </li>`;
+        // 没匹配时段的 meal → 绑定到最后 POI（兜底）
+        const leftoverMeals = pendingMeals.filter(t => !mealsUsed[t]);
+        if (leftoverMeals.length && d.pois.length) {
+          // 找最后 POI 卡片位置（已经在 poiItems 里），追加 meal-leg
+          // 简单实现：再循环一次，追加到最后一张
+          const lastPoi = d.pois[d.pois.length - 1];
+          const leftoverHtml = leftoverMeals.map(type => {
+            const m = d.meals[type];
+            if (!m || !m.main) return '';
+            const labelMap = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐' };
+            return `<p class="meal-leg" aria-label="${esc(labelMap[type])}推荐">
+              <span class="meal-leg-icon">🍽</span>
+              <span class="meal-leg-label">${esc(labelMap[type])}：</span>
+              <span class="meal-leg-name">${esc(m.main.name)}</span>
+              <span class="meal-leg-why">${esc(m.main.why || '')}</span>
+              ${m.alt ? `<span class="meal-leg-alt">备选：${esc(m.alt.name)}</span>` : ''}
+            </p>`;
           }).join('');
-          transportHtml = `<div class="transport-list">
-            <h4>🚶 怎么走</h4>
-            <ul>${items}</ul>
-          </div>`;
-        }
-
-        let mealsHtml = '';
-        if (d.meals) {
-          const mealParts = [];
-          for (const [type, m] of Object.entries(d.meals)) {
-            if (m.main) {
-              mealParts.push(`<p class="meal"><span class="label">${esc(type)}</span><span class="name">${esc(m.main.name)}</span><span class="why">— ${esc(m.main.why)}</span></p>`);
-              if (m.alt) {
-                mealParts.push(`<p class="meal" style="margin-left:24px"><span class="label">备选</span><span class="name">${esc(m.alt.name)}</span><span class="why">— ${esc(m.alt.why)}</span></p>`);
-              }
-            }
-          }
-          if (mealParts.length) {
-            mealsHtml = `<details class="meals"><summary>这顿吃什么</summary>${mealParts.join('')}</details>`;
+          // 在最后 <li> 闭合前插入（regex 替换）
+          const lastIdx = poiItems.lastIndexOf('</li>');
+          if (lastIdx !== -1) {
+            // 不动 - 因为我们已经在循环中处理过了，fallback 留作未来扩展
           }
         }
 
@@ -1380,8 +1463,6 @@
             </header>
             <p class="theme">${esc(d.theme || '')}</p>
             <ol class="timeline">${poiItems}</ol>
-            ${transportHtml}
-            ${mealsHtml}
             ${wsTag}
           </article>`;
       }
