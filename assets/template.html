@@ -605,120 +605,63 @@
     /* ===== Map ===== */
     .map-section {
       margin-bottom: var(--sp-4);
-    }
-    .map-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: var(--sp-3);
-      padding: var(--sp-3) var(--sp-4);
-      background: var(--bg-elevated);
       border: 1px solid var(--line);
-      border-bottom: none;
-      border-radius: var(--radius) var(--radius) 0 0;
-      font-size: var(--fs-sm);
+      border-radius: var(--radius);
+      background: var(--bg-elevated);
+      overflow: hidden;
     }
-    .map-controls label.toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--sp-2);
-      cursor: pointer;
-      user-select: none;
-      /* 触控 ≥44px */
-      min-height: 44px;
-      padding: 0 var(--sp-2);
-    }
-    .map-controls label.toggle input { margin: 0; cursor: pointer; width: 18px; height: 18px; }
-    .legend {
+    .map-section-toggle {
       display: flex;
-      gap: var(--sp-3);
-      flex-wrap: wrap;
-      color: var(--fg-muted);
-    }
-    .legend-item {
-      display: inline-flex;
       align-items: center;
-      gap: var(--sp-1);
-      font-size: var(--fs-xs);
-    }
-    .legend-item .dot {
-      display: inline-block;
-      width: 18px;
-      height: 3px;
-      border-radius: 1px;
-    }
-    .legend-item .legend-line {
-      display: inline-block;
-      width: 26px;
-      height: 0;
-      border: none;
-      vertical-align: middle;
-    }
-    .legend-line-walk {
-      border-top: 2px dashed var(--c-walk);
-    }
-    .legend-line-subway {
-      border-top: 3px solid var(--c-transit);
-    }
-    .legend-line-bus {
-      height: 2px;
-      background: repeating-linear-gradient(
-        90deg,
-        var(--c-transit) 0 10px,
-        transparent 10px 14px
-      );
-    }
-    .legend-line-bike {
-      height: 2px;
-      background: repeating-linear-gradient(
-        90deg,
-        var(--c-bike) 0 5px,
-        transparent 5px 7px,
-        var(--c-bike) 7px 9px,
-        transparent 9px 12px
-      );
-    }
-    .legend-line-drive {
-      height: 2px;
-      background: repeating-linear-gradient(
-        90deg,
-        var(--c-drive) 0 12px,
-        transparent 12px 15px,
-        var(--c-drive) 15px 17px,
-        transparent 17px 20px
-      );
-    }
-    .route-summary {
-      display: flex;
-      flex-wrap: wrap;
       gap: var(--sp-2);
       width: 100%;
+      padding: var(--sp-3) var(--sp-4);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+      color: var(--fg);
+      min-height: 44px;
+      text-align: left;
     }
-    .route-chip {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 10px;
-      border-radius: 100px;
+    .map-section-toggle:hover { background: var(--bg-soft); }
+    .map-section-toggle:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+    }
+    .map-section-title {
+      font-size: var(--fs-sm);
+      font-weight: 600;
+    }
+    .map-section-hint {
       font-size: var(--fs-xs);
-      font-weight: 500;
-      background: var(--bg-soft);
       color: var(--fg-muted);
-      border: 1px solid var(--line);
+    }
+    .map-section-chevron {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--fg-muted);
+      transition: transform 0.2s;
+    }
+    .map-section.is-collapsed .map-section-chevron {
+      transform: rotate(-90deg);
+    }
+    .map-section.is-collapsed .map-panel {
+      display: none;
+    }
+    .map-panel {
+      border-top: 1px solid var(--line);
     }
     #map {
       width: 100%;
       height: 460px;
-      border: 1px solid var(--line);
-      border-top: none;
-      border-radius: 0 0 var(--radius) var(--radius);
+      border: none;
+      border-radius: 0;
       overflow: hidden;
-      /* 移动端触摸滚动与地图手势冲突时优先地图 */
       touch-action: pan-x pan-y;
     }
     @media (max-width: 600px) {
       #map { height: 320px; }
-      .legend { font-size: 10px; gap: var(--sp-2); }
     }
     .map-fallback {
       padding: 40px 20px;
@@ -1243,23 +1186,15 @@
 
       <div class="tabs" id="tabs" role="tablist" aria-label="每日行程"></div>
 
-      <section class="map-section">
-        <div class="map-controls">
-          <label class="toggle">
-            <input type="checkbox" id="toggle-route" checked>
-            <span>显示路线</span>
-          </label>
-          <div class="legend">
-            <span class="legend-item"><span class="legend-line legend-line-walk"></span>步行</span>
-            <span class="legend-item"><span class="legend-line legend-line-subway"></span>地铁</span>
-            <span class="legend-item"><span class="legend-line legend-line-bus"></span>公交</span>
-            <span class="legend-item"><span class="legend-line legend-line-bike"></span>骑行</span>
-            <span class="legend-item"><span class="legend-line legend-line-drive"></span>打车</span>
-            <span class="legend-item" style="opacity:0.85">· 路段异色</span>
-          </div>
-          <div class="route-summary" id="route-summary" aria-live="polite"></div>
+      <section class="map-section" id="map-section">
+        <button type="button" class="map-section-toggle" id="map-section-toggle" aria-expanded="true" aria-controls="map-panel">
+          <span class="map-section-title">地图</span>
+          <span class="map-section-hint">景点序号 · 酒店</span>
+          <span class="map-section-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="map-panel" id="map-panel">
+          <div id="map"></div>
         </div>
-        <div id="map"></div>
       </section>
 
       <section class="day-section" id="day-panel"></section>
@@ -1421,12 +1356,6 @@
         transport:'#2c5e8a'
       };
 
-      function fmtRouteMode(mode, transport) {
-        const n = normalizeRouteMode(mode, transport);
-        const map = { walking: '步行', subway: '地铁', bus: '公交', train: '火车', driving: '打车', biking: '骑行' };
-        return map[n] || fmtMode(mode);
-      }
-
       function fmtMode(mode) {
         const map = { walking:'步行', transit:'公交', subway:'地铁', metro:'地铁', bus:'公交', train:'火车', jr:'JR', driving:'驾车', biking:'骑行' };
         return map[mode] || mode;
@@ -1510,12 +1439,38 @@
         return { lng, lat };
       }
 
+      /** 高德导航用地点名：不用行程标题里的「入住/退房」等活动后缀 */
+      function naviPlaceName(p) {
+        if (!p) return '';
+        if (p.nav_name) return String(p.nav_name).trim();
+        if (p.place_name) return String(p.place_name).trim();
+        const raw = String(p.name || '').trim();
+        if (!raw) return p.idx === 0 ? ((D.hotel && D.hotel.name) || '酒店') : '';
+
+        if (p.idx === 0 || p.cat === 'hotel') {
+          return (D.hotel && D.hotel.name) || raw;
+        }
+        if (D.hotel && D.hotel.name) {
+          if (raw === D.hotel.name || raw.startsWith(D.hotel.name)) return D.hotel.name;
+          if (/^酒店\b/.test(raw) || raw.includes('退房') || raw.includes('入住')) return D.hotel.name;
+        }
+
+        let s = raw
+          .replace(/\s*[\|｜].*$/, '')
+          .replace(/\s*[（(][^）)]*[）)]\s*$/g, '')
+          .replace(/\s*(?:办理)?(?:入住|退房)(?:\s*\+\s*取行李)?(?:\s*\+\s*[^+]+)?$/i, '')
+          .replace(/\s*\+\s*取行李.*$/i, '')
+          .replace(/\s*取行李.*$/i, '')
+          .trim();
+        return s || raw;
+      }
+
       function buildAmapNaviUrl(from, to, mode) {
         const f = poiCoords(from);
         const t = poiCoords(to);
         if (!f || !t) return null;
-        const fromName = encodeURIComponent(from.name || '起点');
-        const toName = encodeURIComponent(to.name || '终点');
+        const fromName = encodeURIComponent(naviPlaceName(from) || '起点');
+        const toName = encodeURIComponent(naviPlaceName(to) || '终点');
         return `https://uri.amap.com/navigation?from=${f.lng},${f.lat},${fromName}&to=${t.lng},${t.lat},${toName}&mode=${amapMode(mode)}&callnative=1`;
       }
 
@@ -2286,6 +2241,7 @@
         const toName = toPoint.name || '?';
         const desc = transport.description || `${fmtMode(transport.mode)} ${transport.duration_min} 分钟`;
         const legTime = inferLegTime(transport, day);
+        const fareHint = transport.fare ? ` · 约 ${formatPriceAmount(transport.fare)}` : '';
         const navUrl2 = isAmapNaviUrl(transport.links && transport.links.amap_navi)
           ? transport.links.amap_navi
           : buildAmapNaviUrl(fromPoint, toPoint, transport.mode);
@@ -2300,7 +2256,7 @@
         const cls = legClass || 'next-leg';
         return `<div class="${cls}" data-mode="${esc(transport.mode)}" aria-label="${esc(ariaLabel)}">
           <span class="next-leg-icon">${icon}</span>
-          <span class="next-leg-text">${esc(desc)} · ${esc(toName)}</span>
+          <span class="next-leg-text">${esc(desc)}${fareHint} · ${esc(toName)}</span>
           <span class="leg-time">${esc(legTime)}</span>
           ${navLink}
         </div>`;
@@ -2528,103 +2484,10 @@
         }
       }
 
-      // ===== 地图 =====
+      // ===== 地图（仅 POI 序号 + 酒店锚点；路线导航交给高德 App）=====
       function clearMap() {
         mapLayers.forEach(l => { try { map.remove(l); } catch(e) {} });
         mapLayers = [];
-      }
-
-      function normalizeRouteMode(mode, transport) {
-        const m = (mode || 'transit').toLowerCase();
-        const desc = ((transport && transport.description) || '') + ((transport && transport.label) || '');
-        if (m === 'walk' || m === 'walking' || /步行/.test(desc)) return 'walking';
-        if (m === 'subway' || m === 'metro' || /地铁|轨道|号线/.test(desc)) return 'subway';
-        if (m === 'bus' || (/公交/.test(desc) && !/地铁/.test(desc))) return 'bus';
-        if (m === 'train' || m === 'jr') return 'train';
-        if (m === 'bike' || m === 'biking' || m === 'cycling' || m === 'ride' || /骑行|单车|自行车/.test(desc)) return 'biking';
-        if (m === 'drive' || m === 'driving' || m === 'taxi' || m === 'car' || /打车|驾车|出租/.test(desc)) return 'driving';
-        if (m === 'transit') return /地铁|轨道|号线/.test(desc) ? 'subway' : 'bus';
-        return 'bus';
-      }
-
-      function colorForMode(mode, transport) {
-        const n = normalizeRouteMode(mode, transport);
-        if (n === 'walking') return getCss('--c-walk');
-        if (n === 'driving') return getCss('--c-drive');
-        if (n === 'biking') return getCss('--c-bike');
-        return getCss('--c-transit');
-      }
-
-      // 相邻路段（1→2、2→3…）用不同颜色；线型按交通方式
-      const SEGMENT_PALETTE = [
-        '#2563eb', '#ea580c', '#059669', '#dc2626',
-        '#7c3aed', '#ca8a04', '#0891b2', '#be185d',
-        '#4f46e5', '#d97706', '#0d9488', '#9333ea'
-      ];
-      function colorForSegment(segIdx) {
-        return SEGMENT_PALETTE[segIdx % SEGMENT_PALETTE.length];
-      }
-
-      function getCss(name) {
-        return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
-      }
-
-      /**
-       * 线型约定（颜色仍由路段序号决定）：
-       * - 地铁：实线
-       * - 步行：虚线
-       * - 公交 / 骑行 / 打车 / 火车：各一种虚线图案
-       */
-      function lineStyleForMode(mode, transport) {
-        const n = normalizeRouteMode(mode, transport);
-        if (n === 'subway') {
-          return { strokeStyle: 'solid' };
-        }
-        if (n === 'walking') {
-          return { strokeStyle: 'dashed', strokeDasharray: [4, 4] };
-        }
-        if (n === 'bus') {
-          return { strokeStyle: 'dashed', strokeDasharray: [14, 6] };
-        }
-        if (n === 'biking') {
-          return { strokeStyle: 'dashed', strokeDasharray: [6, 3, 2, 3] };
-        }
-        if (n === 'driving') {
-          return { strokeStyle: 'dashed', strokeDasharray: [16, 5, 4, 5] };
-        }
-        if (n === 'train') {
-          return { strokeStyle: 'dashed', strokeDasharray: [10, 4, 2, 4] };
-        }
-        return { strokeStyle: 'dashed', strokeDasharray: [12, 6] };
-      }
-
-      function widthForMode(mode, transport) {
-        const n = normalizeRouteMode(mode, transport);
-        if (n === 'walking') return 3;
-        if (n === 'biking') return 3;
-        if (n === 'driving') return 4;
-        if (n === 'subway') return 4;
-        return 3.5;
-      }
-
-      function outlineExtraForMode(mode) {
-        return 2; // 描边比主线略粗，保持细线可读
-      }
-
-      function updateRouteSummary(dayIdx) {
-        const el = document.getElementById('route-summary');
-        if (!el) return;
-        const d = D.days[dayIdx - 1];
-        if (!d || !d.transports || !d.transports.length) {
-          el.innerHTML = '';
-          return;
-        }
-        el.innerHTML = d.transports.map((t, segIdx) => {
-          const from = t.from_idx === 0 ? '酒店' : String(t.from_idx);
-          const to = t.to_idx === 0 ? '酒店' : String(t.to_idx);
-          const color = colorForSegment(segIdx);
-          return `<span class="route-chip" style="border-left:3px solid ${color}">${from}→${to} ${esc(fmtRouteMode(t.mode, t))}</span>`;
-        }).join('');
       }
 
       function updateMap(dayIdx) {
@@ -2701,53 +2564,42 @@
           mapLayers.push(marker);
         });
 
-        const showRoute = document.getElementById('toggle-route').checked;
-        if (showRoute && d.transports) {
-          const outlineColor = getCss('--bg-elevated') || '#ffffff';
-          d.transports.forEach((t, segIdx) => {
-            const from = resolveTransportPoint(d, t.from_idx);
-            const to = resolveTransportPoint(d, t.to_idx);
-            if (!from || !to) return;
-            const pathCoords = (Array.isArray(t.path) && t.path.length >= 2)
-              ? t.path.map(coord => [coord[0], coord[1]])
-              : [[from.lng, from.lat], [to.lng, to.lat]];
-            const weight = widthForMode(t.mode, t);
-            const segColor = colorForSegment(segIdx);
-            const outlineW = weight + outlineExtraForMode(t.mode);
-            const lineStyle = lineStyleForMode(t.mode, t);
-            const outline = new AMap.Polyline({
-              path: pathCoords,
-              strokeColor: outlineColor,
-              strokeWeight: outlineW,
-              strokeOpacity: 0.9,
-              lineJoin: 'round',
-              lineCap: 'round',
-              zIndex: 10
-            });
-            map.add(outline);
-            mapLayers.push(outline);
-            const lineOpts = {
-              path: pathCoords,
-              strokeColor: segColor,
-              strokeWeight: weight,
-              strokeOpacity: 0.95,
-              lineJoin: 'round',
-              lineCap: 'round',
-              zIndex: 11,
-              strokeStyle: lineStyle.strokeStyle
-            };
-            if (lineStyle.strokeDasharray) {
-              lineOpts.strokeDasharray = lineStyle.strokeDasharray;
-            }
-            const polyline = new AMap.Polyline(lineOpts);
-            map.add(polyline);
-            mapLayers.push(polyline);
-          });
-        }
-
-        if (!d.center && d.pois && d.pois.length > 1) {
+        if (!d.center && d.pois && d.pois.length) {
           map.setFitView();
         }
+      }
+
+      function setMapCollapsed(collapsed) {
+        const section = document.getElementById('map-section');
+        const btn = document.getElementById('map-section-toggle');
+        if (!section || !btn) return;
+        section.classList.toggle('is-collapsed', collapsed);
+        btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        try {
+          localStorage.setItem(`${tripSlug()}_map_collapsed`, collapsed ? '1' : '0');
+        } catch (e) { /* ignore */ }
+        if (!collapsed && map) {
+          setTimeout(() => {
+            try {
+              map.getSize();
+              updateMap(currentDay);
+            } catch (e) { /* ignore */ }
+          }, 80);
+        }
+      }
+
+      function initMapCollapse() {
+        const btn = document.getElementById('map-section-toggle');
+        if (!btn) return;
+        let collapsed = false;
+        try {
+          collapsed = localStorage.getItem(`${tripSlug()}_map_collapsed`) === '1';
+        } catch (e) { /* ignore */ }
+        setMapCollapsed(collapsed);
+        btn.addEventListener('click', () => {
+          const section = document.getElementById('map-section');
+          setMapCollapsed(section.classList.contains('is-collapsed') ? false : true);
+        });
       }
 
       function initMap() {
@@ -2757,11 +2609,12 @@
           fb.className = 'map-fallback';
           fb.innerHTML = `<p>⚠️ 未配置高德 Web API Key</p>
             <p class="hint">在 AI Step 7 输出时填入 <code>window.AMAP_KEY</code>，或参见 README 申请（免费）</p>`;
-          document.querySelector('.map-section').appendChild(fb);
+          const panel = document.getElementById('map-panel');
+          (panel || document.querySelector('.map-section')).appendChild(fb);
           return;
         }
         const script = document.createElement('script');
-        script.src = `https://webapi.amap.com/maps?v=2.0&key=${window.AMAP_KEY}&plugin=AMap.Polyline,AMap.Marker,AMap.InfoWindow`;
+        script.src = `https://webapi.amap.com/maps?v=2.0&key=${window.AMAP_KEY}&plugin=AMap.Marker,AMap.InfoWindow`;
         script.onload = () => {
           // 地图中心：优先取 tripData.trip_center（AI 在 Step 7 注入），否则取首日主区域中心
           const tripCenter = D.trip_center || (D.days[0] && D.days[0].center);
@@ -2782,7 +2635,8 @@
           fb.className = 'map-fallback';
           fb.innerHTML = `<p>❌ 高德地图加载失败</p>
             <p class="hint">请检查 <code>window.AMAP_KEY</code> 是否正确</p>`;
-          document.querySelector('.map-section').appendChild(fb);
+          const panel = document.getElementById('map-panel');
+          (panel || document.querySelector('.map-section')).appendChild(fb);
         };
         document.head.appendChild(script);
       }
@@ -2794,13 +2648,8 @@
           t.setAttribute('aria-selected', isActive);
         });
         renderDayPanel(dayIdx);
-        updateRouteSummary(dayIdx);
         updateMap(dayIdx);
       }
-
-      document.addEventListener('change', e => {
-        if (e.target.id === 'toggle-route') updateMap(currentDay);
-      });
 
       // ===== Drawer 事件 =====
       document.getElementById('drawer-toggle').addEventListener('click', openDrawer);
@@ -3203,6 +3052,7 @@
         renderDrawerLists();
         renderTabs();
         initDrawerLayout();
+        initMapCollapse();
         showDay(1);
         initMap();
       }

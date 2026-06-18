@@ -106,6 +106,35 @@
 
 > **AI 默认流程**：< 1.5km 步行 → **1.5–4km 先 `bicycling`** → 4–25km `transit_integrated` → 无方案或用户要打车才 `driving`。
 
+### 2.2.1 公交综合 = 手机端「公交/地铁」混合方案（不是单模式）
+
+**结论**：`maps_direction_transit_integrated` / `/v3/direction/transit/integrated` **一次调用**即返回 A→B 的**多段混合方案**，与手机 App 点「公交/地铁」tab 同类——**不是**只能选步行/驾车/骑行其中一种。
+
+| API | 行为 | 与 App 对应 |
+|-----|------|------------|
+| `transit/integrated` | 返回 `transits[]` 多条备选；每条含 `segments[]`：**步行 + 公交/地铁 + 火车 +（可选）打车接驳** | App「公交/地铁」 |
+| `walking` / `driving` / `bicycling` | **单一**交通方式全程 | App「步行 / 驾车 / 骑行」 |
+
+**`segments[]` 典型结构**（青岛胶东机场 → 市区酒店实测）：
+
+```
+步行 447m → 地铁8号线(胶东机场→青岛北站) → 地铁3号线(青岛北站→五四广场) → 步行 583m
+总时长 ~96min，票价 ~7元
+```
+
+**注意**：
+
+1. **不要**对机场→酒店这类长距离直接调 `driving`——应先 `transit_integrated` + `city=青岛`（`city` 须 URL 编码）。
+2. 若方案里确有「打车到地铁站」，`segments[].taxi` 会有数据（v3 常为空；v5 公交 API 更完整，需 `show_fields`）。
+3. 本 skill 的 `transports[]` **一条记录 = 两个 POI 之间的一段**；混合细节写在 `description`（从 `segments` 拼），`path` 拼接各段 polyline；地图线型靠 `mode` + `description` 识别地铁/步行。
+4. **Day 1 抵达**：首站为机场/车站时，`scripts/add_hotel_legs.py` 会自动补 **机场 → 酒店（idx 0）** 段，并 **优先 transit**（不受 25km 距离上限误选打车）。
+
+```bash
+# 公交综合（混合方案）
+curl -sS "https://restapi.amap.com/v3/direction/transit/integrated?key=${AMAP_KEY}&origin=120.093,36.361&destination=120.382,36.067&city=%E9%9D%92%E5%B2%9B"
+# → route.transits[0].segments[].walking | .bus.buslines[] | .railway | .taxi
+```
+
 ### 2.2 MCP 实际返回（常无 polyline）
 
 ```

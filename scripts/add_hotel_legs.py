@@ -70,28 +70,72 @@ def extract_transit_polyline(route_json: dict) -> list[list[float]]:
     points: list[list[float]] = []
     segs = route_json.get("route", {}).get("transits", [{}])[0].get("segments", [])
     for seg in segs:
+        taxi = seg.get("taxi") or {}
+        raw_taxi = taxi.get("polyline") or ""
+        points.extend(parse_polyline_str(raw_taxi))
         for key in ("walking", "bus", "railway"):
             block = seg.get(key) or {}
             raw = block.get("polyline") or block.get("path") or ""
             points.extend(parse_polyline_str(raw))
+        for bl in (seg.get("bus") or {}).get("buslines") or []:
+            points.extend(parse_polyline_str(bl.get("polyline") or ""))
     return points
 
 
-def pick_mode(dist_m: float, hint: str) -> str:
-    if dist_m < 1500:
+def summarize_transit_segments(route_json: dict) -> tuple[str, str]:
+    """从公交综合方案提取人读描述与更细的 mode（subway/transit）。"""
+    segs = route_json.get("route", {}).get("transits", [{}])[0].get("segments", [])
+    parts: list[str] = []
+    has_subway = has_bus = has_taxi = False
+    for seg in segs:
+        taxi = seg.get("taxi") or {}
+        if taxi and int(taxi.get("distance") or 0) > 0:
+            has_taxi = True
+            parts.append("打车")
+        walk = seg.get("walking") or {}
+        if int(walk.get("distance") or 0) > 80:
+            parts.append("步行")
+        for bl in (seg.get("bus") or {}).get("buslines") or []:
+            name = (bl.get("name") or "").strip()
+            if not name:
+                continue
+            short = name.split("(")[0].strip()
+            if "地铁" in name or bl.get("type") == "地铁线路":
+                has_subway = True
+                parts.append(short)
+            else:
+                has_bus = True
+                parts.append(short)
+        railway = seg.get("railway") or {}
+        if railway.get("name"):
+            parts.append(str(railway["name"]).split("(")[0].strip())
+    desc = " → ".join(parts) if parts else "公交/地铁"
+    if has_taxi and (has_subway or has_bus):
+        mode = "transit"
+        if has_subway:
+            desc = f"打车接驳 + {desc}" if "打车" not in desc else desc
+    elif has_subway and not has_bus:
+        mode = "subway"
+    else:
+        mode = "transit"
+    return desc, mode
+
+
+def pick_mode(dist_m: float, hint: str, *, prefer_transit: bool = False) -> str:
+    if dist_m < 1500 and not prefer_transit:
         return "walking"
     h = (hint or "").lower()
     if "步行" in hint or "walk" in h:
         return "walking"
     if "骑行" in hint or "bike" in h or "bicycling" in h or "ride" in h:
         return "biking"
-    if "打车" in hint or "驾车" in hint or "taxi" in h or "drive" in h:
+    if not prefer_transit and ("打车" in hint or "驾车" in hint or "taxi" in h or "drive" in h):
         return "driving"
-    if "地铁" in hint or "公交" in hint or "transit" in h:
+    if "地铁" in hint or "公交" in hint or "transit" in h or prefer_transit:
         return "transit"
-    if dist_m < 4000:
+    if dist_m < 4000 and not prefer_transit:
         return "biking"
-    if dist_m < 25000:
+    if prefer_transit or dist_m < 80000:
         return "transit"
     return "driving"
 
@@ -139,13 +183,15 @@ def _fetch_direction(
         distance_m = int(t0.get("distance", 0))
         path = extract_transit_polyline(rest)
         cost = float(t0.get("cost", 0) or 0)
+        transit_desc, transit_mode = summarize_transit_segments(rest)
         return {
-            "mode": "transit",
+            "mode": transit_mode,
             "duration_min": duration_min,
             "distance_m": distance_m,
             "path": path,
             "source": "amap-rest-api",
             "fare_per_person": cost if cost > 0 else 3.0,
+            "transit_summary": transit_desc,
         }
     endpoint = {
         "walking": "walking",
@@ -224,11 +270,43 @@ def commute_hint(trip: dict[str, Any], day_num: int) -> str:
     return ""
 
 
-def leg_description(kind: str, mode: str, duration: int, from_name: str, to_name: str) -> str:
-    mode_zh = {"walking": "步行", "transit": "公交/地铁", "driving": "打车", "biking": "骑行"}.get(mode, mode)
+def leg_description(
+    kind: str,
+    mode: str,
+    duration: int,
+    from_name: str,
+    to_name: str,
+    route: dict[str, Any] | None = None,
+) -> str:
+    summary = (route or {}).get("transit_summary")
+    if summary:
+        if kind == "morning":
+            return f"{summary} 酒店 → {to_name}（约 {duration} 分钟）"
+        if kind == "arrival":
+            return f"{summary} {from_name} → 酒店（约 {duration} 分钟）"
+        return f"{summary} {from_name} → 酒店（约 {duration} 分钟）"
+    mode_zh = {
+        "walking": "步行",
+        "transit": "公交/地铁",
+        "subway": "地铁",
+        "bus": "公交",
+        "driving": "打车",
+        "biking": "骑行",
+    }.get(mode, mode)
     if kind == "morning":
         return f"{mode_zh} 酒店 → {to_name}（约 {duration} 分钟）"
+    if kind == "arrival":
+        return f"{mode_zh} {from_name} → 酒店（约 {duration} 分钟）"
     return f"{mode_zh} {from_name} → 酒店（约 {duration} 分钟）"
+
+
+def first_is_arrival(pois: list[Any], day_num: int) -> bool:
+    if day_num != 1 or not pois:
+        return False
+    first = pois[0]
+    if first.get("cat") == "transport":
+        return True
+    return bool(_DEPARTURE_RE.search(first.get("name") or ""))
 
 
 def has_leg(transports: list[Any], from_idx: int, to_idx: int) -> bool:
@@ -318,7 +396,7 @@ def repair_hotel_legs(trip: dict[str, Any], key: str) -> int:
             t.update({
                 "mode": route["mode"],
                 "duration_min": route["duration_min"],
-                "description": leg_description(kind, route["mode"], route["duration_min"], from_name, to_name),
+                "description": leg_description(kind, route["mode"], route["duration_min"], from_name, to_name, route),
                 "distance_m": route["distance_m"],
                 "path": route["path"],
                 "source": route["source"],
@@ -349,6 +427,25 @@ def add_legs(trip: dict[str, Any], key: str) -> int:
         last_loc = get_loc(last)
         hint = commute_hint(trip, day_num)
 
+        if first_is_arrival(pois, day_num) and fi is not None and first_loc and not has_leg(transports, fi, 0):
+            dist = haversine_m(first_loc, hotel_loc)
+            mode = pick_mode(dist, hint, prefer_transit=True)
+            route = finalize_route(key, amap_direction(key, mode, first_loc, hotel_loc, city), first_loc, hotel_loc, city)
+            transports.insert(0, {
+                "from_idx": fi,
+                "to_idx": 0,
+                "mode": route["mode"],
+                "duration_min": route["duration_min"],
+                "description": leg_description(
+                    "arrival", route["mode"], route["duration_min"], first.get("name", ""), "酒店", route,
+                ),
+                "distance_m": route["distance_m"],
+                "path": route["path"],
+                "source": route["source"],
+                "fare": build_fare(route["mode"], party, route),
+            })
+            added += 1
+
         if not first_skips_morning(pois, trip, day_num) and fi is not None and first_loc and not has_leg(transports, 0, fi):
             dist = haversine_m(hotel_loc, first_loc)
             mode = pick_mode(dist, hint)
@@ -358,7 +455,7 @@ def add_legs(trip: dict[str, Any], key: str) -> int:
                 "to_idx": fi,
                 "mode": route["mode"],
                 "duration_min": route["duration_min"],
-                "description": leg_description("morning", route["mode"], route["duration_min"], "酒店", first.get("name", "")),
+                "description": leg_description("morning", route["mode"], route["duration_min"], "酒店", first.get("name", ""), route),
                 "distance_m": route["distance_m"],
                 "path": route["path"],
                 "source": route["source"],
@@ -375,7 +472,7 @@ def add_legs(trip: dict[str, Any], key: str) -> int:
                 "to_idx": 0,
                 "mode": route["mode"],
                 "duration_min": route["duration_min"],
-                "description": leg_description("evening", route["mode"], route["duration_min"], last.get("name", ""), "酒店"),
+                "description": leg_description("evening", route["mode"], route["duration_min"], last.get("name", ""), "酒店", route),
                 "distance_m": route["distance_m"],
                 "path": route["path"],
                 "source": route["source"],
