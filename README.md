@@ -10,7 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)](CHANGELOG.md)
 
-[在线预览](https://squirrelsong5.github.io/travel-plans/xiamen-2026-06-25.html) ·
+[在线预览](https://squirrelsong5.github.io/travel-plans/chengdu-2026-09-18.html) ·
 [快速开始](#-快速开始) ·
 [文档索引](#-文档) ·
 [更新日志](CHANGELOG.md)
@@ -61,8 +61,7 @@
 
 | 行程 | 链接 | 说明 |
 |------|------|------|
-| 青岛 4 天 3 晚 | [qingdao-2026-06-25.html](https://squirrelsong5.github.io/travel-plans/qingdao-2026-06-25.html) | 毕业游 · 栈桥/啤酒博物馆/八大关 |
-| 厦门 4 天 3 晚 | [xiamen-2026-06-25.html](https://squirrelsong5.github.io/travel-plans/xiamen-2026-06-25.html) | 含地图、Tab 日程、段花销批注、抽屉酒店/提前订 |
+| 成都 3 日 2 晚 | [chengdu-2026-09-18.html](https://squirrelsong5.github.io/travel-plans/chengdu-2026-09-18.html) | 熊猫/宽窄巷子/春熙路 · 含地图、段花销批注 |
 
 > 交互地图需在 URL 后加 `?k=你的高德WebKey`（[说明](#网页地图-key交付后)）。不配 Key 也可正常浏览文字行程与花销。
 
@@ -126,13 +125,13 @@ git clone https://github.com/SquirrelSong5/travel-planner-skill.git \
 ### 开聊即可
 
 ```
-帮我做个厦门 4 天 3 晚行程，3 个人
+帮我做个成都 3 天 2 晚行程，2 个人
 ```
 
 **之后交给 AI。** 典型对话：
 
 ```
-你 → 帮我做个厦门行程
+你 → 帮我做个成都行程
 AI → 🔍 环境自检
 AI → （缺什么就带着装：高德 Key、小红书扫码…）
 AI → 问硬约束 → **小红书目的地攻略（Step 1.5）** → 分组排线 → 三阶段规划 → validate → 渲染 HTML → 部署 → 给你 URL
