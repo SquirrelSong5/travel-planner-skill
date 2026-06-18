@@ -5,10 +5,10 @@
 > 接入方式见 SKILL.md 的"数据源"小节（需要高德 Key）。
 
 > **v1.3.0 重要修正**：
-> 1. 工具名从旧版（`geocode` / `poi_search` / `poi_detail` / `route_walking` 等）**改为官方 MCP 实际命名**（`maps_geo` / `maps_text_search` / `maps_search_detail` / `maps_direction_walking` 等）——之前命名不规范，AI 调不到。
-> 2. **新增「路线规划 → 真实路径」完整工作流**：Round 2 用高德拿通勤时间 + **路网 polyline** 写进 `tripData.transports[].path`，HTML 地图沿公路/步行道/公交线渲染。
+> 1. 工具名从旧版改为官方 MCP 实际命名（`maps_geo` / `maps_text_search` / `maps_direction_walking` 等）。
+> 2. Round 2 用高德拿通勤 **时长 / 距离 / 费用 / description**，`source` 证明非 LLM 臆造（V8）。
 >
-> **v2.2.2 实战修正（2026-06）**：官方 MCP `maps_direction_*` **常只返回** `instruction` / `distance` / `duration`，**不含**画线坐标。polyline 须从 **REST API**（`/v3/direction/*`，同 Key）提取；MCP 仍负责 POI / 天气 / 通勤时间。详见 §2.3、**P28**。
+> **v2.3.0**：HTML 地图**不再绘制路线**（仅 POI 序号 + 酒店；导航交高德 App）。**不必**再为画线提取 `path` polyline。
 >
 > AI 实际调时**按自己工具列表里看到的为准**（可能是 `maps_geo` 也可能本地装的是 `amap_geocode` 等变体），本表给的是官方 `@amap/amap-maps-mcp-server` 的标准命名。
 
@@ -40,16 +40,13 @@
 | `maps_around_search` | 周边半径搜 POI | `keywords`, `location`, `radius`(可选) | `pois[]` |
 | `maps_search_detail` | POI 详情 | `id` | `location`, `address`, `city`, `type`, `cost`, `rating`, `opentime2` |
 | `maps_distance` | 多模式距离测量 | `origins[]`, `destination`, `type`(1:直线 2:驾车 3:步行) | `results[]` (含 distance/duration) |
-| **`maps_direction_walking`** | **步行路径规划** | `origin`, `destination` | `paths[]`（distance/duration/**`steps[]` 导航摘要**）；**polyline 常需 REST 兜底**，见 §2.3 |
+| **`maps_direction_walking`** | **步行路径规划** | `origin`, `destination` | `paths[]`（distance/duration/`steps[]` 导航摘要） |
 | **`maps_direction_driving`** | **驾车路径规划** | `origin`, `destination` | 同上 |
 | **`maps_bicycling`** | **骑行路径规划** | `origin`, `destination` | 同上 |
-| **`maps_direction_transit_integrated`** | **公交路径规划**（综合火车/公交/地铁） | `origin`, `destination`, `city`, `cityd`(跨城) | `transits[]`（distance/duration/**`segments[]` 分段摘要**）；**polyline 常需 REST 兜底** |
+| **`maps_direction_transit_integrated`** | **公交路径规划**（综合火车/公交/地铁） | `origin`, `destination`, `city`, `cityd`(跨城) | `transits[]`（distance/duration/**`segments[]` 分段摘要**） |
 | `maps_weather` | 城市天气 | `city` 或 `adcode` | `forecasts[]` |
 
-> **路线类 4 个工具 — MCP vs REST 字段名**：
-> - **MCP 常见返回**（精简）：`steps[]` 只有 `instruction` / `road` / `distance` / `orientation` / `duration`，**没有坐标**
-> - **REST API 完整返回**（画线用）：`route.paths[].steps[].polyline` = `lng,lat;lng,lat;...` 字符串（公交在 `route.transits[].segments[].walking|bus|railway.polyline`）
-> - **tripData 写入字段**：统一写 `transports[].path` = `[[lng,lat], ...]` 数组（与 REST/MCP 响应字段名无关）
+> **路线类工具**：MCP 常只返回 `instruction` / `distance` / `duration`（够写 `duration_min`、`fare`、`description`）。MCP 无结果时可同参数调 REST `/v3/direction/*`（同一 Key），`source` 写 `amap-rest-api`。
 
 ---
 
@@ -86,17 +83,18 @@
 
 ---
 
-## 场景 2：规划路线（V2 验证 + 地图 polyline）
+## 场景 2：规划通勤（V2 / V8 / V9 + 费用与描述）
 
-> **v2.2.2 混合工作流**（实战验证）：
-> 1. **V2 通勤时间**：调 MCP `maps_direction_*` 拿 `distance` / `duration`（及公交 `cost`、驾车 `taxi_cost`）
-> 2. **地图折线 polyline**：若 MCP `steps` **无** `polyline`/`path` 坐标 → **同一段立刻调 REST** `/v3/direction/*`（同一 `AMAP_MCP_KEY`）拼接坐标
-> 3. **禁止**凭经验手工补中间点（V8 会判假路线 ❌）；**禁止**只连 POI 起终点当 path
+> **Round 2 必做**：
+> 1. 调 MCP `maps_direction_*`（或 REST 兜底）拿 `duration_min`、`distance_m`、`fare`
+> 2. 公交方案从 `segments[]` 拼 `description`（见下）
+> 3. 写 `source: "amap-mcp"` 或 `"amap-rest-api"`——**禁止** LLM 记忆填时长
+> 4. 导航由 HTML「导航」链接触发高德 App，**不必**提取 polyline
 
 ### 2.1 模式选择（公共交通优先）
 
-| 距离/场景 | MCP 工具（时间/费用） | REST endpoint（polyline 兜底） |
-|----------|---------------------|-------------------------------|
+| 距离/场景 | MCP 工具 | REST 兜底（MCP 失败时） |
+|----------|---------|------------------------|
 | < 1.5km | `maps_direction_walking` | `/v3/direction/walking` |
 | **1.5–4km** | **`maps_bicycling`** | `/v3/direction/bicycling` |
 | **4–25km 市内** | **`maps_direction_transit_integrated`** | `/v3/direction/transit/integrated` + `city` |
@@ -106,169 +104,49 @@
 
 > **AI 默认流程**：< 1.5km 步行 → **1.5–4km 先 `bicycling`** → 4–25km `transit_integrated` → 无方案或用户要打车才 `driving`。
 
-### 2.2.1 公交综合 = 手机端「公交/地铁」混合方案（不是单模式）
-
-**结论**：`maps_direction_transit_integrated` / `/v3/direction/transit/integrated` **一次调用**即返回 A→B 的**多段混合方案**，与手机 App 点「公交/地铁」tab 同类——**不是**只能选步行/驾车/骑行其中一种。
-
-| API | 行为 | 与 App 对应 |
-|-----|------|------------|
-| `transit/integrated` | 返回 `transits[]` 多条备选；每条含 `segments[]`：**步行 + 公交/地铁 + 火车 +（可选）打车接驳** | App「公交/地铁」 |
-| `walking` / `driving` / `bicycling` | **单一**交通方式全程 | App「步行 / 驾车 / 骑行」 |
-
-**`segments[]` 典型结构**（青岛胶东机场 → 市区酒店实测）：
+**公交综合**（`maps_direction_transit_integrated`）：**一次调用**即返回 A→B 的**多段混合方案**（步行 + 地铁/公交 + 火车；个别含打车接驳），与 App「公交/地铁」tab 同类——**不是**只能选单一交通方式。
 
 ```
-步行 447m → 地铁8号线(胶东机场→青岛北站) → 地铁3号线(青岛北站→五四广场) → 步行 583m
-总时长 ~96min，票价 ~7元
+步行 447m → 地铁8号线 → 地铁3号线 → 步行 583m（青岛胶东机场→市区，约 96min / ¥7）
 ```
 
-**注意**：
-
-1. **不要**对机场→酒店这类长距离直接调 `driving`——应先 `transit_integrated` + `city=青岛`（`city` 须 URL 编码）。
-2. 若方案里确有「打车到地铁站」，`segments[].taxi` 会有数据（v3 常为空；v5 公交 API 更完整，需 `show_fields`）。
-3. 本 skill 的 `transports[]` **一条记录 = 两个 POI 之间的一段**；混合细节写在 `description`（从 `segments` 拼），`path` 拼接各段 polyline；地图线型靠 `mode` + `description` 识别地铁/步行。
-4. **Day 1 抵达**：首站为机场/车站时，`scripts/add_hotel_legs.py` 会自动补 **机场 → 酒店（idx 0）** 段，并 **优先 transit**（不受 25km 距离上限误选打车）。
+- 机场→酒店等长距离：**先** `transit_integrated` + `city`（须 URL 编码），**勿**直接 `driving`
+- `transports[]` 一条 = 两 POI 之间一段；`description` 从 `segments[]` 拼线路印象；`mode` 写 `transit` / `subway` 等
+- Day 1 首站为机场/车站：`scripts/add_hotel_legs.py` 自动补 **机场 → 酒店（idx 0）**，优先 transit
 
 ```bash
-# 公交综合（混合方案）
 curl -sS "https://restapi.amap.com/v3/direction/transit/integrated?key=${AMAP_KEY}&origin=120.093,36.361&destination=120.382,36.067&city=%E9%9D%92%E5%B2%9B"
-# → route.transits[0].segments[].walking | .bus.buslines[] | .railway | .taxi
 ```
 
-### 2.2 MCP 实际返回（常无 polyline）
+### 2.2 MCP 典型返回
 
 ```
 工具：maps_direction_walking
-输入：origin: "104.061,30.671"  destination: "104.062,30.6695"
-输出（典型 — 只有导航摘要）：
-{
-  "paths": [{
-    "distance": "327",
-    "duration": "300",
-    "steps": [{
-      "instruction": "向北步行18米右转",
-      "road": "",
-      "distance": 18,
-      "orientation": "北",
-      "duration": 14
-    }]
-  }]
-}
+输出：paths[].distance / duration / steps[].instruction（导航摘要）
 ```
 
-> ⚠️ **没有 `polyline` / `path` 字段时不能画地图折线**——这不是 MCP「坏了」，是当前官方 MCP 为省 token 裁掉了坐标。继续 §2.3 走 REST。
+MCP 无 `distance`/`duration` 时，同参数调 REST；`source` 写 `amap-rest-api`。
 
-### 2.3 polyline 提取（REST 为主，MCP 有则用）
-
-**每段 transport 的标准流程**：
-
-```python
-AMAP_KEY = os.environ["MCP_AMAP_API_KEY"]  # 或 ~/.travel-planner/config 的 AMAP_MCP_KEY
-
-def parse_polyline_str(s: str) -> list[list[float]]:
-    """REST steps[].polyline：'lng,lat;lng,lat;...' → [[lng,lat], ...]"""
-    out = []
-    for pair in (s or "").split(";"):
-        pair = pair.strip()
-        if not pair or "," not in pair:
-            continue
-        lng, lat = pair.split(",", 1)
-        out.append([float(lng), float(lat)])
-    return out
-
-def steps_have_polyline(steps: list) -> bool:
-    for step in steps or []:
-        if step.get("polyline") or step.get("path"):
-            return True
-    return False
-
-def extract_walking_polyline(route_json: dict) -> list[list[float]]:
-    """步行/驾车/骑行：拼 route.paths[0].steps[].polyline"""
-    points = []
-    for step in route_json.get("route", {}).get("paths", [{}])[0].get("steps", []):
-        raw = step.get("polyline") or step.get("path") or ""
-        points.extend(parse_polyline_str(raw))
-    return points
-
-def extract_transit_polyline(route_json: dict) -> list[list[float]]:
-    """公交：拼 transits[0].segments[].walking|bus|railway.polyline"""
-    points = []
-    segs = route_json.get("route", {}).get("transits", [{}])[0].get("segments", [])
-    for seg in segs:
-        for key in ("walking", "bus", "railway"):
-            block = seg.get(key) or {}
-            raw = block.get("polyline") or block.get("path") or ""
-            points.extend(parse_polyline_str(raw))
-    return points
-
-# --- 单段 transport ---
-mcp_result = call_mcp("maps_direction_walking", {"origin": o, "destination": d})
-path_obj = (mcp_result.get("paths") or [{}])[0]
-duration_min = int(int(path_obj.get("duration", 0)) / 60)
-distance_m = int(path_obj.get("distance", 0))
-source = "amap-mcp"
-
-if steps_have_polyline(path_obj.get("steps")):
-    all_points = extract_walking_polyline({"route": {"paths": [path_obj]}})
-else:
-    # REST 兜底（与 MCP 同 Key）
-    import urllib.request
-    url = (
-        f"https://restapi.amap.com/v3/direction/walking"
-        f"?key={AMAP_KEY}&origin={o}&destination={d}"
-    )
-    rest = json.loads(urllib.request.urlopen(url, timeout=15).read())
-    all_points = extract_walking_polyline(rest)
-    source = "amap-rest-api"
-    # duration/distance 以 REST route.paths[0] 为准亦可
-
-tripData["days"][day_idx]["transports"][i].update({
-    "path": all_points,
-    "duration_min": duration_min,
-    "distance_m": distance_m,
-    "source": source,
-})
-```
-
-**Bash 一行（步行 REST 兜底）**：
-
-```bash
-AMAP_KEY="${MCP_AMAP_API_KEY:-$(grep ^AMAP_MCP_KEY= ~/.travel-planner/config | cut -d= -f2-)}"
-curl -sS --max-time 15 \
-  "https://restapi.amap.com/v3/direction/walking?key=${AMAP_KEY}&origin=104.061,30.671&destination=104.062,30.6695"
-# → route.paths[0].steps[].polyline
-```
-
-> **V8 校验**（`scripts/validate.py`）：`path` 须为完整 polyline（通常几十～几百点），非短步行至少 **3 点**；`source` 须为 `amap-mcp` 或 `amap-rest-api`。详见 `references/validation-rules.md` §V8。
-
-**公交 REST 示例**：
-
-```bash
-curl -sS "https://restapi.amap.com/v3/direction/transit/integrated?key=${AMAP_KEY}&origin=104.061,30.6635&destination=104.082,30.6605&city=成都"
-# → route.transits[0].segments[].walking.polyline / .bus.polyline / .railway.polyline
-```
-
-### 2.4 tripData.transports schema（v1.3.0 新增）
+### 2.3 tripData.transports schema
 
 ```json
 {
   "from_idx": 0,
   "to_idx": 1,
-  "mode": "walking",          // walking | biking | transit | driving
+  "mode": "transit",
   "duration_min": 15,
   "distance_m": 1234,
-  "path": [                   // ← v1.3.0 新增：真实路网 polyline（可选，没填则用直线）
-    [139.7967, 35.7148],
-    [139.7970, 35.7145],
-    [139.7975, 35.7140]
-  ],
-  "source": "amap-mcp"        // "amap-mcp" | "amap-rest-api"（REST 兜底画线时）
+  "description": "地铁 2 号线 春熙路 → 宽窄巷子（约 15 分钟）",
+  "source": "amap-mcp",
+  "fare": { "min": 3, "max": 3, "currency": "CNY", "unit": "per_person", "source": "amap-mcp" }
 }
 ```
 
-### 2.5 费用字段提取（v2.1.0 新增 → `transports[].fare`）
+`path` 字段**可选**（v2.3.0 起前端不再画线，可省略）。
 
-与 §2.2 同一次 `maps_direction_*` 调用，**同步写 `fare`**：
+### 2.4 费用字段（`transports[].fare`）
+
+与路线同一次 `maps_direction_*` 调用，**同步写 `fare`**：
 
 | mode | MCP 返回字段 | `fare` 写法 |
 |------|-------------|------------|
@@ -277,48 +155,17 @@ curl -sS "https://restapi.amap.com/v3/direction/transit/integrated?key=${AMAP_KE
 | `driving` | `paths[0].taxi_cost`（元，字符串） | 写入 `fare.min/max` |
 | 无费用字段 | WebFetch 当地公交票价页 | `source: "official-site"` + `source_url` |
 
-```json
-"fare": {
-  "min": 2,
-  "max": 2,
-  "currency": "CNY",
-  "unit": "per_person",
-  "quantity": 3,
-  "total_min": 6,
-  "total_max": 6,
-  "label": "地铁",
-  "source": "amap-mcp",
-  "source_ref": "maps_direction_transit_integrated cost"
-}
-```
+> **V8 校验**：每段须有合法 `source`（`amap-mcp` / `amap-rest-api`）和 `duration_min`。详见 `validation-rules.md` §V8。
 
-步行示例：`quantity` 可省略，`total_min=max=0`。
-
----
-
-**渲染优先级**（template.html 自动判断）：
-1. `path` 存在且非空 → **画真实路网 polyline**（沿公路/步行道/公交线）
-2. `path` 不存在/为空 → **画直线**（POI1→POI2 直线，旧行为，**保留向后兼容**）
-
-### 2.5 V2 验证逻辑（用 `duration_sec`）
-
-**`scripts/validate.py` 的 check_v2 不变**（仍基于 POI 时间块），但 AI 报告的 V2 备注里**应附上每段的 `duration_sec` / `distance_m`**，让用户看到"实算通勤时长"。
-
-### 2.6 用 `maps_distance` 快速测距
+### 2.5 用 `maps_distance` 快速测距
 
 ```
 工具：maps_distance
-输入：
-  origins: ["POI1经纬度", "POI2经纬度", ...]
-  destination: "主区域中心经纬度"
-  type: 2   # 1=直线 2=驾车 3=步行
-输出：results[]（每个 origin 对应一个 distance/duration）
+输入：origins[], destination, type（1=直线 2=驾车 3=步行）
+输出：results[]（distance/duration）
 ```
 
-**使用场景**：
-- V1 区域一致性：批量算所有 POI 到主区域中心的距离
-- V3 餐厅区域匹配：批量算所有餐厅到主区域中心的距离
-- **比 `maps_direction_*` 快**（不用算路径）——但**没有 polyline**
+**使用场景**：V1 区域一致性、V3 餐厅区域匹配；比 `maps_direction_*` 快，但无分段摘要。
 
 ---
 

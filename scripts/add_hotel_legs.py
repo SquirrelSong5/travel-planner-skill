@@ -385,8 +385,11 @@ def repair_hotel_legs(trip: dict[str, Any], key: str) -> int:
                 to_name = "酒店"
             if not origin or not dest:
                 continue
-            path_len = len(t.get("path") or [])
-            bad = path_len < 3 or (t.get("mode") == "walking" and t.get("duration_min", 0) > 30)
+            bad = (
+                not t.get("duration_min")
+                or t.get("source") not in ("amap-mcp", "amap-rest-api")
+                or (t.get("mode") == "walking" and t.get("duration_min", 0) > 30)
+            )
             if not bad:
                 continue
             dist = haversine_m(origin, dest)

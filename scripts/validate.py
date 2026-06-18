@@ -117,19 +117,8 @@ V4_FAIL_PER_DAY = 2  # >= 2 条 prebook 算"一日多重"
 V5_BUFFER_HOURS_FAIL = 1.5  # 末日去机场缓冲 < 1.5h（国内航班）算失败
 V5_BUFFER_HOURS_WARN = 2.0  # < 2h 警告
 
-# V8 MCP 必跑痕迹 / 地图折线可渲染
-V8_MIN_PATH_POINTS = 3  # 非短步行须 ≥3 点：2 点几何上只能是直线，无法区分「真路网」与「只写了起终点」
-V8_WALK_SHORT_DIST_M = 400  # 步行 <400m 允许 2 点 polyline
-V8_ENDPOINT_MAX_KM = 1.5  # path 首末点须贴近 from/to POI
-V8_CHINA_LNG = (70.0, 140.0)
-V8_CHINA_LAT = (2.0, 56.0)
-V8_STRAIGHT_LINE_RATIO = 0.005  # 中间点到 from→to 直线段 < 0.5% 总距离 算"近似直线"
-# 0.5% 阈值说明：
-# - 1km 距离偏差 < 5m → 算直线（LLM 编的假 polyline）
-# - 1km 距离偏差 ≥ 5m → 算"沿路拐弯"（真路网 polyline）
-# - 真实步行/驾车 500m 内街道本来就直，偏差 < 5m 正常
-# - 但 LLM 凭记忆"编"的 polyline 一般**完全在直线上**（偏差 0），不会被误判
-V8_ALLOWED_SOURCES = {"amap-mcp", "amap-rest-api"}  # v2.0.0 P24 降级：amap-rest-api 合法（高德 Web API 直连）
+# V8 MCP 必跑痕迹（高德实算 source + duration_min）
+V8_ALLOWED_SOURCES = {"amap-mcp", "amap-rest-api"}
 
 # V9 通勤时间下限（v2.2.3：只拦「快得离谱」，不拦实算比直线慢）
 V9_TOO_FAST_RATIO = 0.55  # duration_min < 粗算×55% → 疑似未跑高德 / 时间造假
@@ -404,130 +393,22 @@ def check_v6(day: dict[str, Any]) -> dict[str, Any]:
     return {"id": "V6", "rule": "户外天气敏感", "status": "✅", "note": f"户外 POI 均配 indoor_backup"}
 
 
-# ===== V8（v1.5.0 新增）：MCP 必跑痕迹 / 地图折线可渲染 =====
-
-def _parse_path_point(pt: Any) -> tuple[float, float] | None:
-    """path 单点 → (lng, lat)；无效返回 None。"""
-    if not isinstance(pt, (list, tuple)) or len(pt) < 2:
-        return None
-    try:
-        lng, lat = float(pt[0]), float(pt[1])
-    except (TypeError, ValueError):
-        return None
-    if not math.isfinite(lng) or not math.isfinite(lat):
-        return None
-    return lng, lat
-
-
-def _path_in_china_bbox(lng: float, lat: float) -> bool:
-    return V8_CHINA_LNG[0] <= lng <= V8_CHINA_LNG[1] and V8_CHINA_LAT[0] <= lat <= V8_CHINA_LAT[1]
-
-
-def _path_min_points(t: dict[str, Any]) -> int:
-    """短步行允许 2 点；其余交通须 ≥ V8_MIN_PATH_POINTS 才能在地图上画出沿路折线。"""
-    mode = (t.get("mode") or "").lower()
-    dist = t.get("distance_m") or 0
-    if mode in ("walk", "walking") and dist < V8_WALK_SHORT_DIST_M:
-        return 2
-    return V8_MIN_PATH_POINTS
-
-
-def _path_coords_valid(path: list[Any]) -> tuple[bool, str | None]:
-    for i, pt in enumerate(path):
-        parsed = _parse_path_point(pt)
-        if parsed is None:
-            return False, f"path[{i}] 非 [lng,lat] 数值"
-        lng, lat = parsed
-        if not _path_in_china_bbox(lng, lat):
-            return False, f"path[{i}] 坐标异常 ({lng:.4f},{lat:.4f})，疑似经纬度颠倒或未从高德提取"
-    return True, None
-
-
-def _path_endpoints_near(
-    path: list[Any],
-    from_loc: tuple[float, float],
-    to_loc: tuple[float, float],
-) -> bool:
-    start = _parse_path_point(path[0])
-    end = _parse_path_point(path[-1])
-    if not start or not end:
-        return False
-    return (
-        haversine_km(start, from_loc) <= V8_ENDPOINT_MAX_KM
-        and haversine_km(end, to_loc) <= V8_ENDPOINT_MAX_KM
-    )
-
-
-def _is_straight_line(path: list[list[float]], from_loc: tuple[float, float], to_loc: tuple[float, float]) -> bool:
-    """检查 path 是否"近似直线"——AI 凭 LLM 记忆最容易犯的错：写 2-5 个直线排列的"假 polyline"。
-
-    算法：**所有**中间点到 from→to 直线段的距离 < 阈值 → 算"假 polyline"（真路网必有显著弧度）。
-    """
-    if len(path) < 3:
-        return True  # 2 个点本来就是直线
-
-    def _point_to_segment_dist(px, py, x1, y1, x2, y2):
-        """点到线段距离（经纬度用 km 算）。"""
-        # 把经纬度当平面坐标（短距离够用）
-        dx, dy = x2 - x1, y2 - y1
-        if dx == 0 and dy == 0:
-            return math.sqrt((px - x1) ** 2 + (py - y1) ** 2)
-        t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)))
-        proj_x = x1 + t * dx
-        proj_y = y1 + t * dy
-        return math.sqrt((px - proj_x) ** 2 + (py - proj_y) ** 2)
-
-    x1, y1 = from_loc
-    x2, y2 = to_loc
-    total_d = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
-    if total_d == 0:
-        return True
-
-    # 检查中间点（去掉首末）—— 只有**全部**中间点都 < 阈值（每个都很贴直线）才算"假 polyline"
-    mid_points = path[1:-1]
-    if not mid_points:
-        return True
-    for pt in mid_points:
-        if not isinstance(pt, (list, tuple)) or len(pt) < 2:
-            continue
-        px, py = float(pt[0]), float(pt[1])
-        d_perp = _point_to_segment_dist(px, py, x1, y1, x2, y2)
-        if d_perp / total_d >= V8_STRAIGHT_LINE_RATIO:
-            return False  # 有中间点偏离超过阈值 → 真实路网，不是假 polyline
-    return True  # 所有中间点都贴在直线上 → 假 polyline
-
+# ===== V8：MCP 必跑痕迹（source + duration_min）=====
 
 def check_v8(days: list[dict[str, Any]], trip: dict[str, Any] | None = None) -> dict[str, Any]:
-    """v1.5.0 新增：MCP 必跑痕迹 + 地图折线可渲染（v2.2.1 加强）。
-
-    检查每天 transports[] 的 path 字段：
-    - source 必须是 amap-mcp / amap-rest-api
-    - path 须为有效 [lng,lat] 坐标；非短步行须 ≥ 3 点
-    - path 首末点须贴近 from/to POI（否则地图上折线跑偏或不显示）
-    - path 不能是"直线"（AI 凭 LLM 记忆编的假 polyline）
-    - 缺 path / 缺 source / 坐标异常 → 阻断，须重跑 maps_direction_*
-
-    阻断效果：返回 status="❌" → validate.py exit 1 → AI 必跑 MCP 重试
-    """
+    """每段 transport 须有高德实算来源与 duration_min（v2.3.0 起不再要求 path）。"""
     total_transports = 0
-    missing_path = []
     bad_source = []
-    short_path = []
-    bad_coords = []
-    endpoint_far = []
-    straight_line = []
+    missing_duration = []
 
     for d in days:
         day_label = f"Day {d.get('day', '?')}"
-        transports = d.get("transports") or []
-        for i, t in enumerate(transports):
+        for i, t in enumerate(d.get("transports") or []):
             if not isinstance(t, dict):
                 continue
             total_transports += 1
             seg_label = f"{day_label}.transports[{i}]"
-            mode = t.get("mode") or "transit"
 
-            # 1. source 必填且必须是高德实算来源
             src = t.get("source")
             if not src:
                 bad_source.append(f"{seg_label}（缺 source 字段）")
@@ -536,75 +417,35 @@ def check_v8(days: list[dict[str, Any]], trip: dict[str, Any] | None = None) -> 
                 bad_source.append(f"{seg_label}（source={src}，合法值：{V8_ALLOWED_SOURCES}）")
                 continue
 
-            # 2. path 必填
-            path = t.get("path")
-            if not path or not isinstance(path, list):
-                missing_path.append(f"{seg_label}（缺 path，地图无法绘制路线）")
-                continue
-
-            ok_coords, coord_reason = _path_coords_valid(path)
-            if not ok_coords:
-                bad_coords.append(f"{seg_label}（{coord_reason}）")
-                continue
-
-            min_pts = _path_min_points(t)
-            if len(path) < min_pts:
-                short_path.append(
-                    f"{seg_label}（{len(path)} 点，须 ≥{min_pts}；MCP 无 polyline 时调 REST /v3/direction/* 提取 steps[].polyline）"
-                )
-                continue
-
-            from_loc, to_loc = get_transport_endpoints(t, d.get("pois") or [], trip)
-            if from_loc and to_loc and not _path_endpoints_near(path, from_loc, to_loc):
-                endpoint_far.append(
-                    f"{seg_label}（path 首末点偏离 POI >{V8_ENDPOINT_MAX_KM}km，地图折线可能不显示）"
-                )
-                continue
-
-            # 3. path 不能是"近似直线"（仅 ≥3 点时检查；短步行 2 点豁免）
-            if from_loc and to_loc and len(path) >= V8_MIN_PATH_POINTS and _is_straight_line(path, from_loc, to_loc):
-                straight_line.append(
-                    f"{seg_label}（{len(path)} 个点全是直线排列，须重跑 maps_direction_{mode}）"
-                )
+            dur = t.get("duration_min")
+            if dur is None or not isinstance(dur, (int, float)) or dur <= 0:
+                missing_duration.append(f"{seg_label}（缺或无效 duration_min）")
 
     if total_transports == 0:
-        return {"id": "V8", "rule": "MCP 必跑痕迹 / 地图折线", "status": "✅", "note": "无 transport 段，跳过"}
+        return {"id": "V8", "rule": "MCP 必跑痕迹", "status": "✅", "note": "无 transport 段，跳过"}
 
     errors = []
     if bad_source:
         errors.append(f"{len(bad_source)} 段 source 不合法：{bad_source[:3]}{'...' if len(bad_source) > 3 else ''}")
-    if missing_path:
-        errors.append(f"{len(missing_path)} 段缺 path（地图无路线）：{missing_path[:3]}{'...' if len(missing_path) > 3 else ''}")
-    if bad_coords:
-        errors.append(f"{len(bad_coords)} 段 path 坐标无效：{bad_coords[:3]}{'...' if len(bad_coords) > 3 else ''}")
-    if short_path:
-        errors.append(f"{len(short_path)} 段 path 过短无法沿路绘制：{short_path[:3]}{'...' if len(short_path) > 3 else ''}")
-    if endpoint_far:
-        errors.append(f"{len(endpoint_far)} 段 path 与 POI 不匹配：{endpoint_far[:3]}{'...' if len(endpoint_far) > 3 else ''}")
-    if straight_line:
-        errors.append(f"{len(straight_line)} 段 path 是直线（疑似 LLM 记忆）：{straight_line[:3]}{'...' if len(straight_line) > 3 else ''}")
+    if missing_duration:
+        errors.append(
+            f"{len(missing_duration)} 段缺 duration_min：{missing_duration[:3]}{'...' if len(missing_duration) > 3 else ''}"
+        )
 
     if errors:
         return {
             "id": "V8",
-            "rule": "MCP 必跑痕迹 / 地图折线",
+            "rule": "MCP 必跑痕迹",
             "status": "❌",
-            "note": f"❌ 地图路线未就绪！共 {total_transports} 段 transport：{'；'.join(errors)}。请 MCP 拿时间 + REST /v3/direction/* 填 path（见 amap-mcp-usage.md §2.3、P28）。",
-            "errors": {
-                "bad_source": bad_source,
-                "missing_path": missing_path,
-                "bad_coords": bad_coords,
-                "short_path": short_path,
-                "endpoint_far": endpoint_far,
-                "straight_line": straight_line,
-            },
+            "note": f"❌ 共 {total_transports} 段 transport：{'；'.join(errors)}。请 MCP/REST maps_direction_* 实算（见 amap-mcp-usage §2）。",
+            "errors": {"bad_source": bad_source, "missing_duration": missing_duration},
         }
 
     return {
         "id": "V8",
-        "rule": "MCP 必跑痕迹 / 地图折线",
+        "rule": "MCP 必跑痕迹",
         "status": "✅",
-        "note": f"全部 {total_transports} 段 transport 可在地图绘制（source 合法，path ≥{V8_MIN_PATH_POINTS} 点或短步行，坐标与 POI 对齐）",
+        "note": f"全部 {total_transports} 段 transport 含合法 source 与 duration_min",
     }
 
 

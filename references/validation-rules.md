@@ -11,7 +11,7 @@
 |-------|------|----------------|---------|-------------|
 | **1** | 结构筛 | `1` | V1, V4 | V7 禁忌审查、critique |
 | **2** | 时空筛 | `2` | V2, V5, V8, V9 | 高德 route 实算填 V2、critique |
-| **3** | 体验筛 | `3` | V3, V6, V8, V10 | 美团+高德+小红书+价格汇总、**地图折线复检**、critique |
+| **3** | 体验筛 | `3` | V3, V6, V8, V10 | 美团+高德+小红书+价格汇总、critique |
 | 全量 | 交付前复检 | （无） | V1–V6, V8, V9, V10 | V7 若 Round 1 已验可沿用 |
 
 ```bash
@@ -43,7 +43,7 @@ python scripts/validate.py trip_data.json --pretty   # 最终全量
 | V7 | 用户禁忌屏蔽 | 1 | 🤖 **AI** | 直接删 |
 | V2 | 时间可行性 | 2 | 🤖 **AI 调高德** + ⚙️ 粗算 | 替换/删/挪时间 |
 | V5 | 末日返程缓冲 | 2 | ⚙️ **脚本** | 末日去远郊挪前 |
-| V8 | MCP 必跑痕迹 / 地图折线 | 2, **3** | ⚙️ **脚本** | 重跑高德 direction 填 path |
+| V8 | MCP 必跑痕迹 | 2, **3** | ⚙️ **脚本** | 重跑高德 direction 填 source/duration |
 | V9 | 通勤时间下限 | 2 | ⚙️ **脚本** | 补 duration_min / 重跑高德 |
 | V3 | 餐厅区域匹配 | 3 | ⚙️ **脚本** | 替换餐厅候选 |
 | V6 | 户外天气敏感 | 3 | ⚙️ **脚本** | 配室内备选 |
@@ -238,31 +238,18 @@ python scripts/validate.py trip_data.json --pretty
 
 ---
 
-## V8：MCP 必跑痕迹 / 地图折线可渲染（v2.2.1 加强）
+## V8：MCP 必跑痕迹（v2.3.0 简化）
 
-**规则**：每天 `transports[]` 必须有高德实算来源 + 可在网页地图上绘制的 `path` 折线。
+**规则**：每段 `transports[]` 须有高德实算 `source` + `duration_min`。
 
-**为什么**：网页地图用 `transports[].path` 画 Polyline。缺 path、坐标无效、只有 2 个直线点、或 path 与 POI 坐标对不上时，用户会看到「没有路线」或折线跑偏。
-
-**判定方式**（`scripts/validate.py` + `template.html` 浏览器重算）：
+**为什么**：证明通勤时长来自 `maps_direction_*` 实算，而非 LLM 记忆。HTML 地图不再绘制路线，`path` **不再必填**。
 
 | 检查项 | 失败条件 |
 |--------|----------|
 | `source` | 缺字段，或不在 `{amap-mcp, amap-rest-api}` |
-| `path` 存在 | 缺 `path` 或非数组 |
-| 坐标有效 | 任一点非 `[lng, lat]` 数值，或 lng/lat 超出国内合理范围（疑似颠倒） |
-| 点数 | 非短步行须 **≥ 3 点**；步行且 `distance_m < 400` 允许 2 点 |
-| 端点对齐 | path 首点距 `from_idx` POI、末点距 `to_idx` POI 均 **≤ 1.5 km** |
-| 非假直线 | ≥3 点时，中间点不能全部贴在 from→to 直线上（LLM 编的假 polyline） |
+| `duration_min` | 缺、非正数 |
 
-**失败动作**（阻断，exit 1）：
-
-1. 对该段：**MCP** `maps_direction_*` 拿时间/费用；**若无 polyline** → **REST** `/v3/direction/*` 拿 `steps[].polyline`（§2.3、P28）
-2. 拼接写入 `transports[].path`、`source`（`amap-mcp` 或 `amap-rest-api`）、`duration_min`、`distance_m`
-3. **禁止**手工补路网点或 POI 直线糊弄
-4. 重跑 `validate.py --round 2`（或全量）
-
-**Round 3 复检**：体验筛阶段会再跑 V8，防止 Round 2 之后改 POI 却忘了重算路线。
+**失败动作**：对该段调 MCP/REST `maps_direction_*`，写入 `duration_min`、`distance_m`、`fare`、`description`、`source`，重跑 `validate.py --round 2`。
 
 ---
 

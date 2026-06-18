@@ -20,11 +20,9 @@ description: 旅行规划助手 —— **唯一交付物 = 单文件 HTML 部署
 
 - ❌ **不允许** AI 凭训练数据**写** POI 名称 / 地址 / 营业时间 / 评分 / 路线 / 通勤时间 / 餐厅推荐 / 酒店信息——**这些数据必须实时查询**
 - ✅ **必须**调高德 MCP `maps_text_search` / `maps_search_detail` / `maps_geo` 拿 POI 真实数据
-- ✅ **路线时间/费用**：调 MCP `maps_direction_walking/driving/bicycling/transit_integrated`
-- ✅ **地图折线 polyline**：MCP `steps` **无坐标时**，**必须**用同一 Key 调 REST `/v3/direction/*` 提取 `steps[].polyline` → 写 `transports[].path`（详见 `references/amap-mcp-usage.md` §2.3、**P28**）
-- ✅ `transports[].source` 写 `"amap-mcp"`（MCP 自带 polyline 时）或 `"amap-rest-api"`（REST 画线兜底）——**不是** `"ai-fallback"` / `"straight-line"` / 空
-- ❌ **不允许**手工补 2–3 个「路过某某路」中间点冒充折线
-- ❌ **不允许** AI 报告"✅ V2 通过"但实际是 LLM 记忆算的——`scripts/validate.py` **V8 阻断**
+- ✅ **路线时间/费用**：调 MCP `maps_direction_walking/driving/bicycling/transit_integrated`（或 REST 兜底），写 `duration_min`、`fare`、`description`
+- ✅ `transports[].source` 写 `"amap-mcp"` 或 `"amap-rest-api"`——**不是** `"ai-fallback"` / 空
+- ❌ **不允许** AI 凭训练数据写通勤时间——`scripts/validate.py` **V8 阻断**
 - ⚠️ **MCP 整站不可用**（v2.0.0 P23 三层探针失败）：POI/天气等走 **REST API 全量降级**（详见 `references/amap-mcp-usage.md` §P23–P25）
 
 ### 硬约束 3：增量修改后必重跑 V1-V6 + V8 + V9 受影响项 + 重渲 HTML + 重部署
@@ -138,7 +136,7 @@ description: 旅行规划助手 —— **唯一交付物 = 单文件 HTML 部署
 > **跨客户端统一的部分**（**AI 不用管的**）：
 > - ✅ **MCP tool 名字**：所有客户端里 `mcp__amap__maps_direction_walking` 都叫这个——MCP 协议的设计
 > - ✅ **MCP server 内部行为**：高德 MCP server 在 7 个客户端里跑出来的结果**完全一致**（同一份 npm 包，同一份代码）
-> - ✅ **输出 JSON 结构**：MCP tool 名字跨客户端一致；**但路线类 MCP 常不返回 polyline**——画线走 REST `steps[].polyline`（§2.3 / P28）
+> - ✅ **输出 JSON 结构**：MCP tool 名字跨客户端一致；路线类 MCP 常只返回 `duration`/`distance`，无结果时 REST 兜底（§2）
 >
 > **所以 v1.3.0 的真实路径渲染 / v1.2.0 的餐厅调研 / v1.1.0 的代码级验证 / 等等，**所有"AI 调 MCP tool"的部分都是跨客户端一致的**——**只有"装 MCP + 跑 shell + 重启"这三件事是客户端相关的**。
 
@@ -571,8 +569,8 @@ Step 6-7 输出 HTML
 | Round | 焦点 | 脚本命令 | 规则子集 |
 |-------|------|----------|----------|
 | **1 结构筛** | 删点、分组、一天一区、用户禁忌 | `validate.py --round 1` | V1, V4 + 🤖 V7 |
-| **2 时空筛** | 高德 route 实算、polyline、末日缓冲 | `validate.py --round 2` | V2, V5, V8, V9 + 🤖 V2 实算 |
-| **3 体验筛** | 美团→高德→小红书店级、户外备选、**地图折线复检** | `validate.py --round 3` | V3, V6, V8, V10 |
+| **2 时空筛** | 高德 route 实算、末日缓冲 | `validate.py --round 2` | V2, V5, V8, V9 + 🤖 V2 实算 |
+| **3 体验筛** | 美团→高德→小红书店级、户外备选 | `validate.py --round 3` | V3, V6, V8, V10 |
 
 **每轮末必做 3 步**（硬流程）：
 
@@ -607,17 +605,18 @@ python scripts/validate.py trip_data.json --round 1 --pretty
 
 #### Round 2：时空可行性筛
 
-**AI 必做**（含 v2.1.0 价格 + v2.2.2 polyline）：
+**AI 必做**（含 v2.1.0 价格）：
+
+   - 每对相邻 POI + 酒店早晚段：MCP `maps_direction_*` → `duration_min`、`fare`、`description`、`source`
 
 1. 每对相邻 POI **+ 酒店早晚通勤**（`from_idx`/`to_idx` **0 = 酒店**）：
    - 早晨：`{ from_idx: 0, to_idx: 首POI.idx }`（首日首 POI 已是酒店则跳过）
    - 傍晚：`{ from_idx: 末POI.idx, to_idx: 0 }`（末日末站为机场/车站则跳过）
-   - **MCP** `maps_direction_*` → `duration_min` / `distance_m` / `fare`
-   - **polyline**：若 MCP `steps` 无 `polyline` → **REST** `/v3/direction/*`（同 Key）→ 拼 `transports[].path`
-   - `source`：`amap-mcp` 或 `amap-rest-api`（见 `references/amap-mcp-usage.md` §2.3、P28）
+   - **MCP** `maps_direction_*` → `duration_min` / `distance_m` / `fare` / `description`
+   - `source`：`amap-mcp` 或 `amap-rest-api`（见 `references/amap-mcp-usage.md` §2）
 
-| 距离/场景 | MCP 工具 | REST（polyline 兜底） |
-|----------|---------|----------------------|
+| 距离/场景 | MCP 工具 | REST 兜底 |
+|----------|---------|----------|
 | < 1.5km | `maps_direction_walking` | `/v3/direction/walking` |
 | **1.5–4km** | **`maps_bicycling`**（骑行优先于公交） | `/v3/direction/bicycling` |
 | **4–25km 市内** | **`maps_direction_transit_integrated`** | `/v3/direction/transit/integrated` + `city` |
@@ -627,7 +626,7 @@ python scripts/validate.py trip_data.json --round 1 --pretty
 
 > **公共交通优先（默认）**：市内段先调 `transit_integrated`；仅当**无公交方案**、**末班后**、**带大件行李且换乘>3次**、或**用户明确要打车**时，才写 `driving` 并在 `description` 注明原因。
 
-完整提取代码见 `references/amap-mcp-usage.md` §2.3–2.4。
+完整字段见 `references/amap-mcp-usage.md` §2.3–2.4。
 
 ```bash
 python scripts/validate.py trip_data.json --round 2 --pretty
@@ -673,7 +672,7 @@ python scripts/validate.py trip_data.json --round 3 --pretty
 | V7 | 用户禁忌屏蔽 | 1 | 🤖 AI |
 | V2 | 时间可行性 | 2 | 🤖 高德 + ⚙️ 粗算 |
 | V5 | 末日返程缓冲 | 2 | ⚙️ 脚本 |
-| V8 | MCP 必跑痕迹 / 地图折线 | 2, 3 | ⚙️ 脚本 |
+| V8 | MCP 必跑痕迹 | 2, 3 | ⚙️ 脚本 |
 | V9 | 通勤时间下限 | 2 | ⚙️ 脚本 |
 | V3 | 餐厅区域匹配 | 3 | ⚙️ 脚本 |
 | V6 | 户外天气敏感 | 3 | ⚙️ 脚本 |
