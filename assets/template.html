@@ -1557,14 +1557,25 @@
         }
 
         if (ordered.length < 2) return null;
+        return finalizeDayRouteStops(ordered[0], ordered.slice(1, -1), ordered[ordered.length - 1]);
+      }
 
-        let vias = ordered.slice(1, -1);
-        if (vias.length > DAY_ROUTE_VIA_MAX) {
-          console.warn(`[travel-planner] Day ${day.day} 途经点超过 ${DAY_ROUTE_VIA_MAX} 个，已截断`);
-          vias = vias.slice(0, DAY_ROUTE_VIA_MAX);
+      /** 酒店早出晚回时起终点同坐标，高德无法规划；末站改作终点 */
+      function finalizeDayRouteStops(start, vias, end) {
+        let s = start;
+        let e = end;
+        let v = vias.slice();
+        if (sameRouteCoords(s, e)) {
+          if (!v.length) return null;
+          e = v.pop();
         }
-
-        return { start: ordered[0], vias, end: ordered[ordered.length - 1] };
+        while (v.length && sameRouteCoords(e, v[v.length - 1])) v.pop();
+        if (sameRouteCoords(s, e)) return null;
+        if (v.length > DAY_ROUTE_VIA_MAX) {
+          console.warn(`[travel-planner] 途经点超过 ${DAY_ROUTE_VIA_MAX} 个，已截断`);
+          v = v.slice(0, DAY_ROUTE_VIA_MAX);
+        }
+        return { start: s, vias: v, end: e };
       }
 
       function amapRoutePointParams(p) {
@@ -1572,46 +1583,48 @@
         return {
           lat: c.lat,
           lon: c.lng,
-          name: encodeURIComponent(naviPlaceName(p) || '地点'),
+          name: naviPlaceName(p) || '地点',
         };
       }
 
-      function buildDayAmapWebFallback(start, vias, end) {
-        const s = poiCoords(start);
-        const e = poiCoords(end);
-        if (!s || !e) return null;
-        const sn = encodeURIComponent(naviPlaceName(start) || '起点');
-        const en = encodeURIComponent(naviPlaceName(end) || '终点');
-        let url = `https://uri.amap.com/navigation?from=${s.lng},${s.lat},${sn}&to=${e.lng},${e.lat},${en}&mode=car&callnative=1`;
-        if (vias.length) {
-          const v = poiCoords(vias[0]);
-          if (v) {
-            const vn = encodeURIComponent(naviPlaceName(vias[0]) || '途经');
-            url += `&via=${v.lng},${v.lat},${vn}`;
-          }
+      function formatAmapWebPosition(p) {
+        const c = poiCoords(p);
+        if (!c) return null;
+        const name = encodeURIComponent(naviPlaceName(p) || '地点');
+        return `${c.lng},${c.lat},${name}`;
+      }
+
+      function buildDayAmapWebFallback(start, vias, end, desktop) {
+        const from = formatAmapWebPosition(start);
+        const to = formatAmapWebPosition(end);
+        if (!from || !to) return null;
+        let url = `https://uri.amap.com/navigation?from=${from}&to=${to}&mode=car`;
+        if (!desktop) url += '&callnative=1';
+        // 网页 URI 最多 1 个途经点；多途经时仅起点→终点，避免错误 via 导致无法打开
+        if (vias.length === 1) {
+          const via = formatAmapWebPosition(vias[0]);
+          if (via) url += `&via=${via}`;
         }
         return url;
       }
 
-      function buildDayAmapRouteUrls(start, vias, end) {
+      function buildDayAmapNativeUrls(start, vias, end) {
         const s = amapRoutePointParams(start);
         const e = amapRoutePointParams(end);
         const viaPts = vias.map(amapRoutePointParams);
         let common = `sourceApplication=${encodeURIComponent('travel-planner')}`
-          + `&slat=${s.lat}&slon=${s.lon}&sname=${s.name}`
-          + `&dlat=${e.lat}&dlon=${e.lon}&dname=${e.name}`
+          + `&slat=${s.lat}&slon=${s.lon}&sname=${encodeURIComponent(s.name)}`
+          + `&dlat=${e.lat}&dlon=${e.lon}&dname=${encodeURIComponent(e.name)}`
           + '&dev=0&t=0';
         if (viaPts.length) {
           common += `&vian=${viaPts.length}`
             + `&vialons=${viaPts.map(v => v.lon).join('|')}`
             + `&vialats=${viaPts.map(v => v.lat).join('|')}`
-            + `&vianames=${viaPts.map(v => v.name).join('|')}`;
+            + `&vianames=${encodeURIComponent(viaPts.map(v => v.name).join('|'))}`;
         }
-        const web = buildDayAmapWebFallback(start, vias, end);
         return {
           ios: `iosamap://path?${common}`,
           android: `amapuri://route/plan/?${common}`,
-          web,
         };
       }
 
@@ -1619,13 +1632,22 @@
         return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       }
 
-      function openAmapDayRoute(iosUrl, androidUrl, webUrl) {
+      function openAmapDayRoute(route) {
+        const desktop = !isMobileAmapDevice();
+        const webUrl = buildDayAmapWebFallback(route.start, route.vias, route.end, desktop);
         if (!webUrl) return;
-        if (!isMobileAmapDevice()) {
-          window.open(webUrl, '_blank', 'noopener');
+        if (desktop) {
+          const a = document.createElement('a');
+          a.href = webUrl;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
           return;
         }
-        const nativeUrl = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? iosUrl : androidUrl;
+        const native = buildDayAmapNativeUrls(route.start, route.vias, route.end);
+        const nativeUrl = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? native.ios : native.android;
         let timer = setTimeout(() => { window.location.href = webUrl; }, 2000);
         const clear = () => {
           clearTimeout(timer);
@@ -1646,8 +1668,7 @@
             if (!day) return;
             const route = collectDayRouteStops(day);
             if (!route) return;
-            const urls = buildDayAmapRouteUrls(route.start, route.vias, route.end);
-            openAmapDayRoute(urls.ios, urls.android, urls.web);
+            openAmapDayRoute(route);
           });
         });
       }
@@ -2591,7 +2612,7 @@
 
         const dayRoute = collectDayRouteStops(d);
         const dayRouteBtn = dayRoute
-          ? `<button type="button" class="day-route-btn" data-day-route="${d.day}" title="按行程顺序规划驾车路线，不等同于分段公交方案">全天路线</button>`
+          ? `<button type="button" class="day-route-btn" data-day-route="${d.day}" title="按行程顺序规划驾车路线（手机含全部途经点；电脑仅起点→终点），不等同于分段公交方案">全天路线</button>`
           : '';
 
         document.getElementById('day-panel').innerHTML = `
