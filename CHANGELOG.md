@@ -2,6 +2,39 @@
 
 本 skill 遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [2.3.0] - 2026-06-18
+
+### Step 1.5：小红书目的地攻略前置
+
+- **SKILL.md**：Step 1 与 Step 2 之间新增 **Step 1.5**（必做）；产出 `xhs_destination_brief`（必去/避雷/分区/节奏）
+- **references/xhs-research.md** §0：目的地攻略完整工作流；与 Round 3 店级调研分工
+- **README**：v2.3.0 流程图、Step 1.5 专节、FAQ
+- **iteration-rounds.md / planning.md / examples schema**：Round 1 须对照 brief
+
+## [2.2.4] - 2026-06-18
+
+### 酒店早晚通勤 + 路线校验加强
+
+- **V13**：`transports[]` 酒店段（`from_idx`/`to_idx` = 0）；抵达日 Day 1 免早晨段
+- **scripts/add_hotel_legs.py**：高德 REST 补酒店通勤 polyline
+- **V8/V9**：polyline 与通勤时间校验加强；MCP + REST 混合（P28）
+- **template.html**：酒店出发/回酒店时间轴、批注花销、`budget_summary` 自动汇总
+- **examples/chengdu-3d.json**：酒店段示例；移除 `tokyo-4n5d.json`
+
+## [2.2.0] - 2026-06-18
+
+### 段花销批注 UI
+
+- 时间轴双栏批注、`slot_costs` 智能聚合、逛街 `user_editable`
+- `scripts/render_html.py`、`scripts/seed_prices.py`
+- 响应式：900px 折叠 / 600px bottom sheet
+
+## [2.1.0] - 2026-06-17
+
+### 价格调研与 V10
+
+- `slot_costs` / `budget_summary`、V10 价格溯源、抽屉花销展示
+
 ## [1.5.0] - 2026-06-17
 
 ### 三阶段分轮筛检（放弃新信息源 / 携程问道）
