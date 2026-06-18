@@ -272,10 +272,10 @@ MCP 无 `distance`/`duration` 时，同参数调 REST；`source` 写 `amap-rest-
 | 场景 | 实现 | 说明 |
 |------|------|------|
 | **逐段导航**（时间轴「导航」） | `https://uri.amap.com/navigation?from=…&to=…&mode=…` | 跟 `transports[].mode` 一致（步行/公交/驾车）；每段一对起终点 |
-| **全天路线**（Day 卡片「全天路线」按钮） | 桌面 [`ditu.amap.com/dir`](https://ditu.amap.com/dir)（`via[0]…`）；手机 ≤3 点用 [`m.amap.com/navigation/carmap`](https://m.amap.com/navigation/carmap/)，更多点用 `iosamap://` / `amapuri://` | 跳过「出发去机场」「退房」等活动锚点；`nav_name` / 清洗后的实体地名 |
+| **全天路线**（Day 卡片「全天路线」按钮） | 桌面 [`ditu.amap.com/dir`](https://ditu.amap.com/dir)；手机 ≤3 点 `m.amap.com`，>3 点 `iosamap://path` / `amapuri://route/plan`（`vian`+`vialons|vialats|vianames`） | 手机勿降级 `ditu`（多途经仅 3 点）；途经名逐个 encode 后用 `\|` 拼接 |
 | **酒店往返** | `finalizeDayRouteStops` | 起终点同坐标时末站作终点；不以「回酒店」重复作终点 |
 
-全天路线由模板 `collectDayRouteStops()` 从 JSON 自动推导。**无需 AI 手写 URL**。会过滤活动标题式 transport（如「出发去机场」「酒店退房」），并去掉餐饮后缀（如「集美学村午餐」→「集美学村」）。桌面 `ditu.amap.com/dir`；手机 ≤3 点 `m.amap.com`，更多点原生唤端。
+全天路线由模板 `collectDayRouteStops()` 从 JSON 自动推导。桌面 `ditu.amap.com/dir`；手机 ≤3 点用 `m.amap.com`，超过 3 点用原生唤端（`vianames` 为 `encodeURIComponent(名1)|encodeURIComponent(名2)|…`，**勿**整串 encode 以免 `|` 变 `%7C`），**不**降级 `ditu`（手机端多途经会截断为 3 点）。
 
 ### 高德 MCP 唤端（可选）
 

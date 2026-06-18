@@ -185,6 +185,35 @@ def mobile_url(start, vias, end, hotel_name: str) -> str | None:
     return f"https://m.amap.com/navigation/carmap/{'&'.join(parts)}"
 
 
+def native_url(start, vias, end, hotel_name: str, platform: str = "ios") -> str:
+    def pt(p):
+        c = poi_coords(p)
+        return {
+            "lat": c["lat"],
+            "lon": c["lng"],
+            "name": navi_place_name(p, hotel_name) or "地点",
+        }
+
+    s, e = pt(start), pt(end)
+    common = (
+        f"sourceApplication={quote('travel-planner', safe='')}"
+        f"&sid=&slat={s['lat']}&slon={s['lon']}&sname={quote(s['name'], safe='')}"
+        f"&did=&dlat={e['lat']}&dlon={e['lon']}&dname={quote(e['name'], safe='')}"
+        "&dev=0&t=0"
+    )
+    if vias:
+        via_pts = [pt(v) for v in vias]
+        common += (
+            f"&vian={len(via_pts)}"
+            f"&vialons={'|'.join(str(v['lon']) for v in via_pts)}"
+            f"&vialats={'|'.join(str(v['lat']) for v in via_pts)}"
+            f"&vianames={'|'.join(quote(v['name'], safe='') for v in via_pts)}"
+        )
+    if platform == "android":
+        return f"amapuri://route/plan/?{common}"
+    return f"iosamap://path?{common}"
+
+
 def dir_url(start, vias, end, hotel_name: str) -> str:
     ts = 1_781_792_351_000
 
@@ -236,6 +265,12 @@ def main() -> int:
             mobile = mobile_url(route["start"], route["vias"], route["end"], hotel_name)
             if len(route["vias"]) <= 1 and not (mobile or "").startswith("https://m.amap.com/"):
                 issues.append("BAD_MOBILE")
+            if len(route["vias"]) > 1:
+                ios = native_url(route["start"], route["vias"], route["end"], hotel_name, "ios")
+                if f"vian={len(route['vias'])}" not in ios:
+                    issues.append("BAD_VIAN")
+                if "%7C" in ios.split("vianames=")[-1]:
+                    issues.append("VIANAMES_PIPE_ENCODED")
             status = "OK" if not issues else "FAIL " + ",".join(issues)
             if issues:
                 failed += 1

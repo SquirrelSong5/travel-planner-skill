@@ -1684,14 +1684,14 @@
         if (!s || !e) return null;
         const viaPts = vias.map(amapRoutePointParams).filter(Boolean);
         let common = `sourceApplication=${encodeURIComponent('travel-planner')}`
-          + `&slat=${s.lat}&slon=${s.lon}&sname=${encodeURIComponent(s.name)}`
-          + `&dlat=${e.lat}&dlon=${e.lon}&dname=${encodeURIComponent(e.name)}`
+          + `&sid=&slat=${s.lat}&slon=${s.lon}&sname=${encodeURIComponent(s.name)}`
+          + `&did=&dlat=${e.lat}&dlon=${e.lon}&dname=${encodeURIComponent(e.name)}`
           + '&dev=0&t=0';
         if (viaPts.length) {
           common += `&vian=${viaPts.length}`
             + `&vialons=${viaPts.map(v => v.lon).join('|')}`
             + `&vialats=${viaPts.map(v => v.lat).join('|')}`
-            + `&vianames=${encodeURIComponent(viaPts.map(v => v.name).join('|'))}`;
+            + `&vianames=${viaPts.map(v => encodeURIComponent(v.name)).join('|')}`;
         }
         return {
           ios: `iosamap://path?${common}`,
@@ -1755,23 +1755,15 @@
           openAmapUrl(buildDayAmapDirUrl(route.start, route.vias, route.end));
           return;
         }
+        const totalPoints = 2 + route.vias.length;
         const mobileUrl = buildDayAmapMobileUrl(route.start, route.vias, route.end);
-        if (mobileUrl) {
+        if (mobileUrl && totalPoints <= 3) {
           window.location.href = mobileUrl;
           return;
         }
         const native = buildDayAmapNativeUrls(route.start, route.vias, route.end);
         if (!native) return;
-        const nativeUrl = isIosAmapDevice() ? native.ios : native.android;
-        const fallback = buildDayAmapDirUrl(route.start, route.vias, route.end);
-        let timer = setTimeout(() => { if (fallback) window.location.href = fallback; }, 2000);
-        const clear = () => {
-          clearTimeout(timer);
-          document.removeEventListener('visibilitychange', onVis);
-        };
-        const onVis = () => { if (document.hidden) clear(); };
-        document.addEventListener('visibilitychange', onVis);
-        window.location.href = nativeUrl;
+        window.location.href = isIosAmapDevice() ? native.ios : native.android;
       }
 
       function bindDayRouteButtons() {
