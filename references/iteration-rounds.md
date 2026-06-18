@@ -107,7 +107,7 @@ python scripts/validate.py trip_data.json --round 1 --pretty
 
 ### AI 必做
 
-1. 对每对相邻 POI 调 `maps_direction_*` → `duration_min` + `transports[].path` + `source: "amap-mcp"`
+1. 对每对相邻 POI **及酒店早晚段**（`idx=0`）调 `maps_direction_*` → `duration_min` + `transports[].path` + `source`
 2. 用高德 route 结果填 V2（🤖 `source: "ai-amap"`）
 3. 检查累计通勤是否「赶死」（🤖 critique）
 
@@ -123,6 +123,7 @@ python scripts/validate.py trip_data.json --round 2 --pretty
 | V5 末日返程缓冲 | ⚙️ 脚本 |
 | V8 MCP 必跑痕迹 | ⚙️ 脚本 |
 | V9 实算 vs 粗算 | ⚙️ 脚本 |
+| V13 酒店早晚通勤 | ⚙️ 脚本 |
 
 ### Round 2 产出
 
@@ -209,8 +210,8 @@ python scripts/validate.py trip_data.json --round 3 --pretty
 | `--round` | 规则 ID | 用途 |
 |-----------|---------|------|
 | `1` | V1, V4 | Step 3 Round 1 末 |
-| `2` | V2, V5, V8, V9 | Step 3 Round 2 末 |
-| `3` | V3, V6, V10 | Step 3 Round 3 末 |
+| `2` | V2, V5, V8, V9, V13 | Step 3 Round 2 末 |
+| `3` | V3, V6, V8, V10 | Step 3 Round 3 末（含地图折线复检） |
 | 缺省 / `--check` 全量 | V1–V6, V8, V9, V10 | 增量修改后 / 最终交付前复检 |
 
 V7 **永不进脚本**——每轮由 AI 在 `rules` 里自填（Round 1 必查）。

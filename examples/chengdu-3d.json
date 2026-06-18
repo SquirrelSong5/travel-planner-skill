@@ -325,6 +325,34 @@
             "source": "computed",
             "source_ref": "零元交通"
           }
+        },
+        {
+          "from_idx": 3,
+          "to_idx": 0,
+          "mode": "walking",
+          "duration_min": 5,
+          "description": "步行 5 分钟（小龙翻大江 → 酒店）",
+          "distance_m": 280,
+          "path": [
+            [104.083, 30.657],
+            [104.0825, 30.6575],
+            [104.082, 30.658],
+            [104.0815, 30.658],
+            [104.081, 30.658]
+          ],
+          "source": "amap-mcp",
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "CNY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         }
       ],
       "meals": {
@@ -612,6 +640,34 @@
       ],
       "transports": [
         {
+          "from_idx": 0,
+          "to_idx": 1,
+          "mode": "transit",
+          "duration_min": 15,
+          "description": "地铁 春熙路 → 宽窄巷子（约 15 分钟）",
+          "source": "amap-mcp",
+          "distance_m": 2800,
+          "path": [
+            [104.081, 30.658],
+            [104.075, 30.662],
+            [104.069, 30.666],
+            [104.065, 30.668],
+            [104.061, 30.671]
+          ],
+          "fare": {
+            "min": 3,
+            "max": 6,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 6,
+            "total_max": 12,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
+        },
+        {
           "from_idx": 1,
           "to_idx": 2,
           "mode": "walking",
@@ -668,28 +724,28 @@
           "distance_m": 2036,
           "path": [
             [
+              104.062,
+              30.6695
+            ],
+            [
+              104.0618,
+              30.6682
+            ],
+            [
+              104.0615,
+              30.6665
+            ],
+            [
+              104.0613,
+              30.665
+            ],
+            [
+              104.0611,
+              30.6642
+            ],
+            [
               104.061,
               30.6635
-            ],
-            [
-              104.065112,
-              30.662283
-            ],
-            [
-              104.069543,
-              30.663299
-            ],
-            [
-              104.073457,
-              30.660701
-            ],
-            [
-              104.077888,
-              30.661717
-            ],
-            [
-              104.082,
-              30.6605
             ]
           ],
           "fare": {
@@ -719,25 +775,53 @@
               30.6635
             ],
             [
-              104.061294,
-              30.665
+              104.065,
+              30.6628
             ],
             [
-              104.060524,
-              30.6665
+              104.069,
+              30.6622
             ],
             [
-              104.061476,
-              30.668
+              104.073,
+              30.6616
             ],
             [
-              104.060706,
-              30.6695
+              104.077,
+              30.6611
             ],
             [
-              104.061,
-              30.671
+              104.082,
+              30.6605
             ]
+          ],
+          "fare": {
+            "min": 3,
+            "max": 6,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 6,
+            "total_max": 12,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
+        },
+        {
+          "from_idx": 4,
+          "to_idx": 0,
+          "mode": "transit",
+          "duration_min": 8,
+          "description": "地铁 春熙路 → 酒店（约 8 分钟）",
+          "source": "amap-mcp",
+          "distance_m": 400,
+          "path": [
+            [104.082, 30.6605],
+            [104.0818, 30.6595],
+            [104.0815, 30.6588],
+            [104.0812, 30.6583],
+            [104.081, 30.658]
           ],
           "fare": {
             "min": 3,
@@ -1034,6 +1118,34 @@
       ],
       "transports": [
         {
+          "from_idx": 0,
+          "to_idx": 1,
+          "mode": "transit",
+          "duration_min": 45,
+          "description": "地铁 酒店 → 熊猫基地（约 45 分钟）",
+          "source": "amap-mcp",
+          "distance_m": 18500,
+          "path": [
+            [104.081, 30.658],
+            [104.095, 30.672],
+            [104.108, 30.695],
+            [104.122, 30.718],
+            [104.144, 30.74]
+          ],
+          "fare": {
+            "min": 4,
+            "max": 7,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 8,
+            "total_max": 14,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
+        },
+        {
           "from_idx": 1,
           "to_idx": 2,
           "mode": "walking",
@@ -1225,7 +1337,7 @@
     {
       "item": "春熙路亚朵酒店",
       "deadline": "出发前 2 周",
-      "url": "https://www.booking.com/search.html?ss=Atour+Chengdu",
+      "url": "https://hotels.ctrip.com/hotels/list?cityname=%E6%88%90%E9%83%BD&keyword=%E6%98%A5%E7%86%95%E8%B7%AF%E4%BA%9A%E6%A0%BC%E9%85%92%E5%BA%97",
       "note": "Booking / 携程对比价；9 月旺季提前订",
       "price": {
         "min": 350,
@@ -1243,7 +1355,7 @@
     {
       "item": "国内机票（出发 → 成都双流 / 天府）",
       "deadline": "出发前 2 周",
-      "url": "https://www.trip.com/",
+      "url": "https://flights.ctrip.com/itinerary/oneway/sha-ctu?date=2026-09-18",
       "note": "双流机场近市区（地铁 10 号线 45 分钟）；天府机场远（地铁 18 号线 1.5 小时）",
       "price": {
         "min": 600,
@@ -1261,7 +1373,7 @@
     {
       "item": "国内机票（成都 → 返程）",
       "deadline": "出发前 2 周",
-      "url": "https://www.trip.com/",
+      "url": "https://flights.ctrip.com/itinerary/oneway/ctu-sha?date=2026-09-20",
       "note": "建议返程 18:00 之后航班，留 3 小时机场缓冲",
       "price": {
         "min": 600,

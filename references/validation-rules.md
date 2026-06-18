@@ -11,7 +11,7 @@
 |-------|------|----------------|---------|-------------|
 | **1** | 结构筛 | `1` | V1, V4 | V7 禁忌审查、critique |
 | **2** | 时空筛 | `2` | V2, V5, V8, V9 | 高德 route 实算填 V2、critique |
-| **3** | 体验筛 | `3` | V3, V6, V10 | 美团+高德+小红书+价格汇总、critique |
+| **3** | 体验筛 | `3` | V3, V6, V8, V10 | 美团+高德+小红书+价格汇总、**地图折线复检**、critique |
 | 全量 | 交付前复检 | （无） | V1–V6, V8, V9, V10 | V7 若 Round 1 已验可沿用 |
 
 ```bash
@@ -43,8 +43,8 @@ python scripts/validate.py trip_data.json --pretty   # 最终全量
 | V7 | 用户禁忌屏蔽 | 1 | 🤖 **AI** | 直接删 |
 | V2 | 时间可行性 | 2 | 🤖 **AI 调高德** + ⚙️ 粗算 | 替换/删/挪时间 |
 | V5 | 末日返程缓冲 | 2 | ⚙️ **脚本** | 末日去远郊挪前 |
-| V8 | MCP 必跑痕迹 | 2 | ⚙️ **脚本** | 重跑高德 direction |
-| V9 | 实算 vs 粗算 | 2 | ⚙️ **脚本** | 重跑高德 direction |
+| V8 | MCP 必跑痕迹 / 地图折线 | 2, **3** | ⚙️ **脚本** | 重跑高德 direction 填 path |
+| V9 | 通勤时间下限 | 2 | ⚙️ **脚本** | 补 duration_min / 重跑高德 |
 | V3 | 餐厅区域匹配 | 3 | ⚙️ **脚本** | 替换餐厅候选 |
 | V6 | 户外天气敏感 | 3 | ⚙️ **脚本** | 配室内备选 |
 | V10 | 价格溯源 | 3 | ⚙️ **脚本** | 补 price/fare + source |
@@ -121,7 +121,6 @@ python scripts/validate.py trip_data.json --pretty
 **例外**：
 - **远郊/跨城日不计入累计通勤**（城际新干线、富士山往返这种大块通勤不构成"赶死"信号）
 - 仅对"市内单区日"判定 50% 阈值
-- **V9 偏差阈值 50%**：walking/transit 模式因绕路/换乘/船等，偏差天然 > 50%，**V9 是设计 bug，详见 P26 修复进度**
 
 **失败动作**：
 - 删一个 POI
@@ -129,6 +128,46 @@ python scripts/validate.py trip_data.json --pretty
 - 换相邻 POI（同区域内）
 
 **重要**：不能"目测"通勤，必须用 `route_*` MCP 实算。3km 在东京可能 40 分钟，在大阪可能 20 分钟。
+
+---
+
+## V9：通勤时间下限（v2.2.3 修正）
+
+**规则**：每段 `transports[]` 必须有高德实算的 `duration_min`；时间不能「快得离谱」。
+
+**判定方式**（`scripts/validate.py`）：
+
+| 检查 | 失败条件 |
+|------|----------|
+| 字段存在 | 缺 `duration_min` → ❌（**不再跳过**） |
+| 下限 | `duration_min` < Haversine直线粗算 × **55%** → ❌ |
+
+**为什么不用双向 50% 偏差**（v1.5.0 旧版，已废弃）：
+
+- 粗算 = 直线距离 ÷ 假设速度（步行 5 / 公交 20 / 驾车 40 km/h）
+- 真实公交/步行常**比**粗算**慢**（绕路、换乘、等站）——例如粗算 10 min、实算 30 min 是正常数据
+- 旧版 `|实算-粗算|/粗算 > 50%` 会把真数据误杀，还诱使 AI 删 `duration_min` 或填 Haversine 假时间
+
+**新版只拦**：实算明显**短于**物理下限（疑似没跑高德 / LLM 编时间）。实算比粗算慢 → ✅ 通过。
+
+**失败动作**：MCP/REST `maps_direction_*` 重拿 `duration`；禁止删 `duration_min` 绕过校验。
+
+---
+
+## V13：酒店早晚通勤（v2.2.4 新增）
+
+**规则**：除首日「首 POI 即酒店」、末日「末站为机场/车站」外，每天 `transports[]` 须含：
+
+| 段 | 写法 | 展示 |
+|----|------|------|
+| 早晨 酒店→首站 | `from_idx: 0`, `to_idx: <首 POI.idx>` | 时间轴顶部「🏨 酒店出发」 |
+| 傍晚 末站→酒店 | `from_idx: <末 POI.idx>`, `to_idx: 0` | 末 POI 卡片「下一站」 |
+
+**约定**：`from_idx` / `to_idx` 为 **0** 表示 `trip.hotel` 坐标（与 POI.idx 并列，非数组下标）。
+
+**Round 2**：与 POI↔POI 段同样须 MCP 时间 + REST polyline + `fare`；V8/V9 同样校验。
+
+**失败动作**：补酒店段并重跑 `validate.py --round 2`。
 
 ---
 
@@ -196,6 +235,34 @@ python scripts/validate.py trip_data.json --pretty
 - 加一晚分酒店减少末日压力
 
 **重要**：末日必须按航班 / 车次**倒推**，不要按"想去的"正推。
+
+---
+
+## V8：MCP 必跑痕迹 / 地图折线可渲染（v2.2.1 加强）
+
+**规则**：每天 `transports[]` 必须有高德实算来源 + 可在网页地图上绘制的 `path` 折线。
+
+**为什么**：网页地图用 `transports[].path` 画 Polyline。缺 path、坐标无效、只有 2 个直线点、或 path 与 POI 坐标对不上时，用户会看到「没有路线」或折线跑偏。
+
+**判定方式**（`scripts/validate.py` + `template.html` 浏览器重算）：
+
+| 检查项 | 失败条件 |
+|--------|----------|
+| `source` | 缺字段，或不在 `{amap-mcp, amap-rest-api}` |
+| `path` 存在 | 缺 `path` 或非数组 |
+| 坐标有效 | 任一点非 `[lng, lat]` 数值，或 lng/lat 超出国内合理范围（疑似颠倒） |
+| 点数 | 非短步行须 **≥ 3 点**；步行且 `distance_m < 400` 允许 2 点 |
+| 端点对齐 | path 首点距 `from_idx` POI、末点距 `to_idx` POI 均 **≤ 1.5 km** |
+| 非假直线 | ≥3 点时，中间点不能全部贴在 from→to 直线上（LLM 编的假 polyline） |
+
+**失败动作**（阻断，exit 1）：
+
+1. 对该段：**MCP** `maps_direction_*` 拿时间/费用；**若无 polyline** → **REST** `/v3/direction/*` 拿 `steps[].polyline`（§2.3、P28）
+2. 拼接写入 `transports[].path`、`source`（`amap-mcp` 或 `amap-rest-api`）、`duration_min`、`distance_m`
+3. **禁止**手工补路网点或 POI 直线糊弄
+4. 重跑 `validate.py --round 2`（或全量）
+
+**Round 3 复检**：体验筛阶段会再跑 V8，防止 Round 2 之后改 POI 却忘了重算路线。
 
 ---
 

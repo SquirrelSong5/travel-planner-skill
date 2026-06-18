@@ -813,6 +813,14 @@
     }
 
     /* ===== Next-leg & meal-leg inside POI card（v2.0.0 融合时间轴）===== */
+    ol.timeline li.time-block .hotel-leg-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin: 0 0 6px;
+    }
+    ol.timeline li.hotel-leg-block .time-block-main { padding-top: 4px; }
+    ol.timeline li.time-block .next-leg.hotel-leg { opacity: 1; }
     ol.timeline li.time-block .next-leg {
       display: flex;
       align-items: center;
@@ -1611,8 +1619,11 @@
         const isLastDay = dayArrIdx === (D.days || []).length - 1;
         const isLastPoiOfDay = poiArrIdx === day.pois.length - 1;
         const isLastPoiOfTrip = isLastDay && isLastPoiOfDay;
+        const morningHotelTransport = poiArrIdx === 0 ? findHotelLeg(day, 'morning') : null;
+        const eveningHotelTransport = isLastPoiOfDay ? findHotelLeg(day, 'evening') : null;
         return {
           slotId, nextTransport, matchedMeal, matchedMealType,
+          morningHotelTransport, eveningHotelTransport,
           isFirstPoiOfTrip, isLastPoiOfTrip, dayArrIdx, poiArrIdx,
         };
       }
@@ -1620,10 +1631,8 @@
       function buildSlotCostItems(day, poi, ctx) {
         const lines = [];
         const seen = new Set();
-        const slotCosts = poi.slot_costs || [];
-        const hasSlotCosts = slotCosts.length > 0;
 
-        slotCosts.forEach(sc => {
+        (poi.slot_costs || []).forEach(sc => {
           const p = sc.price;
           addCostLine(lines, seen, sc.label || (p && p.label) || '费用', p, {
             userEditable: !!(p && p.user_editable),
@@ -1638,18 +1647,27 @@
           }, { userEditable: true });
         }
 
-        if (!hasSlotCosts) {
-          if (poi.price && !(poi.cat === 'hotel' && poi.price.unit === 'free')) {
-            addCostLine(lines, seen, poi.price.label || catPriceLabel(poi.cat), poi.price);
-          }
-          if (ctx.matchedMeal && ctx.matchedMeal.main && ctx.matchedMeal.main.price) {
-            addCostLine(lines, seen, ctx.matchedMeal.label, ctx.matchedMeal.main.price);
-          }
-          if (ctx.nextTransport && ctx.nextTransport.fare) {
-            addCostLine(lines, seen,
-              fareLabel(ctx.nextTransport.mode, ctx.nextTransport.fare),
-              ctx.nextTransport.fare);
-          }
+        // slot_costs 常由 AI 漏写餐饮只留交通；显式项优先，缺项自动补齐（与 seed_prices.build_slot_costs 一致）
+        if (poi.price && !(poi.cat === 'hotel' && poi.price.unit === 'free')) {
+          addCostLine(lines, seen, poi.price.label || catPriceLabel(poi.cat), poi.price);
+        }
+        if (ctx.matchedMeal && ctx.matchedMeal.main && ctx.matchedMeal.main.price) {
+          addCostLine(lines, seen, ctx.matchedMeal.label, ctx.matchedMeal.main.price);
+        }
+        if (ctx.morningHotelTransport && ctx.morningHotelTransport.fare) {
+          addCostLine(lines, seen,
+            fareLabel(ctx.morningHotelTransport.mode, ctx.morningHotelTransport.fare) + '（酒店出发）',
+            ctx.morningHotelTransport.fare);
+        }
+        if (ctx.nextTransport && ctx.nextTransport.fare) {
+          const toHotel = ctx.nextTransport.to_idx === 0;
+          addCostLine(lines, seen,
+            fareLabel(ctx.nextTransport.mode, ctx.nextTransport.fare) + (toHotel ? '（回酒店）' : ''),
+            ctx.nextTransport.fare);
+        } else if (ctx.eveningHotelTransport && ctx.eveningHotelTransport.fare) {
+          addCostLine(lines, seen,
+            fareLabel(ctx.eveningHotelTransport.mode, ctx.eveningHotelTransport.fare) + '（回酒店）',
+            ctx.eveningHotelTransport.fare);
         }
 
         if (ctx.isFirstPoiOfTrip && (D.prebook || []).length) {
@@ -1675,7 +1693,7 @@
           }
         }
 
-        if (!hasSlotCosts && poi.requires_booking && (D.prebook || []).length) {
+        if (poi.requires_booking && (D.prebook || []).length) {
           (D.prebook || []).forEach(pb => {
             if (pb.price && (pb.note || '').includes(poi.name)) {
               addCostLine(lines, seen, pb.price.label || pb.item || '预约', pb.price);
@@ -1854,6 +1872,110 @@
         return day ? (day.pois || []).find(p => p.idx === parseInt(m[2], 10)) : null;
       }
 
+      function categorizeCostLine(label, poiCat) {
+        const L = label || '';
+        if (/机票|航班|大交通/.test(L)) return 'flights';
+        if (/地铁|公交|打车|驾车|步行|骑行|交通/.test(L)) return 'transport_local';
+        if (/午餐|晚餐|早餐|餐饮/.test(L) || poiCat === 'food') return 'food';
+        if (/住宿|酒店/.test(L)) return 'hotel';
+        if (/门票|预约|船票|讲解|体验|参观/.test(L)) return 'tickets';
+        if (poiCat === 'shopping') return null;
+        return 'tickets';
+      }
+
+      function computeBudgetSummaryFromTrip() {
+        const ps = D.party_size || 1;
+        const currency = (D.hotel && D.hotel.price && D.hotel.price.currency) || 'CNY';
+        const cats = {
+          transport_local: { min: 0, max: 0 },
+          food: { min: 0, max: 0 },
+          tickets: { min: 0, max: 0 },
+          hotel: { min: 0, max: 0 },
+          flights: { min: 0, max: 0 },
+        };
+        let countedFlight = false;
+
+        (D.days || []).forEach((day, dayArrIdx) => {
+          const mealsUsed = {};
+          const pendingMeals = [];
+          if (day.meals) {
+            ['breakfast', 'lunch', 'dinner'].forEach(type => {
+              if (day.meals[type] && day.meals[type].main) pendingMeals.push(type);
+            });
+          }
+          (day.pois || []).forEach((p, poiArrIdx) => {
+            const ctx = buildSlotContext(day, p, poiArrIdx, dayArrIdx, mealsUsed, pendingMeals);
+            if (ctx.matchedMealType) mealsUsed[ctx.matchedMealType] = true;
+            const items = buildSlotCostItems(day, p, ctx);
+            items.lines.forEach(line => {
+              if (line.userEditable || (line.price && line.price.user_editable)) return;
+              const cat = categorizeCostLine(line.label, p.cat);
+              if (!cat) return;
+              const t = priceTotals(line._resolvedPrice || line.price);
+              if (!t) return;
+              cats[cat].min += t.tmin;
+              cats[cat].max += t.tmax;
+              if (cat === 'flights') countedFlight = true;
+            });
+          });
+        });
+
+        const hotelT = priceTotals(D.hotel && D.hotel.price);
+        if (hotelT) {
+          cats.hotel.min += hotelT.tmin;
+          cats.hotel.max += hotelT.tmax;
+        }
+
+        (D.prebook || []).forEach(pb => {
+          const t = priceTotals(pb.price);
+          if (!t) return;
+          const item = pb.item || '';
+          if (/机票|航班/.test(item)) {
+            if (!countedFlight) {
+              cats.flights.min += t.tmin;
+              cats.flights.max += t.tmax;
+            }
+            countedFlight = true;
+          } else if (/船票|门票/.test(item)) {
+            cats.tickets.min += t.tmin;
+            cats.tickets.max += t.tmax;
+          }
+        });
+
+        let totalMin = 0, totalMax = 0;
+        Object.values(cats).forEach(c => { totalMin += c.min; totalMax += c.max; });
+
+        const by_category = {};
+        if (cats.transport_local.min || cats.transport_local.max) by_category.transport_local = { ...cats.transport_local };
+        if (cats.food.min || cats.food.max) by_category.food = { ...cats.food };
+        if (cats.tickets.min || cats.tickets.max) by_category.tickets = { ...cats.tickets };
+        if (cats.hotel.min || cats.hotel.max) {
+          by_category.hotel = { ...cats.hotel };
+          const nights = D.hotel && D.hotel.price && D.hotel.price.quantity;
+          if (nights) by_category.hotel.nights = nights;
+        }
+        if (cats.flights.min || cats.flights.max) {
+          by_category.flights = { ...cats.flights, note: '往返机票（时间轴/prebook 汇总）' };
+        }
+
+        const gaps = [];
+        if (D.hotel && !hotelT) gaps.push('住宿');
+        if ((D.prebook || []).some(pb => /机票|航班/.test(pb.item || '')) && !countedFlight && !(cats.flights.min || cats.flights.max)) {
+          gaps.push('机票');
+        }
+
+        return {
+          currency,
+          by_category,
+          total_min: totalMin,
+          total_max: totalMax,
+          per_person_min: totalMin / ps,
+          per_person_max: totalMax / ps,
+          disclaimer: gaps.length ? `⚠️ 以下大项缺标价：${gaps.join('、')}` : null,
+          _auto: true,
+        };
+      }
+
       function sumLineItemPrices() {
         let min = 0, max = 0;
         (D.days || []).forEach((day, dayArrIdx) => {
@@ -1883,8 +2005,9 @@
         const badge = document.getElementById('budget-total-badge');
         if (!el) return;
         const ps = D.party_size || 1;
-        const bs = D.budget_summary;
-        const line = sumLineItemPrices();
+        const bs = (D.budget_summary && D.budget_summary.total_min != null)
+          ? D.budget_summary
+          : computeBudgetSummaryFromTrip();
         const catLabels = {
           transport_local: '市内交通',
           food: '餐饮',
@@ -1893,36 +2016,26 @@
           flights: '大交通（机票等）',
         };
         let html = '';
-        let totalMin, totalMax, isFallback = false;
+        let totalMin = bs.total_min;
+        let totalMax = bs.total_max != null ? bs.total_max : bs.total_min;
 
-        if (bs && bs.total_min != null) {
-          totalMin = bs.total_min;
-          totalMax = bs.total_max != null ? bs.total_max : bs.total_min;
-          if (bs.by_category) {
-            Object.keys(catLabels).forEach(k => {
-              const c = bs.by_category[k];
-              if (!c || c.min == null) return;
-              const cmax = c.max != null ? c.max : c.min;
-              const note = c.note ? `（${esc(c.note)}）` : (c.nights ? `（${c.nights} 晚）` : '');
-              html += `<div class="budget-row"><span>${catLabels[k]}${note}</span><span>${formatMoney(c.min, bs.currency)}${cmax !== c.min ? '–' + formatMoney(cmax, bs.currency) : ''}</span></div>`;
-            });
-          }
-          html += `<div class="budget-row budget-total-line"><span>全程合计（${ps} 人）</span><span>${formatMoney(totalMin, bs.currency)}${totalMax !== totalMin ? '–' + formatMoney(totalMax, bs.currency) : ''}</span></div>`;
-          if (bs.per_person_min != null) {
-            html += `<div class="budget-row"><span>人均</span><span>${formatMoney(bs.per_person_min, bs.currency)}${bs.per_person_max !== bs.per_person_min ? '–' + formatMoney(bs.per_person_max, bs.currency) : ''}</span></div>`;
-          }
-          if (bs.disclaimer) {
-            html += `<p class="budget-disclaimer">${esc(bs.disclaimer)}</p>`;
-          }
-        } else {
-          isFallback = true;
-          totalMin = line.min;
-          totalMax = line.max;
-          html += `<div class="budget-row"><span>时间轴已标价合计</span><span>${formatMoney(totalMin)}${totalMax !== totalMin ? '–' + formatMoney(totalMax) : ''}</span></div>`;
-          html += `<div class="budget-row"><span>人均（估）</span><span>${formatMoney(totalMin / ps)}${totalMax !== totalMin ? '–' + formatMoney(totalMax / ps) : ''}</span></div>`;
-          html += `<p class="budget-disclaimer">⚠️ 未校验 budget_summary；酒店/机票等大项可能未计入</p>`;
+        if (bs.by_category) {
+          Object.keys(catLabels).forEach(k => {
+            const c = bs.by_category[k];
+            if (!c || c.min == null) return;
+            const cmax = c.max != null ? c.max : c.min;
+            const note = c.note ? `（${esc(c.note)}）` : (c.nights ? `（${c.nights} 晚）` : '');
+            html += `<div class="budget-row"><span>${catLabels[k]}${note}</span><span>${formatMoney(c.min, bs.currency)}${cmax !== c.min ? '–' + formatMoney(cmax, bs.currency) : ''}</span></div>`;
+          });
         }
-        el.className = isFallback ? 'budget-card budget-fallback' : 'budget-card';
+        html += `<div class="budget-row budget-total-line"><span>全程合计（${ps} 人）</span><span>${formatMoney(totalMin, bs.currency)}${totalMax !== totalMin ? '–' + formatMoney(totalMax, bs.currency) : ''}</span></div>`;
+        if (bs.per_person_min != null) {
+          html += `<div class="budget-row"><span>人均</span><span>${formatMoney(bs.per_person_min, bs.currency)}${bs.per_person_max !== bs.per_person_min ? '–' + formatMoney(bs.per_person_max, bs.currency) : ''}</span></div>`;
+        }
+        if (bs.disclaimer) {
+          html += `<p class="budget-disclaimer">${esc(bs.disclaimer)}</p>`;
+        }
+        el.className = 'budget-card';
         el.innerHTML = html;
         if (badge) {
           badge.textContent = totalMax !== totalMin
@@ -2028,13 +2141,115 @@
         const m = total % 60;
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
       }
-      function inferLegTime(transport, allPois) {
-        // 优先用 transport.time（新字段，旧数据缺）
+      function minutesToTimeStr(totalMin) {
+        const t = Math.max(0, totalMin);
+        const h = Math.floor((t / 60) % 24);
+        const m = t % 60;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
+
+      function getHotelLoc() {
+        const h = D && D.hotel;
+        if (!h) return null;
+        if (h.lng != null && h.lat != null) return [h.lng, h.lat];
+        if (Array.isArray(h.location) && h.location.length >= 2) return h.location.slice(0, 2);
+        return null;
+      }
+
+      function resolveTransportPoint(day, idx) {
+        if (idx === 0) {
+          const loc = getHotelLoc();
+          if (!loc) return null;
+          return {
+            idx: 0,
+            name: (D.hotel && D.hotel.name) || '酒店',
+            lng: loc[0],
+            lat: loc[1],
+            cat: 'hotel',
+          };
+        }
+        return (day.pois || []).find(p => p.idx === idx) || null;
+      }
+
+      function firstPoiIsHotel(day) {
+        const p = (day.pois || [])[0];
+        if (!p) return false;
+        if (p.cat === 'hotel') return true;
+        return !!(D.hotel && D.hotel.name && p.name === D.hotel.name);
+      }
+
+      function lastPoiIsDeparture(day) {
+        const pois = day.pois || [];
+        const last = pois[pois.length - 1];
+        if (!last) return false;
+        if (last.cat === 'transport') return true;
+        return /机场|火车站|高铁站|(?:汽车)?车站|码头|港口/.test(last.name || '');
+      }
+
+      function firstPoiSkipsMorningLeg(day) {
+        if (firstPoiIsHotel(day)) return true;
+        if (day.day !== 1) return false;
+        const p = (day.pois || [])[0];
+        if (!p) return true;
+        if (p.cat === 'transport') return true;
+        return /机场|火车站|高铁站|(?:汽车)?车站|码头|港口/.test(p.name || '');
+      }
+
+      function findHotelLeg(day, kind) {
+        const pois = day.pois || [];
+        if (!pois.length) return null;
+        const ts = day.transports || [];
+        if (kind === 'morning') {
+          const first = pois[0];
+          return ts.find(t => t.from_idx === 0 && t.to_idx === first.idx) || null;
+        }
+        if (kind === 'evening') {
+          if (lastPoiIsDeparture(day)) return null;
+          const last = pois[pois.length - 1];
+          return ts.find(t => t.from_idx === last.idx && t.to_idx === 0) || null;
+        }
+        return null;
+      }
+
+      function inferLegTime(transport, day) {
         if (transport.time) return transport.time;
-        // fallback: 用 from_idx POI 的 time + duration_min
-        const fromPoi = allPois[transport.from_idx - 1];
+        if (transport.from_idx === 0) {
+          const toPoi = resolveTransportPoint(day, transport.to_idx);
+          if (toPoi && toPoi.time) {
+            return minutesToTimeStr(parseTimeStr(toPoi.time) - (transport.duration_min || 15));
+          }
+          return '';
+        }
+        const fromPoi = resolveTransportPoint(day, transport.from_idx)
+          || (day.pois || [])[transport.from_idx - 1];
         if (!fromPoi || !fromPoi.time) return '';
         return addMinutesToTimeStr(fromPoi.time, transport.duration_min || 5);
+      }
+
+      function renderTransportLegHtml(transport, fromPoint, toPoint, day, legClass) {
+        if (!transport || !fromPoint || !toPoint) return '';
+        const fromName = fromPoint.name || '?';
+        const toName = toPoint.name || '?';
+        const desc = transport.description || `${fmtMode(transport.mode)} ${transport.duration_min} 分钟`;
+        const legTime = inferLegTime(transport, day);
+        const navUrl2 = isAmapNaviUrl(transport.links && transport.links.amap_navi)
+          ? transport.links.amap_navi
+          : buildAmapNaviUrl(fromPoint, toPoint, transport.mode);
+        const navLink = navUrl2
+          ? `<a class="next-leg-nav" href="${esc(navUrl2)}" target="_blank" rel="noopener">导航</a>`
+          : '';
+        const ariaLabel = `从 ${fromName} 到 ${toName}，${desc}`;
+        const icon = fmtMode(transport.mode) === '驾车' ? '🚗'
+          : (fmtMode(transport.mode) === '骑行' ? '🚴'
+            : (fmtMode(transport.mode) === '公交' || fmtMode(transport.mode) === '地铁'
+              || fmtMode(transport.mode) === '火车' || fmtMode(transport.mode) === 'JR' ? '🚌' : '🚶'));
+        const cls = legClass || 'next-leg';
+        return `<div class="${cls}" data-mode="${esc(transport.mode)}" aria-label="${esc(ariaLabel)}">
+          <span class="next-leg-icon">${icon}</span>
+          <span class="next-leg-text">${esc(desc)} · ${esc(toName)}</span>
+          <span class="leg-time">${esc(legTime)}</span>
+          ${navLink}
+        </div>`;
       }
       function pickMealForPoi(p, allPois, meals) {
         // 早 POI 末项 → breakfast；午 POI → lunch；时间 ≥ 17:00 → dinner
@@ -2082,11 +2297,14 @@
             }
           }
           (d.transports || []).forEach(t => {
-            if (t.from_idx < 1 || t.from_idx > d.pois.length) {
-              console.warn(`[travel-planner] Day ${d.day} transport from_idx=${t.from_idx} 越界（POI 范围 1-${d.pois.length}）`);
+            const maxIdx = Math.max(...d.pois.map(p => p.idx), 0);
+            const okFrom = t.from_idx === 0 || (t.from_idx >= 1 && t.from_idx <= maxIdx);
+            const okTo = t.to_idx === 0 || (t.to_idx >= 1 && t.to_idx <= maxIdx);
+            if (!okFrom) {
+              console.warn(`[travel-planner] Day ${d.day} transport from_idx=${t.from_idx} 越界（0=酒店，POI 1-${maxIdx}）`);
             }
-            if (t.to_idx < 1 || t.to_idx > d.pois.length) {
-              console.warn(`[travel-planner] Day ${d.day} transport to_idx=${t.to_idx} 越界（POI 范围 1-${d.pois.length}）`);
+            if (!okTo) {
+              console.warn(`[travel-planner] Day ${d.day} transport to_idx=${t.to_idx} 越界（0=酒店，POI 1-${maxIdx}）`);
             }
           });
         })();
@@ -2104,6 +2322,23 @@
               pendingMeals.push(type);
             }
           });
+        }
+
+        const morningLeg = findHotelLeg(d, 'morning');
+        let morningLegHtml = '';
+        if (morningLeg && !firstPoiSkipsMorningLeg(d)) {
+          const fromPt = resolveTransportPoint(d, 0);
+          const toPt = resolveTransportPoint(d, morningLeg.to_idx);
+          morningLegHtml = `<li class="time-block hotel-leg-block" aria-label="酒店出发">
+            <div class="time-block-grid">
+              <div class="time-block-main">
+                <div class="place hotel-leg-wrap">
+                  <p class="hotel-leg-label">🏨 酒店出发</p>
+                  ${renderTransportLegHtml(morningLeg, fromPt, toPt, d, 'next-leg hotel-leg')}
+                </div>
+              </div>
+            </div>
+          </li>`;
         }
 
         const poiItems = d.pois.map((p, poiArrIdx) => {
@@ -2127,24 +2362,9 @@
           const nextTransport = d.transports && d.transports.find(t => t.from_idx === p.idx);
           let nextLegHtml = '';
           if (nextTransport) {
-            const toPoi = d.pois.find(pp => pp.idx === nextTransport.to_idx);
-            const fromName = p.name || '?';
-            const toName = toPoi ? toPoi.name : '?';
-            const desc = nextTransport.description || `${fmtMode(nextTransport.mode)} ${nextTransport.duration_min} 分钟`;
-            const legTime = inferLegTime(nextTransport, d.pois);
-            const navUrl2 = isAmapNaviUrl(nextTransport.links && nextTransport.links.amap_navi)
-              ? nextTransport.links.amap_navi
-              : buildAmapNaviUrl(p, toPoi, nextTransport.mode);
-            const navLink = navUrl2
-              ? `<a class="next-leg-nav" href="${esc(navUrl2)}" target="_blank" rel="noopener">导航</a>`
-              : '';
-            const ariaLabel = `从 ${fromName} 到 ${toName}，${desc}`;
-            nextLegHtml = `<div class="next-leg" data-mode="${esc(nextTransport.mode)}" aria-label="${esc(ariaLabel)}">
-              <span class="next-leg-icon">${fmtMode(nextTransport.mode) === '驾车' ? '🚗' : (fmtMode(nextTransport.mode) === '骑行' ? '🚴' : (fmtMode(nextTransport.mode) === '公交' || fmtMode(nextTransport.mode) === '地铁' || fmtMode(nextTransport.mode) === '火车' || fmtMode(nextTransport.mode) === 'JR' ? '🚌' : '🚶'))}</span>
-              <span class="next-leg-text">${esc(desc)} · ${esc(toName)}</span>
-              <span class="leg-time">${esc(legTime)}</span>
-              ${navLink}
-            </div>`;
+            const fromPoint = resolveTransportPoint(d, nextTransport.from_idx) || p;
+            const toPoint = resolveTransportPoint(d, nextTransport.to_idx);
+            nextLegHtml = renderTransportLegHtml(nextTransport, fromPoint, toPoint, d, 'next-leg');
           }
 
           // meal-leg（绑定到匹配时段的第一个 POI）
@@ -2221,7 +2441,7 @@
               <span class="weather">${esc(d.weather_emoji || '')} ${esc(d.weather || '')}</span>
             </header>
             <p class="theme">${esc(d.theme || '')}</p>
-            <ol class="timeline">${poiItems}</ol>
+            <ol class="timeline">${morningLegHtml}${poiItems}</ol>
             ${wsTag}
           </article>`;
         bindUserBudgetInputs();
@@ -2346,8 +2566,8 @@
         if (showRoute && d.transports) {
           const outlineColor = getCss('--bg-elevated') || '#ffffff';
           d.transports.forEach(t => {
-            const from = (d.pois || []).find(p => p.idx === t.from_idx);
-            const to = (d.pois || []).find(p => p.idx === t.to_idx);
+            const from = resolveTransportPoint(d, t.from_idx);
+            const to = resolveTransportPoint(d, t.to_idx);
             if (!from || !to) return;
             const pathCoords = (Array.isArray(t.path) && t.path.length >= 2)
               ? t.path.map(coord => [coord[0], coord[1]])
@@ -2606,7 +2826,45 @@
 
       // 浏览器端 V8 重算（与 validate.py check_v8 一致）
       const V8_ALLOWED_SOURCES_BROWSER = new Set(['amap-mcp', 'amap-rest-api']);
+      const V8_MIN_PATH_POINTS_BROWSER = 3;
+      const V8_WALK_SHORT_DIST_M_BROWSER = 400;
+      const V8_ENDPOINT_MAX_KM_BROWSER = 1.5;
+      const V8_CHINA_LNG_BROWSER = [70.0, 140.0];
+      const V8_CHINA_LAT_BROWSER = [2.0, 56.0];
       const V8_STRAIGHT_LINE_RATIO = 0.005;  // 真实路网偏差 < 0.5% 总距离才判直线
+      function parsePathPointBrowser(pt) {
+        if (!Array.isArray(pt) || pt.length < 2) return null;
+        const lng = Number(pt[0]), lat = Number(pt[1]);
+        if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+        return [lng, lat];
+      }
+      function pathInChinaBBoxBrowser(lng, lat) {
+        return lng >= V8_CHINA_LNG_BROWSER[0] && lng <= V8_CHINA_LNG_BROWSER[1]
+          && lat >= V8_CHINA_LAT_BROWSER[0] && lat <= V8_CHINA_LAT_BROWSER[1];
+      }
+      function pathMinPointsBrowser(t) {
+        const mode = (t.mode || '').toLowerCase();
+        const dist = t.distance_m || 0;
+        if ((mode === 'walk' || mode === 'walking') && dist < V8_WALK_SHORT_DIST_M_BROWSER) return 2;
+        return V8_MIN_PATH_POINTS_BROWSER;
+      }
+      function pathCoordsValidBrowser(path) {
+        for (let i = 0; i < path.length; i++) {
+          const parsed = parsePathPointBrowser(path[i]);
+          if (!parsed) return `path[${i}] 非 [lng,lat] 数值`;
+          if (!pathInChinaBBoxBrowser(parsed[0], parsed[1])) {
+            return `path[${i}] 坐标异常，疑似经纬度颠倒`;
+          }
+        }
+        return null;
+      }
+      function pathEndpointsNearBrowser(path, fromLoc, toLoc) {
+        const start = parsePathPointBrowser(path[0]);
+        const end = parsePathPointBrowser(path[path.length - 1]);
+        if (!start || !end) return false;
+        return haversineKm(start, fromLoc) <= V8_ENDPOINT_MAX_KM_BROWSER
+          && haversineKm(end, toLoc) <= V8_ENDPOINT_MAX_KM_BROWSER;
+      }
       function isStraightLineBrowser(path, fromLoc, toLoc) {
         if (!path || path.length < 3) return true;
         const [x1, y1] = fromLoc;
@@ -2628,7 +2886,7 @@
         return true;
       }
       function browserCheckV8(days) {
-        const badSource = [], missingPath = [], shortPath = [], straightLine = [];
+        const badSource = [], missingPath = [], shortPath = [], badCoords = [], endpointFar = [], straightLine = [];
         let total = 0;
         for (const d of (days || [])) {
           for (let i = 0; i < (d.transports || []).length; i++) {
@@ -2636,73 +2894,92 @@
             if (!t || typeof t !== 'object') continue;
             total++;
             const label = `Day ${d.day}.transports[${i}]`;
+            const mode = t.mode || 'transit';
             if (!t.source || !V8_ALLOWED_SOURCES_BROWSER.has(t.source)) {
               badSource.push(`${label}（source=${t.source}）`);
               continue;
             }
             const path = Array.isArray(t.path) ? t.path : [];
-            if (!path.length) { missingPath.push(label); continue; }
-            if (path.length < 2) { shortPath.push(`${label}（${path.length} 点）`); continue; }
+            if (!path.length) { missingPath.push(`${label}（缺 path）`); continue; }
+            const coordErr = pathCoordsValidBrowser(path);
+            if (coordErr) { badCoords.push(`${label}（${coordErr}）`); continue; }
+            const minPts = pathMinPointsBrowser(t);
+            if (path.length < minPts) {
+              shortPath.push(`${label}（${path.length} 点，须 ≥${minPts}）`);
+              continue;
+            }
             if (t.from_idx && t.to_idx) {
               const fromP = (d.pois || [])[t.from_idx - 1];
               const toP = (d.pois || [])[t.to_idx - 1];
               const fromLoc = getLoc(fromP), toLoc = getLoc(toP);
-              if (fromLoc && toLoc && isStraightLineBrowser(path, fromLoc, toLoc)) {
-                straightLine.push(`${label}（${path.length} 点疑似直线）`);
+              if (fromLoc && toLoc) {
+                if (!pathEndpointsNearBrowser(path, fromLoc, toLoc)) {
+                  endpointFar.push(`${label}（path 与 POI 不匹配）`);
+                  continue;
+                }
+                if (path.length >= V8_MIN_PATH_POINTS_BROWSER && isStraightLineBrowser(path, fromLoc, toLoc)) {
+                  straightLine.push(`${label}（${path.length} 点疑似直线）`);
+                }
               }
             }
           }
         }
-        if (total === 0) return { id: 'V8', rule: 'MCP 必跑痕迹', status: '✅', note: '无 transport 段', source: 'browser' };
+        if (total === 0) return { id: 'V8', rule: 'MCP 必跑痕迹 / 地图折线', status: '✅', note: '无 transport 段', source: 'browser' };
         const errors = [];
         if (badSource.length) errors.push(`${badSource.length} 段 source 不合法`);
-        if (missingPath.length) errors.push(`${missingPath.length} 段缺 path`);
-        if (shortPath.length) errors.push(`${shortPath.length} 段 path 太短`);
+        if (missingPath.length) errors.push(`${missingPath.length} 段缺 path（地图无路线）`);
+        if (badCoords.length) errors.push(`${badCoords.length} 段 path 坐标无效`);
+        if (shortPath.length) errors.push(`${shortPath.length} 段 path 过短`);
+        if (endpointFar.length) errors.push(`${endpointFar.length} 段 path 与 POI 不匹配`);
         if (straightLine.length) errors.push(`${straightLine.length} 段疑似直线`);
         if (errors.length) {
-          return { id: 'V8', rule: 'MCP 必跑痕迹', status: '❌', note: errors.join('；'), source: 'browser' };
+          return { id: 'V8', rule: 'MCP 必跑痕迹 / 地图折线', status: '❌', note: errors.join('；') + '。请 REST /v3/direction/* 填 polyline（见 amap-mcp-usage §2.3）', source: 'browser' };
         }
-        return { id: 'V8', rule: 'MCP 必跑痕迹', status: '✅', note: `全部 ${total} 段已必跑 MCP`, source: 'browser' };
+        return { id: 'V8', rule: 'MCP 必跑痕迹 / 地图折线', status: '✅', note: `全部 ${total} 段可在地图绘制`, source: 'browser' };
       }
 
-      // 浏览器端 V9 重算（与 validate.py check_v9 一致）
-      const V9_DURATION_RATIO_FAIL = 0.5;
+      // 浏览器端 V9（与 validate.py check_v9 一致，v2.2.3 只拦过快）
+      const V9_TOO_FAST_RATIO = 0.55;
       const WALK_KMH = 5.0, TRANSIT_KMH = 20.0, DRIVE_KMH = 40.0;
       function roughCommuteMin(a, b, mode) {
         const d = haversineKm(a, b);
         if (!d) return 0;
         const m = (mode || 'transit').toLowerCase();
-        if (m === 'walking') return d / WALK_KMH * 60;
+        if (m === 'walking' || m === 'walk') return d / WALK_KMH * 60;
         if (m === 'driving' || m === 'taxi' || m === 'car') return d / DRIVE_KMH * 60;
         if (m === 'train' || m === 'jr' || m === 'metro' || m === 'subway') return d / 45.0 * 60;
         return d / TRANSIT_KMH * 60;
       }
       function browserCheckV9(days) {
-        const suspicious = [];
-        let totalChecked = 0;
+        const tooFast = [], missingDuration = [];
+        let total = 0;
         for (const d of (days || [])) {
           for (let i = 0; i < (d.transports || []).length; i++) {
             const t = d.transports[i];
-            if (!t || t.duration_min == null) continue;
-            totalChecked++;
+            if (!t || typeof t !== 'object') continue;
+            total++;
+            const label = `Day ${d.day}.transports[${i}]`;
+            if (t.duration_min == null) { missingDuration.push(label); continue; }
             if (!t.from_idx || !t.to_idx) continue;
-            const fromP = (d.pois || [])[t.from_idx - 1];
-            const toP = (d.pois || [])[t.to_idx - 1];
-            const fromLoc = getLoc(fromP), toLoc = getLoc(toP);
+            const fromLoc = getLoc((d.pois || [])[t.from_idx - 1]);
+            const toLoc = getLoc((d.pois || [])[t.to_idx - 1]);
             if (!fromLoc || !toLoc) continue;
             const rough = roughCommuteMin(fromLoc, toLoc, t.mode);
             if (!rough) continue;
-            const ratio = Math.abs(t.duration_min - rough) / rough;
-            if (ratio > V9_DURATION_RATIO_FAIL) {
-              suspicious.push(`Day ${d.day}.transports[${i}]: ${t.duration_min}min vs 粗算 ${rough.toFixed(0)}min (${(ratio*100).toFixed(0)}%)`);
+            const floor = rough * V9_TOO_FAST_RATIO;
+            if (t.duration_min < floor) {
+              tooFast.push(`${label}: ${t.duration_min}min < 下限${floor.toFixed(0)}min`);
             }
           }
         }
-        if (totalChecked === 0) return { id: 'V9', rule: 'V2 实算 vs 粗算', status: '✅', note: '无 duration_min 字段', source: 'browser' };
-        if (suspicious.length) {
-          return { id: 'V9', rule: 'V2 实算 vs 粗算', status: '❌', note: `${suspicious.length}/${totalChecked} 段偏差 > 50%`, source: 'browser' };
+        if (total === 0) return { id: 'V9', rule: '通勤时间下限', status: '✅', note: '无 transport 段', source: 'browser' };
+        const errors = [];
+        if (missingDuration.length) errors.push(`${missingDuration.length} 段缺 duration_min`);
+        if (tooFast.length) errors.push(`${tooFast.length} 段时间过快`);
+        if (errors.length) {
+          return { id: 'V9', rule: '通勤时间下限', status: '❌', note: errors.join('；'), source: 'browser' };
         }
-        return { id: 'V9', rule: 'V2 实算 vs 粗算', status: '✅', note: `全部 ${totalChecked} 段偏差 < 50%`, source: 'browser' };
+        return { id: 'V9', rule: '通勤时间下限', status: '✅', note: `全部 ${total} 段 duration 合理`, source: 'browser' };
       }
 
       // 主重算：每个 day 跑 V1/V3/V4/V6，最后一天跑 V5

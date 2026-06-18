@@ -2,7 +2,7 @@
 
 本目录是 `assets/template.html` 模板的填充示例，方便：
 
-1. **开发期验证模板渲染** —— 用 `tokyo-4n5d.json` 的数据填模板，能看到完整的最终 HTML 效果
+1. **开发期验证模板渲染** —— 用 `chengdu-3d.json` 的数据填模板，能看到完整的最终 HTML 效果
 2. **作为 AI 输出参考** —— AI 生成方案时，对照本 JSON 的结构填字段，不要漏字段、不要多字段
 3. **测试增量修改** —— 改本 JSON 后重新渲染模板，验证修改后的效果
 
@@ -10,13 +10,13 @@
 
 ## 文件清单
 
-- `tokyo-4n5d.json` — Tokyo 4 泊 5 日静态 demo 数据（含地图数据）
+- `chengdu-3d.json` — 成都 3 日 2 晚静态 demo（国内默认示例，含地图数据）
 
 ---
 
 ## Schema
 
-> ⚠️ 这是简化的中文说明文档，不是机器可读的 JSON Schema。完整字段以 `tokyo-4n5d.json` 实例为准。
+> ⚠️ 这是简化的中文说明文档，不是机器可读的 JSON Schema。完整字段以 `chengdu-3d.json` 实例为准。
 
 ```typescript
 {
@@ -125,8 +125,8 @@
 
       transports: [
         {
-          from_idx: number
-          to_idx: number
+          from_idx: number   // 0 = 酒店（trip.hotel）；≥1 = POI.idx
+          to_idx: number     // 同上；早晨 0→首站，傍晚 末站→0
           mode: string
           duration_min: number
           description: string
@@ -197,7 +197,7 @@
 | `path` 存在且非空 | **画真实路网 polyline**（沿公路/步行道/公交线） | 高 |
 | `path` 不存在/为空 | **画直线**（POI1→POI2 直线，**旧行为，向后兼容**） | 低（兜底）|
 
-**AI 在 Step 3 必做的事**：每对相邻 POI 调 `maps_direction_walking/driving/bicycling/transit_integrated`，从返回的 `paths[].steps[].path` 或 `transits[].segments[].*.path` 提取 polyline 坐标，**写进 `transports[].path`**。**V2 验证（`duration_min`）和 polyline 提取是同一次 MCP 调用，零额外开销**。
+**AI 在 Step 3 / Round 2 必做的事**：每对相邻 POI — **MCP** `maps_direction_*` 拿通勤时间/费用；**polyline** 从 MCP `steps[].polyline`（若有）或 **REST** `/v3/direction/*` 的 `steps[].polyline` 拼接，写进 `transports[].path`。详见 `references/amap-mcp-usage.md` §2.3、P28。
 
 ### 类别 cat
 
@@ -248,7 +248,7 @@
 import json
 from pathlib import Path
 
-data = json.loads(Path("examples/tokyo-4n5d.json").read_text())
+data = json.loads(Path("examples/chengdu-3d.json").read_text())
 tpl = Path("assets/template.html").read_text()
 
 # 1. 顶层占位符
@@ -290,14 +290,14 @@ trip_data_js = json.dumps(data, ensure_ascii=False, indent=2)
 
 ### 测试"Day 2 的 X 换成 Y"
 
-1. 复制 `tokyo-4n5d.json` → `tokyo-4n5d-modified.json`
+1. 复制 `chengdu-3d.json` → `chengdu-3d-modified.json`
 2. 修改 `days[1].pois` 里某个 POI（name / 坐标 / links 等）
 3. 重新跑模板渲染
 4. 对比修改前后的 HTML
 
-### 测试"加一天京都"
+### 测试「加一天周边游」
 
-1. 在 `days` 数组末尾插入新 day
+1. 在 `days` 数组末尾插入新 day（如都江堰一日游）
 2. 给新 day 填 `pois` + `transports` + `center` + `zoom`
 3. 更新 `n_days`（4 泊 5 日 → 5 泊 6 日）
 4. 更新 `date_range`
@@ -327,7 +327,7 @@ trip_data_js = json.dumps(data, ensure_ascii=False, indent=2)
 - **改版**：时间轴花销改为 **Word 批注式**（每时间段右侧汇总 `slot_costs[]`）；前端**不展示** `source`
 - **新增**：`pois[].slot_costs[]` — AI 智能枚举该段全部可能花销（机票/路费仅为举例）
 - **新增**：`price.user_editable` — 逛街等 discretionary 预算，用户浏览器 localStorage 自填
-- `pois[].price` / `fare` 仍保留供 V10 溯源；无 `slot_costs` 时前端自动兜底聚合
+- `pois[].price` / `fare` 仍保留供 V10 溯源；`slot_costs` 不完整时前端/seed 会自动补齐 `price`、绑定餐食、下一段交通
 
 ### v2.1.0 (2026-06-18)
 
@@ -339,7 +339,7 @@ trip_data_js = json.dumps(data, ensure_ascii=False, indent=2)
 
 - **新增**：`transports[].path`（真实路网 polyline 坐标数组）+ `distance_m` + `source`
   - 原因：v1.3.0 起 HTML 地图渲染**沿路网真实路径**（不再画直线）
-  - 数据源：高德 MCP `maps_direction_walking/driving/bicycling/transit_integrated` 返回的 `steps[].path` 或 `segments[].*.path`
+  - 数据源：高德 MCP（时间/费用）+ REST `/v3/direction/*`（polyline 兜底）；`source`: `amap-mcp` | `amap-rest-api`
   - 向后兼容：旧数据没填 `path` 字段，HTML 自动降级为直线
 - **更新**：所有 `poi_search` / `route_walking` 等旧工具名 → 官方 `maps_*` 命名（详见 `references/amap-mcp-usage.md`）
 

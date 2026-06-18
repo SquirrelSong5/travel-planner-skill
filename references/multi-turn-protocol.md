@@ -505,7 +505,7 @@
      [shell: gh repo create SquirrelSong5/travel-plans --public --source=. --remote=upstream --push]
      [shell: gh repo edit --enable-pages --pages-source main --pages-path /]
      [shell: git push upstream main]
-     ✅ 部署完成，URL: https://squirrelsong5.github.io/travel-plans/tokyo-4n5d.html
+     ✅ 部署完成，URL: https://squirrelsong5.github.io/travel-plans/chengdu-3d.html
 ```
 
 ---
@@ -552,8 +552,8 @@ AI: 收到，你显式选了降级。后面 shell 步骤我跑，浏览器步骤
 > 用户说"先不用配 / 用 demo 演示"
 
 ```
-AI: OK，先用我的 Tokyo 4 泊 5 日示例给你看效果。
-    [渲染 examples/tokyo-4n5d.json]
+AI: OK，先用成都 3 日示例给你看效果。
+    [渲染 examples/chengdu-3d.json]
     [输出 HTML 路径]
     
     这是没配 MCP 时也能达到的效果 —— 基于示例数据。

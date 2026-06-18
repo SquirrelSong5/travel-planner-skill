@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        example: [chengdu-3d, tokyo-4n5d]
+        example: [chengdu-3d]
     steps:
       - uses: actions/checkout@v4
 

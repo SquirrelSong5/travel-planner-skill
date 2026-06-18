@@ -144,13 +144,41 @@ def build_slot_costs(
             items.append({"label": label_map[mt], "price": main["price"]})
             meals_used[mt] = True
 
+    pois = day.get("pois") or []
+    if poi_arr_idx == 0 and pois:
+        morning_t = next(
+            (t for t in (day.get("transports") or [])
+             if isinstance(t, dict) and t.get("from_idx") == 0 and t.get("to_idx") == pois[0].get("idx")),
+            None,
+        )
+        if isinstance(morning_t, dict) and morning_t.get("fare"):
+            fare = morning_t["fare"]
+            items.append({
+                "label": fare_label(morning_t.get("mode") or "", fare) + "（酒店出发）",
+                "price": fare,
+            })
+
     next_t = next((t for t in (day.get("transports") or []) if t.get("from_idx") == poi.get("idx")), None)
     if isinstance(next_t, dict) and next_t.get("fare"):
         fare = next_t["fare"]
+        to_hotel = next_t.get("to_idx") == 0
         items.append({
-            "label": fare_label(next_t.get("mode") or "", fare),
+            "label": fare_label(next_t.get("mode") or "", fare) + ("（回酒店）" if to_hotel else ""),
             "price": fare,
         })
+    elif poi_arr_idx == len(pois) - 1 and pois:
+        last_idx = poi.get("idx")
+        evening_t = next(
+            (t for t in (day.get("transports") or [])
+             if isinstance(t, dict) and t.get("from_idx") == last_idx and t.get("to_idx") == 0),
+            None,
+        )
+        if isinstance(evening_t, dict) and evening_t.get("fare"):
+            fare = evening_t["fare"]
+            items.append({
+                "label": fare_label(evening_t.get("mode") or "", fare) + "（回酒店）",
+                "price": fare,
+            })
 
     n_days = trip.get("days") or []
     is_first = day_arr_idx == 0 and poi_arr_idx == 0
@@ -220,6 +248,19 @@ def ensure_discretionary_budget(poi: dict[str, Any], currency: str) -> None:
     })
 
 
+def merge_slot_costs(poi: dict[str, Any], built: list[dict[str, Any]]) -> None:
+    """已有 slot_costs 时补齐 AI 漏写的餐饮/门票等（常只写了交通）。"""
+    if not built:
+        return
+    existing = poi.setdefault("slot_costs", [])
+    seen = {sc.get("label") for sc in existing if isinstance(sc, dict) and sc.get("label")}
+    for item in built:
+        label = item.get("label")
+        if label and label not in seen:
+            existing.append(item)
+            seen.add(label)
+
+
 def seed_slot_costs(trip: dict[str, Any]) -> None:
     for day_arr_idx, day in enumerate(trip.get("days") or []):
         meals_used: dict[str, bool] = {}
@@ -228,10 +269,11 @@ def seed_slot_costs(trip: dict[str, Any]) -> None:
         for poi_arr_idx, poi in enumerate(day.get("pois") or []):
             if not isinstance(poi, dict):
                 continue
+            built = build_slot_costs(trip, day, poi, poi_arr_idx, day_arr_idx, party, currency, meals_used)
             if poi.get("slot_costs"):
+                merge_slot_costs(poi, built)
                 ensure_discretionary_budget(poi, currency)
                 continue
-            built = build_slot_costs(trip, day, poi, poi_arr_idx, day_arr_idx, party, currency, meals_used)
             if built:
                 poi["slot_costs"] = built
             ensure_discretionary_budget(poi, currency)

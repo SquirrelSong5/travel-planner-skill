@@ -86,6 +86,14 @@
 
 ## 5. `budget_summary` 顶层汇总
 
+Step 6 写入；**JSON 缺省时**网页抽屉会按时间轴标价 + `hotel` + `prebook` 自动分类汇总（不再显示「未校验 budget_summary」黄框）。
+
+推荐生成：
+
+```bash
+python scripts/seed_prices.py trip_data.json --in-place
+```
+
 ```json
 {
   "party_size": 3,
@@ -129,6 +137,7 @@
 
 - `source` / `source_ref`：**仅 JSON + V10**；HTML 批注**不展示来源**
 - `user_editable: true`：仅 discretionary（逛街、伴手礼）；其余为调研价不可改
+- **不完整 `slot_costs` 常见**：AI 只写地铁/打车忘写餐饮 → 前端 `buildSlotCostItems` 与 `seed_prices.merge_slot_costs` 会用 `pois[].price`、`meals.*`、下一段 `fare` 自动补齐
 
 ---
 
