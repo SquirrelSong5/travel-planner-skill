@@ -267,6 +267,16 @@ MCP 无 `distance`/`duration` 时，同参数调 REST；`source` 写 `amap-rest-
 - `bus` = 公交
 - 不传 → 用户在 App 内选
 
+### 分段导航 vs 全天路线（v2.4.0）
+
+| 场景 | 实现 | 说明 |
+|------|------|------|
+| **逐段导航**（时间轴「导航」） | `https://uri.amap.com/navigation?from=…&to=…&mode=…` | 跟 `transports[].mode` 一致（步行/公交/驾车）；每段一对起终点 |
+| **全天路线**（Day 卡片「全天路线」按钮） | 手机 `iosamap://path?…` / `amapuri://route/plan/?…` | 按当天 POI 顺序串联多途经点（驾车 `t=0`）；**不等同于分段公交方案** |
+| **网页降级** | `uri.amap.com/navigation` + 最多 1 个 `via` | 桌面或未装 App 时；仅驾车 |
+
+全天路线由模板 `collectDayRouteStops()` 从 JSON 自动推导（酒店早出 / 晚回 / 机场抵达或返程），**无需 AI 手写 URL**。多途经点必须用 App scheme；网页 URI 官方仅支持 1 个途经点。
+
 ### 高德 MCP 唤端（可选）
 
 如有 `navigate` / `taxi` / `generate_trip_map` 工具（部分 MCP 版本包含），AI 可调生成唤端链接，**不是必需**——直接拼 URL 完全够用。

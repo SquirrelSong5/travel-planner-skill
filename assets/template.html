@@ -722,6 +722,29 @@
       font-weight: 600;
       letter-spacing: -0.01em;
     }
+    .day-card > header .day-header-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      flex-wrap: wrap;
+    }
+    .day-card > header .day-route-btn {
+      font-size: var(--fs-xs);
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+      padding: 4px 12px;
+      border-radius: 100px;
+      white-space: nowrap;
+      font-weight: 500;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+    .day-card > header .day-route-btn:hover {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
     .day-card > header .weather {
       font-size: var(--fs-xs);
       color: var(--accent);
@@ -1485,6 +1508,148 @@
         const fromName = encodeURIComponent(naviPlaceName(from) || '起点');
         const toName = encodeURIComponent(naviPlaceName(to) || '终点');
         return `https://uri.amap.com/navigation?from=${f.lng},${f.lat},${fromName}&to=${t.lng},${t.lat},${toName}&mode=${amapMode(mode)}&callnative=1`;
+      }
+
+      const DAY_ROUTE_VIA_MAX = 16;
+
+      function sameRouteCoords(a, b) {
+        const ca = poiCoords(a);
+        const cb = poiCoords(b);
+        if (!ca || !cb) return false;
+        return Math.abs(ca.lng - cb.lng) < 1e-5 && Math.abs(ca.lat - cb.lat) < 1e-5;
+      }
+
+      function isHotelStop(p) {
+        if (!p) return false;
+        if (p.idx === 0 || p.cat === 'hotel') return true;
+        if (D.hotel && D.hotel.name && p.name === D.hotel.name) return true;
+        const hotel = resolveTransportPoint({ pois: [] }, 0);
+        return hotel ? sameRouteCoords(p, hotel) : false;
+      }
+
+      function collectDayRouteStops(day) {
+        const pois = [...(day.pois || [])].sort((a, b) => a.idx - b.idx).filter(p => poiCoords(p));
+        if (!pois.length) return null;
+
+        const hotel = resolveTransportPoint(day, 0);
+        const ordered = [];
+        const pushIfNew = (p) => {
+          if (!p || !poiCoords(p)) return;
+          if (ordered.length && sameRouteCoords(p, ordered[ordered.length - 1])) return;
+          ordered.push(p);
+        };
+
+        if (!firstPoiSkipsMorningLeg(day) && findHotelLeg(day, 'morning') && hotel) {
+          pushIfNew(hotel);
+        } else if (firstPoiSkipsMorningLeg(day) && firstPoiIsHotel(day)) {
+          pushIfNew(hotel || pois[0]);
+        }
+
+        for (const p of pois) {
+          if (firstPoiSkipsMorningLeg(day) && firstPoiIsHotel(day) && isHotelStop(p) && ordered.length && sameRouteCoords(p, ordered[0])) {
+            continue;
+          }
+          pushIfNew(p);
+        }
+
+        if (!lastPoiIsDeparture(day) && findHotelLeg(day, 'evening') && hotel) {
+          pushIfNew(hotel);
+        }
+
+        if (ordered.length < 2) return null;
+
+        let vias = ordered.slice(1, -1);
+        if (vias.length > DAY_ROUTE_VIA_MAX) {
+          console.warn(`[travel-planner] Day ${day.day} 途经点超过 ${DAY_ROUTE_VIA_MAX} 个，已截断`);
+          vias = vias.slice(0, DAY_ROUTE_VIA_MAX);
+        }
+
+        return { start: ordered[0], vias, end: ordered[ordered.length - 1] };
+      }
+
+      function amapRoutePointParams(p) {
+        const c = poiCoords(p);
+        return {
+          lat: c.lat,
+          lon: c.lng,
+          name: encodeURIComponent(naviPlaceName(p) || '地点'),
+        };
+      }
+
+      function buildDayAmapWebFallback(start, vias, end) {
+        const s = poiCoords(start);
+        const e = poiCoords(end);
+        if (!s || !e) return null;
+        const sn = encodeURIComponent(naviPlaceName(start) || '起点');
+        const en = encodeURIComponent(naviPlaceName(end) || '终点');
+        let url = `https://uri.amap.com/navigation?from=${s.lng},${s.lat},${sn}&to=${e.lng},${e.lat},${en}&mode=car&callnative=1`;
+        if (vias.length) {
+          const v = poiCoords(vias[0]);
+          if (v) {
+            const vn = encodeURIComponent(naviPlaceName(vias[0]) || '途经');
+            url += `&via=${v.lng},${v.lat},${vn}`;
+          }
+        }
+        return url;
+      }
+
+      function buildDayAmapRouteUrls(start, vias, end) {
+        const s = amapRoutePointParams(start);
+        const e = amapRoutePointParams(end);
+        const viaPts = vias.map(amapRoutePointParams);
+        let common = `sourceApplication=${encodeURIComponent('travel-planner')}`
+          + `&slat=${s.lat}&slon=${s.lon}&sname=${s.name}`
+          + `&dlat=${e.lat}&dlon=${e.lon}&dname=${e.name}`
+          + '&dev=0&t=0';
+        if (viaPts.length) {
+          common += `&vian=${viaPts.length}`
+            + `&vialons=${viaPts.map(v => v.lon).join('|')}`
+            + `&vialats=${viaPts.map(v => v.lat).join('|')}`
+            + `&vianames=${viaPts.map(v => v.name).join('|')}`;
+        }
+        const web = buildDayAmapWebFallback(start, vias, end);
+        return {
+          ios: `iosamap://path?${common}`,
+          android: `amapuri://route/plan/?${common}`,
+          web,
+        };
+      }
+
+      function isMobileAmapDevice() {
+        return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      }
+
+      function openAmapDayRoute(iosUrl, androidUrl, webUrl) {
+        if (!webUrl) return;
+        if (!isMobileAmapDevice()) {
+          window.open(webUrl, '_blank', 'noopener');
+          return;
+        }
+        const nativeUrl = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? iosUrl : androidUrl;
+        let timer = setTimeout(() => { window.location.href = webUrl; }, 2000);
+        const clear = () => {
+          clearTimeout(timer);
+          document.removeEventListener('visibilitychange', onVis);
+        };
+        const onVis = () => { if (document.hidden) clear(); };
+        document.addEventListener('visibilitychange', onVis);
+        window.location.href = nativeUrl;
+      }
+
+      function bindDayRouteButtons() {
+        document.querySelectorAll('[data-day-route]').forEach(btn => {
+          if (btn.dataset.bound) return;
+          btn.dataset.bound = '1';
+          btn.addEventListener('click', () => {
+            const dayNum = parseInt(btn.dataset.dayRoute, 10);
+            const day = (D.days || []).find(x => x.day === dayNum);
+            if (!day) return;
+            const route = collectDayRouteStops(day);
+            if (!route) return;
+            const urls = buildDayAmapRouteUrls(route.start, route.vias, route.end);
+            openAmapDayRoute(urls.ios, urls.android, urls.web);
+          });
+        });
       }
 
       function resolvePrebookLink(x) {
@@ -2424,11 +2589,19 @@
           }
         }
 
+        const dayRoute = collectDayRouteStops(d);
+        const dayRouteBtn = dayRoute
+          ? `<button type="button" class="day-route-btn" data-day-route="${d.day}" title="按行程顺序规划驾车路线，不等同于分段公交方案">全天路线</button>`
+          : '';
+
         document.getElementById('day-panel').innerHTML = `
           <article class="day-card">
             <header>
               <h3>Day ${d.day} · ${esc(d.date)} (${esc(d.weekday)}) · ${esc(d.region)}</h3>
-              <span class="weather">${esc(d.weather_emoji || '')} ${esc(d.weather || '')}</span>
+              <div class="day-header-actions">
+                ${dayRouteBtn}
+                <span class="weather">${esc(d.weather_emoji || '')} ${esc(d.weather || '')}</span>
+              </div>
             </header>
             <p class="theme">${esc(d.theme || '')}</p>
             <ol class="timeline">${morningLegHtml}${poiItems}</ol>
@@ -2436,6 +2609,7 @@
           </article>`;
         bindUserBudgetInputs();
         bindCostMarginInteractions();
+        bindDayRouteButtons();
       }
 
       // ===== Drawer 列表 =====
