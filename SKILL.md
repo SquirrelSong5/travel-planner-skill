@@ -1,6 +1,6 @@
 ---
 name: travel-planner
-description: 旅行规划助手 —— **唯一交付物 = 单文件 HTML 部署到 GitHub Pages 的 URL**（手机/电脑浏览器直接看）。通过高德地图 MCP（路线/POI/酒店/天气/POI 详情）、小红书 skill（种草笔记/避雷）、美团攻略 WebFetch（编辑过的好店清单）三件套，**零装零扫码**生成含酒店、每日行程、餐厅候选的单文件 HTML 旅行方案。大众点评 OpenCLI 降级为"深度档"（必吃榜 + 评价数才用）。支持多轮对话、**v1.5.0 三阶段分轮筛检**（Round1结构→Round2时空→Round3体验，每轮筛不同维度）、增量修改。**v1.5.0 硬约束**：AI 必跑 MCP + 必部署 GitHub Pages。适用场景：用户提到"规划旅行"/"做个行程"/"旅行方案"/"旅游规划"/"plan my trip"/"trip itinerary"/"travel plan"，或同时提到高德/小红书/大众点评三个数据源中的两个以上。
+description: 旅行规划助手 —— **唯一交付物 = 单文件 HTML 部署到 GitHub Pages 的 URL**（手机/电脑浏览器直接看）。通过高德地图 MCP（路线/POI/酒店/天气/POI 详情）、**小红书 skill Step 1.5 目的地攻略** + Round 3 店级避雷、美团攻略 WebFetch（编辑过的好店清单）三件套，**零装零扫码**生成含酒店、每日行程、餐厅候选的单文件 HTML 旅行方案。大众点评 OpenCLI 降级为"深度档"（必吃榜 + 评价数才用）。支持多轮对话、**v1.5.0 三阶段分轮筛检**（Round1结构→Round2时空→Round3体验，每轮筛不同维度）、增量修改。**v2.3.0**：Step 1.5 必做小红书目的地攻略后再分组排线。**v1.5.0 硬约束**：AI 必跑 MCP + 必部署 GitHub Pages。适用场景：用户提到"规划旅行"/"做个行程"/"旅行方案"/"旅游规划"/"plan my trip"/"trip itinerary"/"travel plan"，或同时提到高德/小红书/大众点评三个数据源中的两个以上。
 ---
 
 # travel-planner
@@ -224,7 +224,7 @@ description: 旅行规划助手 —— **唯一交付物 = 单文件 HTML 部署
 |--------|------|------|----------|
 | **高德地图** | 官方 MCP `https://mcp.amap.com/mcp?key=YOUR_KEY` | POI 搜索、路线规划、地理编码、距离测量、天气、**POI 详情（评分/营业时间/类型/人均/坐标）** | 提示申请 Key，降级为通用知识 |
 | **美团攻略** 🆕 | WebFetch `guide.meituan.com`（零装） | **国内 8 大热门城市**（沪/京/蓉/穗/深/杭/渝/汉）的**编辑过的好店清单**（数据来源 = 大众点评公开数据 + 媒体评测） | 高德 `text_search` 按菜系搜兜底 |
-| **小红书** | Python skill `autoclaw-cc/xiaohongshu-skills`（`python scripts/cli.py ...`）| 景点种草、餐厅氛围、近期体验、拍照友好度、**排队/避雷软信号** | WebFetch `xiaohongshu.com` M 站 |
+| **小红书** | Python skill `autoclaw-cc/xiaohongshu-skills`（`python scripts/cli.py ...`）| **Step 1.5 目的地攻略**（必去/避雷/分区）+ Round 3 店级氛围/排队软信号 | WebFetch `xiaohongshu.com` M 站 |
 | **大众点评**（深度档）| OpenCLI + Chrome Browser Bridge 扩展（**可选，非必需**）| 必吃榜入选 + 真实评价数 + 排队实况 + 踩雷关键词 | 主轨方案已够用，**不需要装** |
 
 > **小红书数据源（v1.0.2 唯一方案）**：用 `autoclaw-cc/xiaohongshu-skills`（Python CLI + Chrome 扩展）。详见 `references/setup-guide.md` §2 / `references/xhs-research.md`。
@@ -242,7 +242,9 @@ Step 0：环境自检 + 引导（每次启动必做）
   ↓
 Step 1：抽硬约束（Re-ground + 一次性问关键信息）
   ↓
-Step 2：清单分组 + 酒店候选
+Step 1.5：小红书目的地攻略（必做，决策输入）← v2.3.0
+  ↓
+Step 2：清单分组 + 酒店候选（受 Step 1.5 约束）
   ↓
 Step 3：【3 轮分阶段筛检】（v1.5.0 核心）
    Round 1 结构筛 → Round 2 时空筛 → Round 3 体验筛
@@ -490,9 +492,57 @@ codex mcp add playwright -- npx @playwright/mcp@latest
 
 完整四拍协议见 `references/multi-turn-protocol.md`。
 
+### Step 1.5：小红书目的地攻略（v2.3.0 必做）
+
+> **定位升级**：小红书从 Round 3 的「店级软信号验证」前移到 **Step 1.5 目的地级决策输入**。先读攻略，再分组排线；**不得**等 Round 3 才第一次搜小红书。
+>
+> 完整工作流见 `references/xhs-research.md` §0。
+
+**时机**：Step 1 硬约束收齐后、**Step 2 清单分组之前**。
+
+**AI 必做**（按优先级）：
+
+1. **小红书**（首选 `~/xhs-skill/scripts/cli.py`）—— 搜目的地级关键词，粗筛 10–20 篇 → 精读 3–5 篇
+2. **Web search** —— 补官方闭馆、预约、季节性、大型活动（小红书不覆盖的硬信息）
+3. **与用户硬约束对齐** —— 用户「必去/禁忌」与攻略结论冲突时，**以用户为准**并说明删改理由
+
+**推荐搜索词**（组合 2–3 个，含天数/人群）：
+
+```
+「{城市} {N}天 攻略」「{城市} 避雷」「{城市} 本地人推荐」
+「{城市} {主题}」（毕业旅行 / 亲子 / 情侣 等，视 Step 1 而定）
+```
+
+**必产出 `xhs_destination_brief`**（写进 chat + 可选写入 `tripData.xhs_destination_brief`）：
+
+| 字段 | 内容 |
+|------|------|
+| `must_visit` | 攻略高频提及、与用户不冲突的 POI/区域 |
+| `skip_or_caution` | 避雷点、网红坑、季节不推荐 |
+| `region_layout` | 建议分区/每天主区域（供 Step 2 分组参考） |
+| `pace_hints` | 松散/紧凑、排队敏感点 |
+| `source_notes` | 2–5 条代表笔记 title + URL |
+
+**降级**（未装 xhs skill）：
+
+1. WebFetch `xiaohongshu.com/search_result?keyword=...`（移动端 UA）
+2. Web search「{城市} 旅游攻略 site:xiaohongshu.com」作补充
+3. 在 brief 标注 `source: webfetch-degraded`，**不得**凭 LLM 记忆编造笔记结论
+
+**与后续步骤关系**：
+
+| 步骤 | 小红书角色 |
+|------|-----------|
+| Step 1.5 | **目的地攻略**（本步） |
+| Step 2 | 用 `region_layout` / `skip_or_caution` 约束分组与酒店区域 |
+| Round 1 | POI 池须覆盖 `must_visit` 或说明为何不纳入 |
+| Round 3 | **店级**排队/避雷（`店名 + 排队`），不重复目的地级搜索 |
+
+**不通过 / 未完成 Step 1.5 → 不进 Step 2**（降级模式须显式标注 brief 为降级）。
+
 ### Step 2：清单分组 + 酒店候选
 
-**清单分组**：
+**清单分组**（须对照 Step 1.5 的 `xhs_destination_brief`）：
 - 城内轻松组（如浅草寺、涩谷 sky）
 - 预约组（如米其林、teamLab、富士山新干线指定席）
 - 远郊组（如富士山、镰仓、日光）
@@ -522,7 +572,7 @@ Step 6-7 输出 HTML
 |-------|------|----------|----------|
 | **1 结构筛** | 删点、分组、一天一区、用户禁忌 | `validate.py --round 1` | V1, V4 + 🤖 V7 |
 | **2 时空筛** | 高德 route 实算、polyline、末日缓冲 | `validate.py --round 2` | V2, V5, V8, V9 + 🤖 V2 实算 |
-| **3 体验筛** | 美团→高德→小红书、户外备选、**地图折线复检** | `validate.py --round 3` | V3, V6, V8, V10 |
+| **3 体验筛** | 美团→高德→小红书店级、户外备选、**地图折线复检** | `validate.py --round 3` | V3, V6, V8, V10 |
 
 **每轮末必做 3 步**（硬流程）：
 
@@ -543,7 +593,7 @@ Step 6-7 输出 HTML
 
 #### Round 1：结构合理性筛
 
-**AI 必做**：删远郊/禁忌点 → `deleted[]`；分组（城内/预约/远郊/可路过）；草案每天主区域 + POI + 粗时间块；V7 禁忌审查；酒店锚点覆盖天数审查。
+**AI 必做**：对照 `xhs_destination_brief` 删远郊/禁忌点 → `deleted[]`；分组（城内/预约/远郊/可路过）；草案每天主区域 + POI + 粗时间块；V7 禁忌审查；酒店锚点覆盖天数审查；`must_visit` 未纳入须说明原因。
 
 **不跑**高德 route、不调研餐厅。
 
@@ -589,7 +639,7 @@ python scripts/validate.py trip_data.json --round 2 --pretty
 
 1. 美团攻略 WebFetch `guide.meituan.com/<city>/canyin` → 候选池
 2. 高德 `maps_text_search` + `maps_search_detail` → 硬信号 + **`pois[].price` / `meals.*.price`** + **`pois[].slot_costs[]`**（枚举该段全部可能花销）
-3. 小红书搜「<店名> 排队」「<店名> 避雷」
+3. 小红书搜「<店名> 排队」「<店名> 避雷」（**店级**；目的地攻略已在 Step 1.5 完成）
 4. 户外 POI 补 `indoor_backup`；体验 critique（游客店/排队/节奏）
 5. Step 5–6 汇总 `prebook[].price` + `budget_summary`（详见 `references/price-research.md` §7）
 

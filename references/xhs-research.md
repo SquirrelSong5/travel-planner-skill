@@ -2,6 +2,140 @@
 
 > 移植自参考项目 trip-map-builder，适配本 skill 的 MCP 调用方式。
 > 配套：`./dianping-research.md` 是硬信号源；本文件是软信号源。
+>
+> **v2.3.0**：小红书分两层——**Step 1.5 目的地攻略（必做、前置）** + **Round 3 店级软信号**。本节 §0 是前者；§2 起是后者。
+
+---
+
+## 0. Step 1.5：目的地攻略（必做，前置）
+
+> **在 Step 2 清单分组之前完成**。先读攻略，再决定 POI 池和每天主区域。
+> 不做点点 AI / Playwright 侧边栏抓取——用本 skill 的 `search-feeds` + `get-feed-detail` **自己聚合多篇笔记**，效果等价且更稳。
+
+### 0.1 时机与输入
+
+| 输入 | 来源 |
+|------|------|
+| 城市、天数、人群、主题 | Step 1 硬约束 |
+| 用户必去 / 禁忌 | Step 1 |
+| 官方闭馆、预约、季节 | Web search（与小红书并行） |
+
+### 0.2 工作流（约 5–10 分钟）
+
+```
+① 定 2–3 个搜索词（含天数/人群）
+      ↓
+② search-feeds 粗筛 10–20 篇（sort_by=最多点赞，publish_time=半年内）
+      ↓
+③ 按 §3 筛选标准剔除噪音，留 5–8 篇
+      ↓
+④ get-feed-detail 精读 3–5 篇（load_all_comments 看避雷评论）
+      ↓
+⑤ Web search 补硬信息（闭馆、预约、天气季节）
+      ↓
+⑥ 写出 xhs_destination_brief（§0.4）→ 用户确认或默认可进 Step 2
+```
+
+**推荐关键词模板**：
+
+```
+{城市} {N}天 攻略
+{城市} 避雷
+{城市} 本地人推荐
+{城市} {人群/主题}   # 如 毕业旅行、亲子、情侣
+```
+
+### 0.3 精读提取清单（目的地级）
+
+与 §4 店级不同，目的地级优先提取：
+
+| 类别 | 提取什么 |
+|------|----------|
+| **分区** | 「一天玩鼓浪屿」「别住曾厝垵」「住中山路方便」 |
+| **必去** | 多篇重复出现的 POI/街区 |
+| **避雷** | 「XX 全是游客」「雨天别去 XX」「排队 2h 不值」 |
+| **节奏** | 松散/紧凑、上午/傍晚最佳时段 |
+| **季节** | 梅雨季、暴晒、节假日人潮 |
+| **交通印象** | 「租车没必要」「地铁够用」（供 Step 2 酒店区域参考） |
+
+**不提取**：具体店名细节（留给 Round 3）、无法交叉验证的单篇暴论。
+
+### 0.4 产出：`xhs_destination_brief`
+
+**必须**在 chat 展示；**建议**写入 `tripData.xhs_destination_brief`（Step 6 一并进 HTML 元数据）。
+
+```json
+{
+  "city": "厦门",
+  "keywords_searched": ["厦门 4天 攻略", "厦门 避雷"],
+  "source": "xiaohongshu-cli",
+  "degraded": false,
+  "must_visit": [
+    { "name": "鼓浪屿", "why": "3/5 篇攻略列为 Day 独立区" },
+    { "name": "八市", "why": "本地人海鲜+小吃，多篇避雷网红海鲜楼" }
+  ],
+  "skip_or_caution": [
+    { "name": "曾厝垵住店", "why": "多篇称交通不便、过度商业化" }
+  ],
+  "region_layout": [
+    "Day 型：中山路/八市（落地）",
+    "Day 型：鼓浪屿（邮轮中心出发）",
+    "Day 型：厦大/环岛路",
+    "Day 型：沙坡尾+返程"
+  ],
+  "pace_hints": "每天 ≤3 POI；鼓浪屿须早班船减少排队",
+  "weather_hints": "6–7 月梅雨季，户外段备室内 Plan B",
+  "source_notes": [
+    { "title": "厦门三天两夜不绕路", "url": "https://www.xiaohongshu.com/explore/..." }
+  ],
+  "web_search_supplement": "厦大需预约（官方公众号）"
+}
+```
+
+**Chat 展示模板**（用户扫一眼即可）：
+
+```md
+## 📕 小红书目的地简报 · {城市}
+
+**必纳入**（与用户禁忌无冲突）：
+- {POI/区域} — {一句理由}
+
+**谨慎 / 建议跳过**：
+- {项} — {理由}
+
+**分区建议**（供 Step 2）：
+- {每天主区域草案}
+
+**代表笔记**：{title1} · {title2} …
+
+**Web 补充**：{闭馆/预约/季节硬信息}
+
+> 数据来源：{xiaohongshu-cli | webfetch-degraded} · {N} 篇精读
+```
+
+### 0.5 降级（未装 xhs skill）
+
+1. WebFetch `https://www.xiaohongshu.com/search_result?keyword={URL编码词}`（移动端 UA）
+2. Web search：`{城市} 旅游攻略 site:xiaohongshu.com`
+3. `tripData.xhs_destination_brief.degraded = true`，`source = "webfetch-degraded"`
+4. **禁止**用 LLM 训练记忆冒充笔记结论
+
+### 0.6 与 Round 3 店级调研的分工
+
+| 层级 | 步骤 | 搜索词示例 | 目的 |
+|------|------|-----------|------|
+| **目的地** | Step 1.5 | `厦门 4天 攻略` | 分区、必去、避雷、节奏 |
+| **店铺** | Round 3 | `小郡肝 排队` | 排队、踩雷、氛围 |
+
+**不要**在 Round 3 重复搜「{城市} N天攻略」——应在 Step 1.5 已完成。
+
+### 0.7 与验证规则
+
+`xhs_destination_brief` **不进** `validate.py` 自动校验，但 Round 1 AI critique **必须**核对：
+
+- `must_visit` 是否纳入 POI 池或已解释剔除
+- `skip_or_caution` 是否误纳入行程
+- 用户 V7 禁忌是否与 brief 冲突（冲突以用户为准）
 
 ---
 
@@ -51,6 +185,8 @@ WebFetch 直接抓 `xiaohongshu.com`：
 ---
 
 ## 2. 核心方法：两段式（粗筛 → 精读）
+
+> **适用**：Step 1.5 目的地攻略 + Round 3 店级调研。目的地级见 §0；店级见 §8 关键词。
 
 ### 2.1 Step 1：粗筛（搜索结果页）
 

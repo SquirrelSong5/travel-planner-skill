@@ -31,6 +31,19 @@
 
   // ===== 顶层（可选）=====
   weather_plan: string           // 整体天气策略（行程前说明）
+  xhs_destination_brief?: {      // v2.3.0 推荐：Step 1.5 小红书目的地攻略产出
+    city: string
+    keywords_searched: string[]
+    source: "xiaohongshu-cli" | "webfetch-degraded"
+    degraded?: boolean
+    must_visit: { name: string, why: string }[]
+    skip_or_caution: { name: string, why: string }[]
+    region_layout: string[]
+    pace_hints?: string
+    weather_hints?: string
+    source_notes: { title: string, url: string }[]
+    web_search_supplement?: string
+  }
   budget_summary?: {            // v2.1.0 推荐：全程花销汇总（抽屉展示）
     currency: string             // "CNY" | "JPY" 等
     by_category: {
