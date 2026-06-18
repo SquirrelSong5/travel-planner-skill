@@ -272,10 +272,10 @@ MCP 无 `distance`/`duration` 时，同参数调 REST；`source` 写 `amap-rest-
 | 场景 | 实现 | 说明 |
 |------|------|------|
 | **逐段导航**（时间轴「导航」） | `https://uri.amap.com/navigation?from=…&to=…&mode=…` | 跟 `transports[].mode` 一致（步行/公交/驾车）；每段一对起终点 |
-| **全天路线**（Day 卡片「全天路线」按钮） | 桌面 [`ditu.amap.com/dir`](https://ditu.amap.com/dir)；手机 [`m.amap.com/navigation/carmap`](https://m.amap.com/navigation/carmap/)（`saddr` + `maddr`… + `daddr`） | 按当天 POI 顺序串联多途经点（驾车）；**不等同于分段公交方案** |
+| **全天路线**（Day 卡片「全天路线」按钮） | 桌面 [`ditu.amap.com/dir`](https://ditu.amap.com/dir)；手机 `iosamap://path?…` / `amapuri://route/plan/?…`，未装 App 时降级同格式 `ditu.amap.com/dir?callnative=1` | 按当天 POI 顺序串联多途经点（驾车）；**不等同于分段公交方案** |
 | **酒店往返** | `finalizeDayRouteStops` | 起终点同坐标时末站作终点；不以「回酒店」重复作终点 |
 
-全天路线由模板 `collectDayRouteStops()` 从 JSON 自动推导。**无需 AI 手写 URL**。桌面用 `ditu.amap.com/dir`（`via[0][lnglat]`…）；手机统一用 `m.amap.com/navigation/carmap/saddr=…&daddr=…&maddr=…`（多个途经点重复 `maddr`），不再区分 iOS/Android scheme。
+全天路线由模板 `collectDayRouteStops()` 从 JSON 自动推导。**无需 AI 手写 URL**。桌面与手机降级均用 `ditu.amap.com/dir`（`via[0][lnglat]`…）；手机优先 `iosamap://` / `amapuri://` 唤端，2s 内未离开页面则打开同路线的网页版。
 
 ### 高德 MCP 唤端（可选）
 

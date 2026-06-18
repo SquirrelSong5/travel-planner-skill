@@ -130,18 +130,36 @@ def collect_and_finalize(trip: dict, day: dict):
     return {"start": start, "vias": vias, "end": end}
 
 
-def mobile_url(start, vias, end, hotel_name: str) -> str:
+def native_url(start, vias, end, hotel_name: str, platform: str = "ios") -> str:
     def pt(p):
         c = poi_coords(p)
-        name = quote(navi_place_name(p, hotel_name) or "地点", safe="")
-        return f"{c['lng']},{c['lat']},{name}"
+        return {
+            "lat": c["lat"],
+            "lon": c["lng"],
+            "name": navi_place_name(p, hotel_name) or "地点",
+        }
 
-    parts = [f"saddr={pt(start)}", f"daddr={pt(end)}", "sort=dist"]
-    parts.extend(f"maddr={pt(v)}" for v in vias)
-    return f"https://m.amap.com/navigation/carmap/{'&'.join(parts)}"
+    s, e = pt(start), pt(end)
+    via_pts = [pt(v) for v in vias]
+    common = (
+        f"sourceApplication={quote('travel-planner', safe='')}"
+        f"&slat={s['lat']}&slon={s['lon']}&sname={quote(s['name'], safe='')}"
+        f"&dlat={e['lat']}&dlon={e['lon']}&dname={quote(e['name'], safe='')}"
+        "&dev=0&t=0"
+    )
+    if via_pts:
+        common += (
+            f"&vian={len(via_pts)}"
+            f"&vialons={'|'.join(str(v['lon']) for v in via_pts)}"
+            f"&vialats={'|'.join(str(v['lat']) for v in via_pts)}"
+            f"&vianames={quote('|'.join(v['name'] for v in via_pts), safe='')}"
+        )
+    if platform == "android":
+        return f"amapuri://route/plan/?{common}"
+    return f"iosamap://path?{common}"
 
 
-def dir_url(start, vias, end, hotel_name: str) -> str:
+def dir_url(start, vias, end, hotel_name: str, *, callnative: bool = False) -> str:
     ts = 1_781_792_351_000
 
     def endpoint(role, p, eid):
@@ -159,6 +177,8 @@ def dir_url(start, vias, end, hotel_name: str) -> str:
         + [via_pt(v, i) for i, v in enumerate(vias)]
         + ["type=car", "src=uriapi", "innersrc=uriapi", "policy=1"]
     )
+    if callnative:
+        q.append("callnative=1")
     return f"https://ditu.amap.com/dir?{'&'.join(q)}"
 
 
@@ -179,7 +199,9 @@ def main() -> int:
                 continue
             same = same_coords(route["start"], route["end"])
             desktop = dir_url(route["start"], route["vias"], route["end"], hotel_name)
-            mobile = mobile_url(route["start"], route["vias"], route["end"], hotel_name)
+            fallback = dir_url(route["start"], route["vias"], route["end"], hotel_name, callnative=True)
+            ios = native_url(route["start"], route["vias"], route["end"], hotel_name, "ios")
+            android = native_url(route["start"], route["vias"], route["end"], hotel_name, "android")
             issues = []
             if same:
                 issues.append("SAME_START_END")
@@ -187,12 +209,16 @@ def main() -> int:
                 issues.append("MISSING_MULTI_VIA")
             if len(route["vias"]) > 0 and "via[0]" not in desktop:
                 issues.append("MISSING_VIA0")
-            if not mobile.startswith("https://m.amap.com/navigation/carmap/"):
-                issues.append("BAD_MOBILE_PREFIX")
-            if len(route["vias"]) > 0 and "maddr=" not in mobile:
-                issues.append("MISSING_MADDR")
-            if len(route["vias"]) > 1 and mobile.count("maddr=") < 2:
-                issues.append("MISSING_MULTI_MADDR")
+            if "callnative=1" not in fallback:
+                issues.append("MISSING_CALLNATIVE")
+            if not ios.startswith("iosamap://path?"):
+                issues.append("BAD_IOS_PREFIX")
+            if not android.startswith("amapuri://route/plan/?"):
+                issues.append("BAD_ANDROID_PREFIX")
+            if len(route["vias"]) > 0 and f"vian={len(route['vias'])}" not in ios:
+                issues.append("BAD_IOS_VIAN")
+            if len(route["vias"]) > 1 and ios.count("|") < 2:
+                issues.append("MISSING_MULTI_NATIVE_VIA")
             status = "OK" if not issues else "FAIL " + ",".join(issues)
             if issues:
                 failed += 1
