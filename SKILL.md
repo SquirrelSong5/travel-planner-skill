@@ -23,8 +23,9 @@ description: 旅行规划助手 —— **唯一交付物 = 单文件 HTML 部署
 - ✅ **必须**调高德 MCP `maps_direction_walking/driving/bicycling/transit_integrated` 拿真实路径 polyline + 通勤时间
 - ✅ **必须**把 `transports[].source` 写 `"amap-mcp"`（**不是** `"ai-fallback"` / `"straight-line"` / 空）
 - ❌ **不允许** AI 报告"✅ V2 通过"但实际是 LLM 记忆算的——`scripts/validate.py` v1.5.0 加 V8 阻断（必跑 MCP 痕迹）
+- ⚠️ **MCP 不可用时**（v2.0.0 P23 三层探针任一失败）：走 **REST API 降级**（`/v3/place/text` 等，`transports[].source` 写 `"amap-rest-api"`）或 **web search / WebFetch 降级**。**降级源必须是当前客户端实际有的工具，不要硬编码**（详见 `references/amap-mcp-usage.md` §v2.0.0 P23-P25）
 
-### 硬约束 3：增量修改后必重跑 V1-V8 受影响项 + 重渲 HTML + 重部署
+### 硬约束 3：增量修改后必重跑 V1-V6 + V8 + V9 受影响项 + 重渲 HTML + 重部署
 
 - ❌ **不允许** AI 自报告"修改完成"但没重渲 HTML / 没重部署 GitHub Pages
 - ✅ **必须**：`python scripts/validate.py` → 渲染 HTML → `gh repo push` → 返回新 URL
@@ -631,6 +632,8 @@ python scripts/validate.py trip_data.json --round 3 --pretty
 
 **输出 `prebook` 列表**：每项含 URL + 截止日期。
 
+**链接红线（v1.5.1）**：所有 `url` / `links.amap_navi` 必须基于 MCP 真实返回或带 query 的搜索 URL；不存在的链接写 `null` 而不是占位。模板已做浏览器端 fallback（导航用 POI 坐标拼 `uri.amap.com`，prebook 缺链降级 Bing 搜索），但 AI 仍应优先给真链接。详见 `references/planning.md` §7.1。
+
 ### Step 6：写参考文档（结构化输出）
 
 按下面结构输出（**HTML 渲染前先输出这个 markdown**，让用户确认）：
@@ -749,14 +752,28 @@ git push -u origin main
 
 ---
 
-## 输出契约
+## 输出契约（v2.0.0 简洁版）
 
-完成 Step 6 + Step 7 后，AI 必须输出：
+完成 Step 6 + Step 7 后，AI **只输出 4 项**：
 
-1. **GitHub Pages 公开 URL**（主交付物，手机点开即看）
-2. **Markdown 参考文档**（贴聊天，便于复制到笔记/分享）
-3. **本地 HTML 副本路径**（`~/.travel-planner/travel-plans/{trip_name}-{date}.html`）
+1. **GitHub Pages 公开 URL**（主交付物，手机/电脑点开即看）
+2. **本地 HTML 副本路径**（`~/.travel-planner/travel-plans/{trip_name}-{date}.html`）
+3. **Markdown 参考文档**（贴聊天，便于复制到笔记/分享）
 4. **修改入口提示**（"想改任何地方直接说，比如：换 X、加一天、删一天"）
+
+### 不输出的内容
+
+- ❌ **验证报告 / banner / 检查过程**——HTML 模板默认隐藏 `validation-banner`（v2.0.0 起），用户只看方案不查验证
+- ❌ **"针对你贴身定做" / "低精力毕业游" / "3 人（你 + 女朋友 + 闺蜜，刚毕业）"** 等套话——`summary` 字段保持简洁（一句话点题）
+- ❌ **"以...为准" / "仅供参考" / "AI self-report"** 等元话语——输出只描述方案本身
+- ❌ **重复的 emoji 警示**（🟡/🟢/🔴 等只在配置引导场景用，方案输出不放）
+
+### 模板默认行为
+
+- ✅ `template.html` 的 `#validation-banner` 默认 `display: none`（`renderValidationBanner` no-op）
+- ✅ `template.html` 的 `details#validation-report-section` 保留但默认折叠
+- ✅ Drawer（行程信息侧边栏）默认隐藏，悬浮在右侧不挤压中间内容
+- ✅ Wrap `.wrap` 始终 `margin: 0 auto` 居中（drawer 开/关不影响）
 
 ---
 

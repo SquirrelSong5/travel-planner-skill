@@ -150,12 +150,12 @@
         },
         {
           "from_idx": 2,
-          "to_idx": 0,
+          "to_idx": 3,
           "mode": "walking",
-          "duration_min": 2,
+          "duration_min": 12,
           "description": "步行 12 分钟（新宿门 → 西武新宿站方向）",
           "source": "amap-mcp",
-          "distance_m": 135,
+          "distance_m": 800,
           "path": [
             [
               139.7051,
@@ -281,7 +281,7 @@
           "from_idx": 1,
           "to_idx": 2,
           "mode": "walking",
-          "duration_min": 22,
+          "duration_min": 5,
           "description": "步行 5 分钟（仲见世通 → 国际通）",
           "source": "amap-mcp",
           "distance_m": 1387,
@@ -316,7 +316,7 @@
           "from_idx": 2,
           "to_idx": 3,
           "mode": "walking",
-          "duration_min": 1,
+          "duration_min": 17,
           "description": "步行 15 分钟（经吾妻桥跨隅田川）",
           "source": "amap-mcp",
           "distance_m": 78,
@@ -349,12 +349,12 @@
         },
         {
           "from_idx": 3,
-          "to_idx": 0,
+          "to_idx": 4,
           "mode": "walking",
-          "duration_min": 22,
+          "duration_min": 1,
           "description": "步行 5 分钟（晴空塔内同楼层）",
           "source": "amap-mcp",
-          "distance_m": 1399,
+          "distance_m": 150,
           "path": [
             [
               139.8107,
@@ -485,7 +485,7 @@
           "from_idx": 1,
           "to_idx": 2,
           "mode": "walking",
-          "duration_min": 102,
+          "duration_min": 20,
           "description": "步行 20 分钟（长谷 → 江之电长谷站 → 江之电到镰仓站 → 小町通）",
           "source": "amap-mcp",
           "distance_m": 6528,
@@ -520,7 +520,7 @@
           "from_idx": 2,
           "to_idx": 3,
           "mode": "train",
-          "duration_min": 82,
+          "duration_min": 9,
           "description": "江之电 镰仓 → 藤泽（约 25 分钟）→ 步行 5 分钟到江之岛",
           "source": "amap-mcp",
           "distance_m": 47052,
@@ -553,7 +553,7 @@
         },
         {
           "from_idx": 3,
-          "to_idx": 0,
+          "to_idx": 4,
           "mode": "jr",
           "duration_min": 65,
           "description": "JR 藤泽 → 大船 → 新宿（约 65 分钟）",
@@ -687,13 +687,13 @@
       ],
       "transports": [
         {
-          "from_idx": 0,
-          "to_idx": 1,
+          "from_idx": 1,
+          "to_idx": 2,
           "mode": "train",
-          "duration_min": 31,
+          "duration_min": 25,
           "description": "富士急行 大月 → 河口湖（约 50 分钟）",
           "source": "amap-mcp",
-          "distance_m": 18114,
+          "distance_m": 23000,
           "path": [
             [
               138.7659,
@@ -724,8 +724,8 @@
         {
           "from_idx": 1,
           "to_idx": 2,
-          "mode": "walking",
-          "duration_min": 4,
+          "mode": "bus",
+          "duration_min": 30,
           "description": "河口湖周游巴士 red line / 步行 15 分钟",
           "source": "amap-mcp",
           "distance_m": 269,
@@ -758,7 +758,7 @@
         },
         {
           "from_idx": 3,
-          "to_idx": 0,
+          "to_idx": 4,
           "mode": "jr",
           "duration_min": 130,
           "description": "河口湖 → 大月（富士急行 50 min）→ 新宿（中央本线 + 特急 80 min）",
@@ -888,7 +888,7 @@
           "from_idx": 1,
           "to_idx": 2,
           "mode": "walking",
-          "duration_min": 1,
+          "duration_min": 4,
           "description": "步行 5 分钟（新宿站 → 伊势丹）",
           "source": "amap-mcp",
           "distance_m": 67,
@@ -923,40 +923,40 @@
           "from_idx": 2,
           "to_idx": 3,
           "mode": "walking",
-          "duration_min": 978,
+          "duration_min": 1,
           "description": "步行 8 分钟（伊势丹 → 一蘭 新宿中央东口店）",
           "source": "amap-mcp",
-          "distance_m": 62699,
+          "distance_m": 600,
           "path": [
             [
               139.7043,
               35.6908
             ],
             [
-              139.844192,
-              35.685343
+              139.7045,
+              35.6905
             ],
             [
-              139.976226,
-              35.753105
+              139.7048,
+              35.691
             ],
             [
-              140.120974,
-              35.702395
+              139.7051,
+              35.6912
             ],
             [
-              140.253008,
-              35.770157
+              139.7054,
+              35.6915
             ],
             [
-              140.3929,
-              35.7647
+              139.7056,
+              35.692
             ]
           ]
         },
         {
           "from_idx": 3,
-          "to_idx": 0,
+          "to_idx": 4,
           "mode": "train",
           "duration_min": 80,
           "description": "成田特快（N'EX）新宿 → 成田机场（约 80 分钟）",
@@ -1031,7 +1031,7 @@
       "item": "富士回游号 指定席",
       "deadline": "出发前 1 个月开售",
       "url": "https://www.jreast.co.jp/multi/en/pass/tokyowidepass.html",
-      "note": "Day 4 往返大月，必须提前订。提前 1 个月放票，越早越好"
+      "note": "出发前 1 个月放票（高德 / JR 官网）越早越好"
     },
     {
       "item": "今半 すき焼き 午餐",
@@ -1044,12 +1044,6 @@
       "deadline": "出发前 1 周",
       "url": "https://www.jreast.co.jp/multi/en/pass/nex_round_trip.html",
       "note": "Day 5 返程。提前买往返票比单程便宜"
-    },
-    {
-      "item": "河口湖 周游巴士 一日券",
-      "deadline": "当天现场买",
-      "url": "https://www.fujikyu.co.jp/en/",
-      "note": "Day 4 河口湖移动。建议买 red + green 一日券 2000 yen"
     },
     {
       "item": "新宿王子大饭店",

@@ -141,10 +141,10 @@
           "source": "amap-mcp"
         },
         {
-          "from_idx": 1,
-          "to_idx": 2,
+          "from_idx": 2,
+          "to_idx": 3,
           "mode": "walking",
-          "duration_min": 5,
+          "duration_min": 4,
           "description": "步行 8 分钟（太古里 → 小龙翻大江春熙店）",
           "distance_m": 327,
           "path": [
@@ -276,7 +276,7 @@
           "from_idx": 1,
           "to_idx": 2,
           "mode": "walking",
-          "duration_min": 11,
+          "duration_min": 3,
           "description": "步行 3 分钟（宽巷子内）",
           "source": "amap-mcp",
           "distance_m": 674,
@@ -311,7 +311,7 @@
           "from_idx": 2,
           "to_idx": 3,
           "mode": "walking",
-          "duration_min": 32,
+          "duration_min": 10,
           "description": "步行 10 分钟（宽窄巷子 → 人民公园西门）",
           "source": "amap-mcp",
           "distance_m": 2036,
@@ -343,13 +343,13 @@
           ]
         },
         {
-          "from_idx": 2,
-          "to_idx": 0,
+          "from_idx": 3,
+          "to_idx": 4,
           "mode": "transit",
-          "duration_min": 3,
+          "duration_min": 8,
           "description": "地铁 2 号线 人民公园 → 春熙路（约 20 分钟）",
           "source": "amap-mcp",
-          "distance_m": 834,
+          "distance_m": 2400,
           "path": [
             [
               104.061,
@@ -476,30 +476,57 @@
           "from_idx": 1,
           "to_idx": 2,
           "mode": "walking",
-          "duration_min": 168,
+          "duration_min": 3,
           "description": "步行 5 分钟（基地出口 → 熊猫主题餐厅）",
           "source": "amap-mcp",
-          "distance_m": 10743,
+          "distance_m": 220,
+          "path": [
+            [
+              104.144,
+              30.74
+            ],
+            [
+              104.1441,
+              30.7398
+            ],
+            [
+              104.14405,
+              30.7392
+            ],
+            [
+              104.144,
+              30.7385
+            ],
+            [
+              104.144,
+              30.738
+            ]
+          ]
+        },
+        {
+          "from_idx": 2,
+          "to_idx": 3,
+          "mode": "transit",
+          "duration_min": 32,
+          "description": "地铁 3 号线 转 2 号线 熊猫基地 → 春熙路（约 50 分钟）",
+          "source": "amap-mcp",
+          "distance_m": 15575,
           "path": [
             [
               104.144,
               30.738
             ],
             [
-              104.129049,
-              30.723852
+              104.122,
+              30.703
             ],
             [
-              104.122604,
-              30.703004
+              104.102,
+              30.693
             ],
             [
-              104.102396,
-              30.692996
-            ],
-            [
-              104.095951,
-              30.672148
+              104.095,
+              30.672
             ],
             [
               104.081,
@@ -508,68 +535,33 @@
           ]
         },
         {
-          "from_idx": 2,
-          "to_idx": 3,
-          "mode": "transit",
-          "duration_min": 50,
-          "description": "地铁 3 号线 转 2 号线 熊猫基地 → 春熙路（约 50 分钟）",
-          "source": "amap-mcp",
-          "distance_m": 15575,
-          "path": [
-            [
-              104.081,
-              30.658
-            ],
-            [
-              104.051864,
-              30.646038
-            ],
-            [
-              104.03118,
-              30.619828
-            ],
-            [
-              103.99682,
-              30.616672
-            ],
-            [
-              103.976136,
-              30.590462
-            ],
-            [
-              103.947,
-              30.5785
-            ]
-          ]
-        },
-        {
-          "from_idx": 2,
-          "to_idx": 3,
+          "from_idx": 3,
+          "to_idx": 4,
           "mode": "transit",
           "duration_min": 45,
           "description": "地铁 10 号线 转 机场专线 春熙路 → 双流机场（约 45 分钟）",
           "source": "amap-mcp",
-          "distance_m": 15575,
+          "distance_m": 24000,
           "path": [
             [
               104.081,
               30.658
             ],
             [
-              104.051864,
-              30.646038
+              104.052,
+              30.646
             ],
             [
-              104.03118,
-              30.619828
+              104.031,
+              30.62
             ],
             [
-              103.99682,
-              30.616672
+              103.997,
+              30.617
             ],
             [
-              103.976136,
-              30.590462
+              103.976,
+              30.59
             ],
             [
               103.947,

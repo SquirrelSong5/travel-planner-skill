@@ -172,12 +172,13 @@
       margin-left: 6px;
       color: var(--fg-muted);
     }
+    #validation-banner .vb-detail-btn {
       margin-top: var(--sp-2);
       font-size: var(--fs-xs);
       color: inherit;
       background: transparent;
       border: 1px solid currentColor;
-      padding: 2px 8px;
+      padding: 4px 10px;
       border-radius: 4px;
       cursor: pointer;
       font-family: inherit;
@@ -353,6 +354,18 @@
       overflow: hidden;
     }
     .drawer.open { transform: translateX(0); }
+    @media (min-width: 900px) {
+      .drawer-toggle { display: inline-flex !important; }   /* 让用户在 desktop 也能控制 drawer */
+      .drawer { transform: translateX(100%); }              /* desktop 默认隐藏 */
+      .drawer.open, .drawer.expanded {
+        transform: translateX(0);
+        width: 360px;
+        box-shadow: var(--shadow-lg);                        /* 改：drawer 浮在右侧，wrap 不被挤压；阴影视觉分隔 */
+      }
+      .drawer.expanded .drawer-close { display: inline-flex; }   /* desktop expanded 也显示 close 按钮（toggle 被 drawer 遮挡时作为关闭入口）*/
+      .drawer.open .drawer-close { display: inline-flex; }  /* mobile-style close works */
+      /* 改：drawer 浮在右侧，wrap 不被挤压（不设 margin-right） */
+    }
     .drawer-header {
       display: flex;
       justify-content: space-between;
@@ -635,6 +648,23 @@
       height: 3px;
       border-radius: 1px;
     }
+    .route-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-2);
+      width: 100%;
+    }
+    .route-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 100px;
+      font-size: var(--fs-xs);
+      font-weight: 500;
+      background: var(--bg-soft);
+      color: var(--fg-muted);
+      border: 1px solid var(--line);
+    }
     #map {
       width: 100%;
       height: 460px;
@@ -829,6 +859,22 @@
     .transport-list .transport-mode[data-mode="jr"] { background: var(--c-transit); }
     .transport-list .transport-mode[data-mode="driving"] { background: var(--c-drive); }
     .transport-list .transport-mode[data-mode="biking"] { background: var(--c-bike); }
+    .transport-list .transport-nav {
+      font-size: var(--fs-xs);
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 2px 8px;
+      border: 1px solid var(--accent-soft);
+      border-radius: 4px;
+      background: var(--accent-soft);
+    }
+    .transport-list .transport-nav:hover { text-decoration: underline; }
+    .drawer-list .item-search-hint {
+      font-size: var(--fs-xs);
+      color: var(--fg-subtle);
+      font-weight: 400;
+    }
 
     /* ===== Meal details (折叠) ===== */
     details.meals {
@@ -964,6 +1010,7 @@
             <span class="legend-item"><span class="dot" style="background:var(--c-drive)"></span>驾车</span>
             <span class="legend-item"><span class="dot" style="background:var(--c-bike)"></span>骑行</span>
           </div>
+          <div class="route-summary" id="route-summary" aria-live="polite"></div>
         </div>
         <div id="map"></div>
       </section>
@@ -1094,6 +1141,7 @@
       let mapLayers = [];
       let currentDay = 1;
       let lastFocused = null;  // 用于关闭抽屉时恢复 focus
+      const DESKTOP_MQ = window.matchMedia('(min-width: 900px)');
 
       const CAT_COLORS = {
         hotel:    '#4a5260',
@@ -1109,6 +1157,53 @@
         return map[mode] || mode;
       }
 
+      function isValidHttpUrl(url) {
+        return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
+      }
+
+      function isPlaceholderUrl(url) {
+        return /ctrip\.com\/flight\/show-1|example\.com|placeholder|\/flight\/show-\d+\.html$/i.test(url || '');
+      }
+
+      function isAmapNaviUrl(url) {
+        return isValidHttpUrl(url) && /uri\.amap\.com/i.test(url);
+      }
+
+      function amapMode(mode) {
+        const m = { walking:'walk', transit:'bus', subway:'bus', metro:'bus', bus:'bus', train:'bus', jr:'bus', driving:'car', biking:'ride' };
+        return m[mode] || 'car';
+      }
+
+      function poiCoords(p) {
+        if (!p) return null;
+        const lng = p.lng ?? (Array.isArray(p.location) ? p.location[0] : null);
+        const lat = p.lat ?? (Array.isArray(p.location) ? p.location[1] : null);
+        if (lng == null || lat == null) return null;
+        return { lng, lat };
+      }
+
+      function buildAmapNaviUrl(from, to, mode) {
+        const f = poiCoords(from);
+        const t = poiCoords(to);
+        if (!f || !t) return null;
+        const fromName = encodeURIComponent(from.name || '起点');
+        const toName = encodeURIComponent(to.name || '终点');
+        return `https://uri.amap.com/navigation?from=${f.lng},${f.lat},${fromName}&to=${t.lng},${t.lat},${toName}&mode=${amapMode(mode)}&callnative=1`;
+      }
+
+      function resolvePrebookLink(x) {
+        const url = (x.url || '').trim();
+        if (isValidHttpUrl(url) && !isPlaceholderUrl(url)) {
+          return { href: url, search: false };
+        }
+        const q = encodeURIComponent(x.item || x.title || '');
+        return { href: `https://www.bing.com/search?q=${q}`, search: true };
+      }
+
+      function isDesktopDrawer() {
+        return DESKTOP_MQ.matches;
+      }
+
       // HTML 转义：防第三方抓取字段（店名/笔记标题/地址）含 < & " ' 破版
       function esc(s) {
         if (s === null || s === undefined) return '';
@@ -1122,30 +1217,41 @@
 
       // ===== Drawer 交互 =====
       function openDrawer() {
-        lastFocused = document.activeElement;
         const drawer = document.getElementById('drawer');
         const backdrop = document.getElementById('drawer-backdrop');
         const toggle = document.getElementById('drawer-toggle');
+        const isDesktop = isDesktopDrawer();
+
         drawer.classList.add('open');
+        if (isDesktop) drawer.classList.add('expanded');
+        else drawer.classList.remove('expanded');
         drawer.setAttribute('aria-hidden', 'false');
-        backdrop.classList.add('open');
         toggle.setAttribute('aria-expanded', 'true');
-        document.body.style.overflow = 'hidden';
-        // focus 到 close 按钮
-        setTimeout(() => document.getElementById('drawer-close').focus(), 100);
+        /* 改：drawer 浮在右侧，wrap 不被挤压，不再 toggle body.drawer-desktop-open class */
+        if (!isDesktop) {
+          lastFocused = document.activeElement;
+          backdrop.classList.add('open');
+          document.body.style.overflow = 'hidden';
+          setTimeout(() => document.getElementById('drawer-close').focus(), 100);
+        }
       }
 
       function closeDrawer() {
         const drawer = document.getElementById('drawer');
         const backdrop = document.getElementById('drawer-backdrop');
         const toggle = document.getElementById('drawer-toggle');
-        drawer.classList.remove('open');
+        drawer.classList.remove('open', 'expanded');
         drawer.setAttribute('aria-hidden', 'true');
         backdrop.classList.remove('open');
         toggle.setAttribute('aria-expanded', 'false');
+        /* 改：不再 remove body.drawer-desktop-open（已无此 class） */
         document.body.style.overflow = '';
-        // 恢复 focus
         if (lastFocused && lastFocused.focus) lastFocused.focus();
+      }
+
+      function initDrawerLayout() {
+        // No-op：drawer 默认关闭，用户点 toggle 打开。
+        // 媒体查询 listener（line ~1630）在 resize 时处理 mode 切换。
       }
 
       // ===== Hotel =====
@@ -1198,15 +1304,24 @@
         const wsTag = d.weather_decision ?
           `<p class="note" style="margin-top:8px">📋 ${esc(d.weather_decision)}</p>` : '';
 
-        const poiItems = d.pois.map(p => {
+        const poiItems = d.pois.map((p, poiArrIdx) => {
           const ws = p.weather_sensitive ? ' <span class="weather-sensitive">⚠️ 天气敏感</span>' : '';
           const note = p.note ? `<p class="note">${esc(p.note)}</p>` : '';
           const why = p.why ? `<p class="why">→ ${esc(p.why)}</p>` : '';
           const links = p.links || {};
           const linkParts = [];
-          if (links.amap_navi) linkParts.push(`<a href="${esc(links.amap_navi)}">导航</a>`);
-          if (links.xhs) linkParts.push(`<a href="${esc(links.xhs)}">小红书</a>`);
-          if (links.dianping) linkParts.push(`<a href="${esc(links.dianping)}">大众点评</a>`);
+          const prevPoi = poiArrIdx > 0 ? d.pois[poiArrIdx - 1] : null;
+          let navUrl = links.amap_navi;
+          if (!isAmapNaviUrl(navUrl)) {
+            if (prevPoi) navUrl = buildAmapNaviUrl(prevPoi, p, 'walking');
+            else {
+              const c = poiCoords(p);
+              if (c) navUrl = `https://uri.amap.com/marker?position=${c.lng},${c.lat}&name=${encodeURIComponent(p.name || '')}`;
+            }
+          }
+          if (navUrl) linkParts.push(`<a href="${esc(navUrl)}" target="_blank" rel="noopener">导航</a>`);
+          if (links.xhs) linkParts.push(`<a href="${esc(links.xhs)}" target="_blank" rel="noopener">小红书</a>`);
+          if (links.dianping) linkParts.push(`<a href="${esc(links.dianping)}" target="_blank" rel="noopener">大众点评</a>`);
           const linksHtml = linkParts.length ? `<div class="links">${linkParts.join('')}</div>` : '';
           return `<li class="time-block">
             <time>${esc(p.time)}</time>
@@ -1223,9 +1338,16 @@
             const fromPoi = d.pois.find(p => p.idx === t.from_idx);
             const toPoi = d.pois.find(p => p.idx === t.to_idx);
             const desc = t.description || `${fmtMode(t.mode)} ${t.duration_min} 分钟`;
+            const navUrl = isAmapNaviUrl(t.links && t.links.amap_navi)
+              ? t.links.amap_navi
+              : buildAmapNaviUrl(fromPoi, toPoi, t.mode);
+            const navLink = navUrl
+              ? `<a class="transport-nav" href="${esc(navUrl)}" target="_blank" rel="noopener">导航</a>`
+              : '';
             return `<li class="transport-segment">
               <span class="transport-mode" data-mode="${esc(t.mode)}">${fmtMode(t.mode)}</span>
               <span>${esc(fromPoi ? fromPoi.name : '?')} → ${esc(toPoi ? toPoi.name : '?')}（${esc(desc)}）</span>
+              ${navLink}
             </li>`;
           }).join('');
           transportHtml = `<div class="transport-list">
@@ -1269,12 +1391,17 @@
         // 提前订
         const prebookEl = document.getElementById('prebook-list');
         if (D.prebook && D.prebook.length) {
-          prebookEl.innerHTML = D.prebook.map(x =>
-            `<li>
-              <span class="item-title"><a href="${esc(x.url)}">${esc(x.item)}</a><span class="item-deadline">· ${esc(x.deadline)}</span></span>
+          prebookEl.innerHTML = D.prebook.map(x => {
+            const link = resolvePrebookLink(x);
+            const title = esc(x.item);
+            const titleHtml = link.search
+              ? `<a href="${esc(link.href)}" target="_blank" rel="noopener">${title}</a><span class="item-search-hint">（搜索）</span>`
+              : `<a href="${esc(link.href)}" target="_blank" rel="noopener">${title}</a>`;
+            return `<li>
+              <span class="item-title">${titleHtml}<span class="item-deadline">· ${esc(x.deadline)}</span></span>
               ${x.note ? `<span class="item-meta">${esc(x.note)}</span>` : ''}
-            </li>`
-          ).join('');
+            </li>`;
+          }).join('');
           document.getElementById('prebook-count').textContent = `${D.prebook.length} 项`;
           document.getElementById('drawer-badge').textContent = D.prebook.length;
           document.getElementById('drawer-badge').style.display = '';
@@ -1308,9 +1435,27 @@
       }
 
       function widthForMode(mode) {
-        if (mode === 'walking') return 4;
-        if (mode === 'biking') return 5;
-        return 6;
+        if (mode === 'walking') return 6;
+        if (mode === 'biking') return 7;
+        return 8;
+      }
+
+      function updateRouteSummary(dayIdx) {
+        const el = document.getElementById('route-summary');
+        if (!el) return;
+        const d = D.days[dayIdx - 1];
+        if (!d || !d.transports || !d.transports.length) {
+          el.innerHTML = '';
+          return;
+        }
+        const counts = {};
+        d.transports.forEach(t => {
+          const label = fmtMode(t.mode);
+          counts[label] = (counts[label] || 0) + 1;
+        });
+        el.innerHTML = Object.entries(counts)
+          .map(([label, n]) => `<span class="route-chip">${n} 段${label}</span>`)
+          .join('');
       }
 
       function updateMap(dayIdx) {
@@ -1357,21 +1502,33 @@
 
         const showRoute = document.getElementById('toggle-route').checked;
         if (showRoute && d.transports) {
+          const outlineColor = getCss('--bg-elevated') || '#ffffff';
           d.transports.forEach(t => {
             const from = (d.pois || []).find(p => p.idx === t.from_idx);
             const to = (d.pois || []).find(p => p.idx === t.to_idx);
             if (!from || !to) return;
-            // v1.3.0：优先用真实路网 path（高德 MCP 算的 polyline），降级为直线
             const pathCoords = (Array.isArray(t.path) && t.path.length >= 2)
-              ? t.path.map(coord => [coord[0], coord[1]])  // 兼容 [lng,lat] 数组
-              : [[from.lng, from.lat], [to.lng, to.lat]];   // 降级为直线
+              ? t.path.map(coord => [coord[0], coord[1]])
+              : [[from.lng, from.lat], [to.lng, to.lat]];
+            const weight = widthForMode(t.mode);
+            const outline = new AMap.Polyline({
+              path: pathCoords,
+              strokeColor: outlineColor,
+              strokeWeight: weight + 4,
+              strokeOpacity: 0.85,
+              lineJoin: 'round',
+              zIndex: 10
+            });
+            map.add(outline);
+            mapLayers.push(outline);
             const polyline = new AMap.Polyline({
               path: pathCoords,
               strokeColor: colorForMode(t.mode),
-              strokeWeight: widthForMode(t.mode),
-              strokeOpacity: t.path ? 0.9 : 0.6,  // 真实路径更显眼
+              strokeWeight: weight,
+              strokeOpacity: 1.0,
               strokeStyle: dashForMode(t.mode) ? 'dashed' : 'solid',
-              lineJoin: 'round'
+              lineJoin: 'round',
+              zIndex: 11
             });
             map.add(polyline);
             mapLayers.push(polyline);
@@ -1427,6 +1584,7 @@
           t.setAttribute('aria-selected', isActive);
         });
         renderDayPanel(dayIdx);
+        updateRouteSummary(dayIdx);
         updateMap(dayIdx);
       }
 
@@ -1439,9 +1597,13 @@
       document.getElementById('drawer-close').addEventListener('click', closeDrawer);
       document.getElementById('drawer-backdrop').addEventListener('click', closeDrawer);
       document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && document.getElementById('drawer').classList.contains('open')) {
+        const drawer = document.getElementById('drawer');
+        if (e.key === 'Escape' && drawer.classList.contains('open') && !drawer.classList.contains('expanded')) {
           closeDrawer();
         }
+      });
+      DESKTOP_MQ.addEventListener('change', e => {
+        if (!e.matches) closeDrawer();   // 切到 mobile：关 drawer；切到 desktop：不自动开，让用户点 toggle
       });
 
       // Focus trap
@@ -1468,7 +1630,7 @@
       // V2 通勤需高德 API，浏览器内只能粗算 → 提示用户看 AI 高德复核报告。
       // V7 用户禁忌需 AI 上下文判断，**不能脚本化** → 保留 AI self-report。
 
-      const VALIDATION_RULE_IDS = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7'];
+      const VALIDATION_RULE_IDS = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9'];
       const VALIDATION_THRESHOLDS = {
         V1_WARN_KM: 3.0, V1_FAIL_KM: 5.0,
         V3_WARN_KM: 1.5, V3_FAIL_KM: 3.0,
@@ -1506,6 +1668,7 @@
         const pois = day.pois || [];
         if (!center || !pois.length) return { id: 'V1', rule: '区域一致性', status: '⚠️', note: '缺 center 或 pois', source: 'browser' };
         if (isLast) return { id: 'V1', rule: '区域一致性', status: '✅', note: '末日，跳过（返程偏远合理）', source: 'browser' };
+        if (day.region_flex) return { id: 'V1', rule: '区域一致性', status: '✅', note: '含跨区返程，region_flex=true 跳过', source: 'browser' };
         let worst = 0, worstPoi = null;
         for (const p of pois) {
           const loc = getLoc(p);
@@ -1572,7 +1735,10 @@
         const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
         const bufMin = toMin(flightTime) - toMin(endTime);
         const bufH = bufMin / 60;
-        const st = statusFor(-bufH, -VALIDATION_THRESHOLDS.V5_BUFFER_HOURS_WARN, -VALIDATION_THRESHOLDS.V5_BUFFER_HOURS_FAIL);
+        let st;
+        if (bufH < VALIDATION_THRESHOLDS.V5_BUFFER_HOURS_FAIL) st = '❌';
+        else if (bufH < VALIDATION_THRESHOLDS.V5_BUFFER_HOURS_WARN) st = '⚠️';
+        else st = '✅';
         return { id: 'V5', rule: '末日返程缓冲', status: st, note: `${endTime} → ${flightTime}，缓冲 ${bufH.toFixed(2)} h（${flightNote}）`, source: 'browser' };
       }
 
@@ -1593,6 +1759,107 @@
         return { id: 'V2', rule: '时间可行性（粗算）', status: '⚠️', note: '浏览器内无法实算通勤；**请看 AI 报告（高德 route_* 复核）**', source: 'browser-stub' };
       }
 
+      // 浏览器端 V8 重算（与 validate.py check_v8 一致）
+      const V8_ALLOWED_SOURCES_BROWSER = new Set(['amap-mcp', 'amap-rest-api']);
+      const V8_STRAIGHT_LINE_RATIO = 0.005;  // 真实路网偏差 < 0.5% 总距离才判直线
+      function isStraightLineBrowser(path, fromLoc, toLoc) {
+        if (!path || path.length < 3) return true;
+        const [x1, y1] = fromLoc;
+        const [x2, y2] = toLoc;
+        const totalD = Math.hypot(x2 - x1, y2 - y1);
+        if (totalD === 0) return true;
+        for (let i = 1; i < path.length - 1; i++) {
+          const pt = path[i];
+          if (!Array.isArray(pt) || pt.length < 2) continue;
+          const [px, py] = pt;
+          // 点到直线段距离（用经纬度差近似）
+          const dx = x2 - x1, dy = y2 - y1;
+          if (dx === 0 && dy === 0) return true;
+          const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)));
+          const projX = x1 + t * dx, projY = y1 + t * dy;
+          const perpD = Math.hypot(px - projX, py - projY);
+          if (perpD / totalD >= V8_STRAIGHT_LINE_RATIO) return false;
+        }
+        return true;
+      }
+      function browserCheckV8(days) {
+        const badSource = [], missingPath = [], shortPath = [], straightLine = [];
+        let total = 0;
+        for (const d of (days || [])) {
+          for (let i = 0; i < (d.transports || []).length; i++) {
+            const t = d.transports[i];
+            if (!t || typeof t !== 'object') continue;
+            total++;
+            const label = `Day ${d.day}.transports[${i}]`;
+            if (!t.source || !V8_ALLOWED_SOURCES_BROWSER.has(t.source)) {
+              badSource.push(`${label}（source=${t.source}）`);
+              continue;
+            }
+            const path = Array.isArray(t.path) ? t.path : [];
+            if (!path.length) { missingPath.push(label); continue; }
+            if (path.length < 2) { shortPath.push(`${label}（${path.length} 点）`); continue; }
+            if (t.from_idx && t.to_idx) {
+              const fromP = (d.pois || [])[t.from_idx - 1];
+              const toP = (d.pois || [])[t.to_idx - 1];
+              const fromLoc = getLoc(fromP), toLoc = getLoc(toP);
+              if (fromLoc && toLoc && isStraightLineBrowser(path, fromLoc, toLoc)) {
+                straightLine.push(`${label}（${path.length} 点疑似直线）`);
+              }
+            }
+          }
+        }
+        if (total === 0) return { id: 'V8', rule: 'MCP 必跑痕迹', status: '✅', note: '无 transport 段', source: 'browser' };
+        const errors = [];
+        if (badSource.length) errors.push(`${badSource.length} 段 source 不合法`);
+        if (missingPath.length) errors.push(`${missingPath.length} 段缺 path`);
+        if (shortPath.length) errors.push(`${shortPath.length} 段 path 太短`);
+        if (straightLine.length) errors.push(`${straightLine.length} 段疑似直线`);
+        if (errors.length) {
+          return { id: 'V8', rule: 'MCP 必跑痕迹', status: '❌', note: errors.join('；'), source: 'browser' };
+        }
+        return { id: 'V8', rule: 'MCP 必跑痕迹', status: '✅', note: `全部 ${total} 段已必跑 MCP`, source: 'browser' };
+      }
+
+      // 浏览器端 V9 重算（与 validate.py check_v9 一致）
+      const V9_DURATION_RATIO_FAIL = 0.5;
+      const WALK_KMH = 5.0, TRANSIT_KMH = 20.0, DRIVE_KMH = 40.0;
+      function roughCommuteMin(a, b, mode) {
+        const d = haversineKm(a, b);
+        if (!d) return 0;
+        const m = (mode || 'transit').toLowerCase();
+        if (m === 'walking') return d / WALK_KMH * 60;
+        if (m === 'driving' || m === 'taxi' || m === 'car') return d / DRIVE_KMH * 60;
+        if (m === 'train' || m === 'jr' || m === 'metro' || m === 'subway') return d / 45.0 * 60;
+        return d / TRANSIT_KMH * 60;
+      }
+      function browserCheckV9(days) {
+        const suspicious = [];
+        let totalChecked = 0;
+        for (const d of (days || [])) {
+          for (let i = 0; i < (d.transports || []).length; i++) {
+            const t = d.transports[i];
+            if (!t || t.duration_min == null) continue;
+            totalChecked++;
+            if (!t.from_idx || !t.to_idx) continue;
+            const fromP = (d.pois || [])[t.from_idx - 1];
+            const toP = (d.pois || [])[t.to_idx - 1];
+            const fromLoc = getLoc(fromP), toLoc = getLoc(toP);
+            if (!fromLoc || !toLoc) continue;
+            const rough = roughCommuteMin(fromLoc, toLoc, t.mode);
+            if (!rough) continue;
+            const ratio = Math.abs(t.duration_min - rough) / rough;
+            if (ratio > V9_DURATION_RATIO_FAIL) {
+              suspicious.push(`Day ${d.day}.transports[${i}]: ${t.duration_min}min vs 粗算 ${rough.toFixed(0)}min (${(ratio*100).toFixed(0)}%)`);
+            }
+          }
+        }
+        if (totalChecked === 0) return { id: 'V9', rule: 'V2 实算 vs 粗算', status: '✅', note: '无 duration_min 字段', source: 'browser' };
+        if (suspicious.length) {
+          return { id: 'V9', rule: 'V2 实算 vs 粗算', status: '❌', note: `${suspicious.length}/${totalChecked} 段偏差 > 50%`, source: 'browser' };
+        }
+        return { id: 'V9', rule: 'V2 实算 vs 粗算', status: '✅', note: `全部 ${totalChecked} 段偏差 < 50%`, source: 'browser' };
+      }
+
       // 主重算：每个 day 跑 V1/V3/V4/V6，最后一天跑 V5
       function recomputeValidation() {
         if (!D || !D.days || !D.days.length) return null;
@@ -1611,6 +1878,10 @@
         }
         // V2 浏览器内只能粗算，加 1 个 stub
         rules.push(browserCheckV2Stub());
+        // V8 必跑 MCP 痕迹校验
+        rules.push(browserCheckV8(D.days));
+        // V9 高德实算 vs 粗算
+        rules.push(browserCheckV9(D.days));
         // V7 完全由 AI 判断，浏览器无法验
         // 保留 AI self-report 里的 V7（如有）
         const aiReport = D.validation_report;
@@ -1624,55 +1895,11 @@
         return { round: aiReport ? aiReport.round : 0, rules, source: 'browser-recompute' };
       }
 
-      // 渲染顶部 banner
+      // 渲染顶部 banner（v2.0.0 起 no-op：用户不要"检测过程"，只展示方案）
       function renderValidationBanner() {
-        const aiReport = D.validation_report;
-        const aiRuleIds = (aiReport && Array.isArray(aiReport.rules)) ? new Set(aiReport.rules.map(r => r.id)) : new Set();
-        const missing = VALIDATION_RULE_IDS.filter(id => !aiRuleIds.has(id));
-
+        // 不显示任何验证 banner
         const banner = document.getElementById('validation-banner');
-
-        // 情况 1：AI 完全没跑验证（无 validation_report 字段或 rules 数组为空）
-        if (!aiReport || !Array.isArray(aiReport.rules) || aiReport.rules.length === 0) {
-          banner.className = 'show banner-missing';
-          banner.innerHTML = `
-            <div class="vb-title">⚠️ 本方案未跑验证（v1.1.0 硬约束）</div>
-            <div>AI 没在 tripData 嵌入 <code>validation_report</code>。浏览器会用 POI 坐标 + 阈值公式<strong>强制重算</strong>（结果见底部「验证报告」折叠区）。</div>
-            <div style="margin-top: 8px;">🟢 建议：让 AI 跑 <code>python scripts/validate.py</code>，把 stdout 嵌进 tripData.validation_report。</div>
-          `;
-          return;
-        }
-
-        // 情况 2：7 条规则不完整
-        if (missing.length > 0) {
-          banner.className = 'show banner-warn';
-          banner.innerHTML = `
-            <div class="vb-title">⚠️ 验证报告不完整（缺 ${missing.join(', ')}）</div>
-            <div>AI 只跑了这 ${aiReport.rules.length} 条：${Array.from(aiRuleIds).join(', ')}。缺失规则 <strong>${missing.join(', ')}</strong> 无法核对。</div>
-            <div style="margin-top: 8px;">🟢 建议：让 AI 补全（V7 必跑，V1-V6 脚本可验）。</div>
-          `;
-          return;
-        }
-
-        // 情况 3：完整 → 用浏览器重算结果覆盖 AI self-report
-        const recomputed = recomputeValidation();
-        if (!recomputed) return;
-        // 存到 D 上，renderValidationSection 也会读
-        D._validation_recomputed = recomputed;
-        const fail = recomputed.rules.filter(r => r.status === '❌').length;
-        const warn = recomputed.rules.filter(r => r.status === '⚠️').length;
-        const pass = recomputed.rules.filter(r => r.status === '✅').length;
-        const overall = fail > 0 ? 'banner-missing' : (warn > 0 ? 'banner-warn' : 'banner-pass');
-        banner.className = 'show ' + overall;
-        const headline = fail > 0
-          ? `❌ 浏览器重算发现 ${fail} 条失败（v1.1.0 硬约束）`
-          : (warn > 0 ? `⚠️ 浏览器重算通过，但有 ${warn} 条警告` : '✅ 浏览器重算全部通过');
-        const subline = `${pass} ✅ / ${warn} ⚠️ / ${fail} ❌ — **以浏览器重算为准**（AI self-report 仅作参考）`;
-        banner.innerHTML = `
-          <div class="vb-title">${headline}</div>
-          <div>${subline}</div>
-          <button class="vb-detail-btn" onclick="document.getElementById('validation-report-section').open = true; document.getElementById('validation-report-section').scrollIntoView({behavior:'smooth'});">查看完整验证报告 ↓</button>
-        `;
+        if (banner) banner.style.display = 'none';
       }
 
       // 渲染底部「验证报告」折叠区
@@ -1742,6 +1969,7 @@
         renderWeatherPlan();
         renderDrawerLists();
         renderTabs();
+        initDrawerLayout();
         showDay(1);
         initMap();
       }
