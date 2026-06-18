@@ -74,6 +74,169 @@ def parse_yuan_from_note(note: str) -> tuple[float, float] | None:
     return None
 
 
+def cat_price_label(cat: str) -> str:
+    return {
+        "scenery": "门票", "culture": "门票", "food": "餐饮", "shopping": "逛街",
+        "hotel": "入住", "transport": "交通", "activity": "体验",
+    }.get(cat, "费用")
+
+
+def fare_label(mode: str, fare: dict[str, Any]) -> str:
+    if fare.get("label"):
+        return fare["label"]
+    if mode == "driving":
+        return "打车"
+    if mode in ("walking", "biking"):
+        return "步行" if mode == "walking" else "骑行"
+    return "公交/地铁"
+
+
+def parse_time_min(t: str) -> int:
+    m = re.match(r"^(\d{1,2}):(\d{2})", t or "")
+    return int(m.group(1)) * 60 + int(m.group(2)) if m else 0
+
+
+def pick_meal_type(poi_time: str) -> str | None:
+    t = parse_time_min(poi_time)
+    if t < 11 * 60:
+        return "breakfast"
+    if t < 15 * 60:
+        return "lunch"
+    if t >= 17 * 60:
+        return "dinner"
+    return None
+
+
+def build_slot_costs(
+    trip: dict[str, Any],
+    day: dict[str, Any],
+    poi: dict[str, Any],
+    poi_arr_idx: int,
+    day_arr_idx: int,
+    party: int,
+    currency: str,
+    meals_used: dict[str, bool],
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    cat = poi.get("cat") or ""
+    note = poi.get("note") or ""
+    pr = poi.get("price")
+
+    if cat == "shopping":
+        items.append({
+            "label": "逛街预算",
+            "price": {
+                **price(0, 300, unit="fixed", quantity=1, label="逛街预算",
+                        source="computed", source_ref="用户自填参考区间", currency=currency),
+                "user_editable": True,
+            },
+        })
+    elif pr and not (cat == "hotel" and pr.get("unit") == "free"):
+        if pr.get("unit") != "free" or pr.get("min", 0) != 0:
+            items.append({"label": pr.get("label") or cat_price_label(cat), "price": pr})
+
+    mt = pick_meal_type(poi.get("time") or "")
+    meals = day.get("meals") or {}
+    if mt and not meals_used.get(mt) and isinstance(meals.get(mt), dict):
+        main = meals[mt].get("main")
+        if isinstance(main, dict) and main.get("price"):
+            label_map = {"breakfast": "早餐", "lunch": "午餐", "dinner": "晚餐"}
+            items.append({"label": label_map[mt], "price": main["price"]})
+            meals_used[mt] = True
+
+    next_t = next((t for t in (day.get("transports") or []) if t.get("from_idx") == poi.get("idx")), None)
+    if isinstance(next_t, dict) and next_t.get("fare"):
+        fare = next_t["fare"]
+        items.append({
+            "label": fare_label(next_t.get("mode") or "", fare),
+            "price": fare,
+        })
+
+    n_days = trip.get("days") or []
+    is_first = day_arr_idx == 0 and poi_arr_idx == 0
+    is_last = day_arr_idx == len(n_days) - 1 and poi_arr_idx == len(day.get("pois") or []) - 1
+
+    if is_first:
+        for pb in trip.get("prebook") or []:
+            if not isinstance(pb, dict):
+                continue
+            item = pb.get("item") or ""
+            if pb.get("price") and "机票" in item and "返程" not in item and "回程" not in item:
+                if not any("机票" in x.get("label", "") for x in items):
+                    items.append({
+                        "label": pb["price"].get("label", "机票"),
+                        "price": pb["price"],
+                        "attach": "arrival",
+                    })
+
+    if is_last:
+        for pb in trip.get("prebook") or []:
+            if not isinstance(pb, dict):
+                continue
+            item = pb.get("item") or ""
+            if pb.get("price") and ("返程" in item or "回程" in item):
+                if not any("返程" in x.get("label", "") or "回程" in x.get("label", "") for x in items):
+                    items.append({
+                        "label": pb["price"].get("label", "返程机票"),
+                        "price": pb["price"],
+                        "attach": "departure",
+                    })
+
+    if "船票" in note or "轮渡" in note or "鼓浪屿" in poi.get("name", ""):
+        for pb in trip.get("prebook") or []:
+            if not isinstance(pb, dict):
+                continue
+            if "船票" in (pb.get("item") or "") and pb.get("price"):
+                if not any("船票" in x.get("label", "") for x in items):
+                    items.append({"label": "船票", "price": pb["price"]})
+
+    if poi.get("requires_booking"):
+        for pb in trip.get("prebook") or []:
+            if not isinstance(pb, dict):
+                continue
+            if pb.get("price") and poi.get("name") and poi["name"] in (pb.get("note") or ""):
+                items.append({"label": pb["price"].get("label") or pb.get("item", "预约"), "price": pb["price"]})
+
+    return items
+
+
+def ensure_discretionary_budget(poi: dict[str, Any], currency: str) -> None:
+    """shopping 等不确定消费：补 user_editable 行（已有 slot_costs 也补）。"""
+    if poi.get("cat") != "shopping":
+        return
+    slot_costs = poi.setdefault("slot_costs", [])
+    if any(
+        isinstance(sc, dict) and (sc.get("price") or {}).get("user_editable")
+        for sc in slot_costs
+    ):
+        return
+    slot_costs.append({
+        "label": "逛街预算",
+        "price": {
+            **price(0, 300, unit="fixed", quantity=1, label="逛街预算",
+                    source="computed", source_ref="用户自填参考区间", currency=currency),
+            "user_editable": True,
+        },
+    })
+
+
+def seed_slot_costs(trip: dict[str, Any]) -> None:
+    for day_arr_idx, day in enumerate(trip.get("days") or []):
+        meals_used: dict[str, bool] = {}
+        party = trip.get("party_size") or 1
+        currency = trip.get("_currency") or ("JPY" if trip.get("city") in ("东京", "Tokyo", "大阪") else "CNY")
+        for poi_arr_idx, poi in enumerate(day.get("pois") or []):
+            if not isinstance(poi, dict):
+                continue
+            if poi.get("slot_costs"):
+                ensure_discretionary_budget(poi, currency)
+                continue
+            built = build_slot_costs(trip, day, poi, poi_arr_idx, day_arr_idx, party, currency, meals_used)
+            if built:
+                poi["slot_costs"] = built
+            ensure_discretionary_budget(poi, currency)
+
+
 def seed_poi_price(p: dict[str, Any], party: int, currency: str) -> None:
     if p.get("price"):
         return
@@ -241,6 +404,7 @@ def seed_trip(trip: dict[str, Any], party: int) -> dict[str, Any]:
         "per_person_max": round(total_max / party),
         "disclaimer": "价格为调研日参考，不含个人购物；机票/酒店以平台实时为准",
     }
+    seed_slot_costs(trip)
     trip.pop("_currency", None)
     return trip
 

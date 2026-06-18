@@ -903,42 +903,177 @@
       ol.timeline li.time-block .meal-leg .meal-leg-name { color: #fef3c7; }
     }
 
-    /* ===== 价格卡片（v2.1.0） ===== */
-    .price-card {
+    /* ===== 段花销批注（v2.2.0） ===== */
+    .time-block-grid {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 16px;
+      align-items: stretch;
+    }
+    .time-block-main { min-width: 0; }
+    .time-row {
       display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: var(--sp-1) var(--sp-2);
-      margin-top: var(--sp-2);
-      padding: 8px 12px;
-      background: #f0f7f4;
-      border: 1px solid #c5e0d4;
-      border-radius: 8px;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-2);
+    }
+    .cost-margin {
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+    .cost-margin-card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-soft);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 8px 10px;
       font-size: var(--fs-xs);
       line-height: 1.45;
+      min-height: 100%;
     }
-    .price-card .price-amount {
-      font-weight: 700;
-      font-size: var(--fs-sm);
+    .cost-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      padding: 2px 0;
+    }
+    .cost-line-label {
+      color: var(--fg-muted);
+      flex: 1;
+      min-width: 0;
+    }
+    .cost-line-amount {
+      font-weight: 600;
       color: #1f5a3a;
+      white-space: nowrap;
+      font-size: var(--fs-xs);
     }
-    .price-card .price-label {
-      color: var(--fg-muted);
+    .cost-line-total {
+      border-top: 1px dashed var(--line);
+      margin-top: auto;
+      padding-top: 6px;
+      font-weight: 700;
     }
-    .price-card .price-source {
-      flex: 1 1 100%;
-      color: var(--fg-muted);
+    .cost-line-total .cost-line-amount { font-size: var(--fs-sm); }
+    .cost-line-missing .cost-line-amount { color: #b91c1c; font-weight: 500; }
+    .cost-user-input {
+      width: 76px;
+      padding: 3px 6px;
+      font-size: var(--fs-xs);
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: var(--bg-elevated);
+      text-align: right;
+    }
+    .cost-pill {
+      display: none;
+      align-items: center;
+      flex-shrink: 0;
+      padding: 2px 10px;
+      border: 1px solid #c5e0d4;
+      border-radius: 100px;
+      background: #f0f7f4;
+      color: #1f5a3a;
       font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
     }
-    .price-card-missing {
-      background: #fef2f2;
-      border-color: #fecaca;
+    .cost-pill:hover { background: #e2f0ea; }
+    .cost-margin-toggle {
+      display: none;
+      width: 100%;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      margin-top: var(--sp-2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--bg-soft);
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      color: var(--fg);
+      cursor: pointer;
+      font-family: inherit;
     }
-    .price-card-missing .price-amount { color: #b91c1c; }
+    .cost-margin-toggle .toggle-chevron { transition: transform 0.2s; }
+    .cost-margin.is-expanded .toggle-chevron { transform: rotate(180deg); }
+    .cost-sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .cost-sheet-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .cost-sheet {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 201;
+      max-height: 70vh;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(100%);
+      transition: transform 0.25s ease;
+      padding: var(--sp-4) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+      overflow-y: auto;
+    }
+    .cost-sheet.open { transform: translateY(0); }
+    .cost-sheet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--sp-3);
+    }
+    .cost-sheet-header h3 {
+      margin: 0;
+      font-size: var(--fs-md);
+    }
+    .cost-sheet-close {
+      border: none;
+      background: var(--bg-soft);
+      border-radius: 100px;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+    }
     @media (prefers-color-scheme: dark) {
-      .price-card { background: #1a2e24; border-color: #2d5a45; }
-      .price-card .price-amount { color: #86efac; }
-      .price-card-missing { background: #3f1d1d; border-color: #7f1d1d; }
+      .cost-line-amount { color: #86efac; }
+      .cost-pill { background: #1a2e24; border-color: #2d5a45; color: #86efac; }
+    }
+    @media (max-width: 899px) {
+      .time-block-grid { grid-template-columns: 1fr; gap: 0; align-items: start; }
+      .cost-margin { grid-column: 1 / -1; min-height: 0; }
+      .cost-margin-toggle { display: flex; }
+      .cost-margin-card {
+        flex: none;
+        min-height: 0;
+        border-left: none;
+        border-top: 3px solid var(--accent);
+        border-radius: var(--radius-sm);
+        margin-top: 0;
+      }
+      .cost-line-total { margin-top: 4px; }
+      .cost-margin:not(.is-expanded) .cost-margin-card { display: none; }
+    }
+    @media (max-width: 599px) {
+      .cost-margin { display: none; }
+      .cost-pill { display: inline-flex; }
     }
 
     /* ===== 抽屉花销汇总 ===== */
@@ -1084,6 +1219,14 @@
 
   <!-- ===== Drawer 抽屉 ===== -->
   <div class="drawer-backdrop" id="drawer-backdrop" aria-hidden="true"></div>
+  <div class="cost-sheet-backdrop" id="cost-sheet-backdrop" aria-hidden="true"></div>
+  <div class="cost-sheet" id="cost-sheet" role="dialog" aria-modal="true" aria-labelledby="cost-sheet-title" aria-hidden="true">
+    <div class="cost-sheet-header">
+      <h3 id="cost-sheet-title">本段花销</h3>
+      <button type="button" class="cost-sheet-close" id="cost-sheet-close" aria-label="关闭">×</button>
+    </div>
+    <div id="cost-sheet-body"></div>
+  </div>
   <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true">
 
     <header class="drawer-header">
@@ -1366,50 +1509,372 @@
         return sym + Math.round(n).toLocaleString();
       }
 
-      function renderPriceCardHtml(price, missingHint) {
-        if (!price) {
-          return `<div class="price-card price-card-missing" role="note"><span class="price-amount">待补价格调研</span><span class="price-source">${esc(missingHint || '需 MCP/WebFetch 实查')}</span></div>`;
-        }
-        const p = priceTotals(price);
-        if (!p) return renderPriceCardHtml(null, missingHint);
-        const cur = p.currency || 'CNY';
+      const slotCostCache = {};
+      let tripSlugCache = '';
+
+      function tripSlug() {
+        if (tripSlugCache) return tripSlugCache;
+        const raw = (D.trip_name || '') + '|' + (D.date_range || '');
+        let h = 0;
+        for (let i = 0; i < raw.length; i++) h = ((h << 5) - h + raw.charCodeAt(i)) | 0;
+        tripSlugCache = 'tp_' + Math.abs(h).toString(36);
+        return tripSlugCache;
+      }
+
+      function userBudgetKey(slotId, lineIdx) {
+        return `${tripSlug()}_${slotId}_${lineIdx}`;
+      }
+
+      function getUserBudgetValue(key) {
+        try {
+          const v = localStorage.getItem(key);
+          return v === null ? null : v;
+        } catch (e) { return null; }
+      }
+
+      function setUserBudgetValue(key, val) {
+        try {
+          if (val === '' || val == null) localStorage.removeItem(key);
+          else localStorage.setItem(key, String(val));
+        } catch (e) { /* ignore */ }
+      }
+
+      function catPriceLabel(cat) {
+        const map = {
+          scenery: '门票', culture: '门票', food: '餐饮', shopping: '逛街',
+          hotel: '入住', transport: '交通', activity: '体验',
+        };
+        return map[cat] || '费用';
+      }
+
+      function fareLabel(mode, fare) {
+        if (fare && fare.label) return fare.label;
+        const m = fmtMode(mode);
+        if (m === '驾车') return '打车';
+        if (m === '步行' || m === '骑行') return m;
+        return '公交/地铁';
+      }
+
+      function formatPriceAmount(p) {
+        if (!p) return '待补';
+        const pt = priceTotals(p);
+        if (!pt) return '待补';
+        const cur = pt.currency || 'CNY';
         const unitMap = { per_person: '/人', per_order: '/次', per_night: '/晚', fixed: '', free: '' };
-        const unitSuffix = unitMap[p.unit] || '';
-        let amountStr;
-        if (p.unit === 'free' || (p.min === 0 && p.max === 0)) {
-          amountStr = '免费';
-        } else if (p.min === p.max) {
-          amountStr = formatMoney(p.min, cur) + unitSuffix;
-          const q = p.quantity || D.party_size || 1;
-          if (q > 1 && (p.unit === 'per_person' || p.unit === 'per_order')) {
-            amountStr += ` × ${q} ≈ ${formatMoney(p.tmin, cur)}`;
+        const unitSuffix = unitMap[pt.unit] || '';
+        if (pt.unit === 'free' || (pt.min === 0 && pt.max === 0)) return '免费';
+        if (pt.min === pt.max) {
+          let s = formatMoney(pt.min, cur) + unitSuffix;
+          const q = pt.quantity || D.party_size || 1;
+          if (q > 1 && (pt.unit === 'per_person' || pt.unit === 'per_order')) {
+            s += ` ≈ ${formatMoney(pt.tmin, cur)}`;
           }
-        } else {
-          amountStr = `${formatMoney(p.min, cur)}–${formatMoney(p.max, cur)}${unitSuffix}`;
+          return s;
         }
-        const src = esc(p.source_ref || p.source || '');
-        const label = p.label ? `<span class="price-label">${esc(p.label)}</span>` : '';
-        return `<div class="price-card" data-source="${esc(p.source || '')}"><span class="price-amount">${amountStr}</span>${label}<span class="price-source">来源：${src}</span></div>`;
+        return `${formatMoney(pt.min, cur)}–${formatMoney(pt.max, cur)}${unitSuffix}`;
+      }
+
+      function formatPriceLine(label, priceObj) {
+        return { label, amount: formatPriceAmount(priceObj), price: priceObj };
+      }
+
+      function lineDedupeKey(line) {
+        const p = line.price || {};
+        return `${line.label}|${p.min}|${p.max}|${p.unit}`;
+      }
+
+      function addCostLine(lines, seen, label, priceObj, opts) {
+        if (!priceObj && !opts?.userEditable) return;
+        const key = lineDedupeKey({ label, price: priceObj });
+        if (seen.has(key)) return;
+        seen.add(key);
+        lines.push(Object.assign({ label, price: priceObj }, opts || {}));
+      }
+
+      function buildSlotContext(day, poi, poiArrIdx, dayArrIdx, mealsUsed, pendingMeals) {
+        const nextTransport = (day.transports || []).find(t => t.from_idx === poi.idx);
+        let matchedMeal = null;
+        const matchedMealType = (pendingMeals || []).find(type => {
+          if (mealsUsed[type]) return false;
+          const t = parseTimeStr(poi.time);
+          if (type === 'breakfast') return t < 11 * 60;
+          if (type === 'lunch') return t >= 11 * 60 && t < 15 * 60;
+          if (type === 'dinner') return t >= 17 * 60;
+          return false;
+        });
+        if (matchedMealType && day.meals && day.meals[matchedMealType]) {
+          const labelMap = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐' };
+          matchedMeal = { type: matchedMealType, label: labelMap[matchedMealType], ...day.meals[matchedMealType] };
+        }
+        const slotId = `d${day.day}-p${poi.idx}`;
+        const isFirstPoiOfTrip = dayArrIdx === 0 && poiArrIdx === 0;
+        const isLastDay = dayArrIdx === (D.days || []).length - 1;
+        const isLastPoiOfDay = poiArrIdx === day.pois.length - 1;
+        const isLastPoiOfTrip = isLastDay && isLastPoiOfDay;
+        return {
+          slotId, nextTransport, matchedMeal, matchedMealType,
+          isFirstPoiOfTrip, isLastPoiOfTrip, dayArrIdx, poiArrIdx,
+        };
+      }
+
+      function buildSlotCostItems(day, poi, ctx) {
+        const lines = [];
+        const seen = new Set();
+        const slotCosts = poi.slot_costs || [];
+        const hasSlotCosts = slotCosts.length > 0;
+
+        slotCosts.forEach(sc => {
+          const p = sc.price;
+          addCostLine(lines, seen, sc.label || (p && p.label) || '费用', p, {
+            userEditable: !!(p && p.user_editable),
+            attach: sc.attach,
+          });
+        });
+
+        if (poi.cat === 'shopping' && !lines.some(l => l.userEditable || (l.price && l.price.user_editable))) {
+          addCostLine(lines, seen, '逛街预算', {
+            min: 0, max: 300, currency: 'CNY', unit: 'fixed', quantity: 1,
+            total_min: 0, total_max: 300, user_editable: true, source: 'computed',
+          }, { userEditable: true });
+        }
+
+        if (!hasSlotCosts) {
+          if (poi.price && !(poi.cat === 'hotel' && poi.price.unit === 'free')) {
+            addCostLine(lines, seen, poi.price.label || catPriceLabel(poi.cat), poi.price);
+          }
+          if (ctx.matchedMeal && ctx.matchedMeal.main && ctx.matchedMeal.main.price) {
+            addCostLine(lines, seen, ctx.matchedMeal.label, ctx.matchedMeal.main.price);
+          }
+          if (ctx.nextTransport && ctx.nextTransport.fare) {
+            addCostLine(lines, seen,
+              fareLabel(ctx.nextTransport.mode, ctx.nextTransport.fare),
+              ctx.nextTransport.fare);
+          }
+        }
+
+        if (ctx.isFirstPoiOfTrip && (D.prebook || []).length) {
+          const hasFlight = lines.some(l => /机票|航班/.test(l.label));
+          if (!hasFlight) {
+            (D.prebook || []).forEach(pb => {
+              const item = pb.item || '';
+              if (pb.price && item.includes('机票') && !item.includes('返程') && !item.includes('回程')) {
+                addCostLine(lines, seen, pb.price.label || '机票', pb.price, { attach: 'arrival' });
+              }
+            });
+          }
+        }
+        if (ctx.isLastPoiOfTrip && (D.prebook || []).length) {
+          const hasReturn = lines.some(l => /返程|回程/.test(l.label));
+          if (!hasReturn) {
+            (D.prebook || []).forEach(pb => {
+              const item = pb.item || '';
+              if (pb.price && (item.includes('返程') || item.includes('回程') || item.includes('返程机票'))) {
+                addCostLine(lines, seen, pb.price.label || '返程机票', pb.price, { attach: 'departure' });
+              }
+            });
+          }
+        }
+
+        if (!hasSlotCosts && poi.requires_booking && (D.prebook || []).length) {
+          (D.prebook || []).forEach(pb => {
+            if (pb.price && (pb.note || '').includes(poi.name)) {
+              addCostLine(lines, seen, pb.price.label || pb.item || '预约', pb.price);
+            }
+          });
+        }
+
+        let totalMin = 0, totalMax = 0, hasUserInput = false;
+        lines.forEach((line, idx) => {
+          let p = line.price;
+          const editable = line.userEditable || (p && p.user_editable);
+          if (editable) {
+            hasUserInput = true;
+            const userVal = getUserBudgetValue(userBudgetKey(ctx.slotId, idx));
+            if (userVal != null && userVal !== '') {
+              const v = parseFloat(userVal);
+              if (!Number.isNaN(v)) {
+                p = Object.assign({}, p || {}, { min: v, max: v, total_min: v, total_max: v, unit: 'fixed' });
+              }
+            }
+          }
+          const t = priceTotals(p);
+          if (t) { totalMin += t.tmin; totalMax += t.tmax; }
+          line._resolvedPrice = p;
+          line._lineIdx = idx;
+        });
+
+        return { lines, totalMin, totalMax, hasUserInput, slotId: ctx.slotId };
+      }
+
+      function renderCostLinesHtml(items, slotId, forSheet) {
+        const { lines, totalMin, totalMax } = items;
+        if (!lines.length) {
+          return '<div class="cost-line cost-line-missing"><span class="cost-line-label">花销</span><span class="cost-line-amount">待补调研</span></div>';
+        }
+        let html = lines.map((line, idx) => {
+          const editable = line.userEditable || (line.price && line.price.user_editable);
+          let amountHtml;
+          if (editable) {
+            const key = userBudgetKey(slotId, idx);
+            const stored = getUserBudgetValue(key);
+            const placeholder = line.price && line.price.max != null ? line.price.max : '';
+            amountHtml = `<input type="number" class="cost-user-input" data-budget-key="${esc(key)}" data-slot-id="${esc(slotId)}" min="0" step="10" placeholder="${esc(String(placeholder))}" value="${stored != null ? esc(stored) : ''}" aria-label="${esc(line.label)}预算">`;
+          } else {
+            amountHtml = `<span class="cost-line-amount">${formatPriceAmount(line._resolvedPrice || line.price)}</span>`;
+          }
+          return `<div class="cost-line" data-line-idx="${idx}"><span class="cost-line-label">${esc(line.label)}</span>${amountHtml}</div>`;
+        }).join('');
+        const totalStr = totalMax !== totalMin
+          ? `${formatMoney(totalMin)}–${formatMoney(totalMax)}`
+          : formatMoney(totalMin);
+        html += `<div class="cost-line cost-line-total" data-slot-total="${esc(slotId)}"><span class="cost-line-label">本段合计</span><span class="cost-line-amount">${totalStr}</span></div>`;
+        return html;
+      }
+
+      function renderCostMarginHtml(items, slotId) {
+        const inner = renderCostLinesHtml(items, slotId, false);
+        const totalStr = items.totalMax !== items.totalMin
+          ? `${formatMoney(items.totalMin)}–${formatMoney(items.totalMax)}`
+          : formatMoney(items.totalMin);
+        const pillLabel = items.totalMin > 0 || items.totalMax > 0 ? totalStr : '—';
+        return {
+          marginHtml: `<aside class="cost-margin" aria-label="本段花销" data-slot-id="${esc(slotId)}">
+            <button type="button" class="cost-margin-toggle" aria-expanded="false" data-slot-toggle="${esc(slotId)}">
+              <span>本段花销 ${pillLabel}</span><span class="toggle-chevron">▾</span>
+            </button>
+            <div class="cost-margin-card" id="cost-${esc(slotId)}">${inner}</div>
+          </aside>`,
+          pillHtml: `<button type="button" class="cost-pill" data-slot-pill="${esc(slotId)}" aria-label="查看本段花销">${pillLabel}</button>`,
+          totalStr: pillLabel,
+        };
+      }
+
+      function recomputeSlotTotals(slotId) {
+        const dayMatch = slotId.match(/^d(\d+)-p(\d+)$/);
+        if (!dayMatch) return;
+        const dayNum = parseInt(dayMatch[1], 10);
+        const poiIdx = parseInt(dayMatch[2], 10);
+        const day = (D.days || []).find(d => d.day === dayNum);
+        if (!day) return;
+        const poi = (day.pois || []).find(p => p.idx === poiIdx);
+        if (!poi) return;
+        const dayArrIdx = D.days.indexOf(day);
+        const poiArrIdx = day.pois.indexOf(poi);
+        const mealsUsed = {};
+        const ctx = buildSlotContext(day, poi, poiArrIdx, dayArrIdx, mealsUsed, []);
+        const items = buildSlotCostItems(day, poi, ctx);
+        slotCostCache[slotId] = items;
+        const card = document.getElementById('cost-' + slotId);
+        if (card) card.innerHTML = renderCostLinesHtml(items, slotId, false);
+        const pill = document.querySelector(`[data-slot-pill="${slotId}"]`);
+        if (pill) {
+          const totalStr = items.totalMax !== items.totalMin
+            ? `${formatMoney(items.totalMin)}–${formatMoney(items.totalMax)}`
+            : formatMoney(items.totalMin);
+          pill.textContent = totalStr;
+        }
+        const toggle = document.querySelector(`[data-slot-toggle="${slotId}"]`);
+        if (toggle) {
+          const totalStr = items.totalMax !== items.totalMin
+            ? `${formatMoney(items.totalMin)}–${formatMoney(items.totalMax)}`
+            : formatMoney(items.totalMin);
+          toggle.querySelector('span').textContent = `本段花销 ${totalStr}`;
+        }
+        const sheet = document.getElementById('cost-sheet');
+        if (sheet && sheet.classList.contains('open') && sheet.dataset.activeSlot === slotId) {
+          document.getElementById('cost-sheet-body').innerHTML = renderCostLinesHtml(items, slotId, true);
+          bindUserBudgetInputs(document.getElementById('cost-sheet-body'));
+        }
+        renderBudgetSummary();
+      }
+
+      function bindUserBudgetInputs(root) {
+        const scope = root || document;
+        scope.querySelectorAll('.cost-user-input').forEach(input => {
+          if (input.dataset.bound) return;
+          input.dataset.bound = '1';
+          input.addEventListener('input', () => {
+            setUserBudgetValue(input.dataset.budgetKey, input.value);
+            recomputeSlotTotals(input.dataset.slotId);
+          });
+        });
+      }
+
+      function bindCostMarginInteractions() {
+        document.querySelectorAll('[data-slot-toggle]').forEach(btn => {
+          if (btn.dataset.bound) return;
+          btn.dataset.bound = '1';
+          btn.addEventListener('click', () => {
+            const margin = btn.closest('.cost-margin');
+            const expanded = margin.classList.toggle('is-expanded');
+            btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+          });
+        });
+        document.querySelectorAll('[data-slot-pill]').forEach(btn => {
+          if (btn.dataset.bound) return;
+          btn.dataset.bound = '1';
+          btn.addEventListener('click', () => openCostSheet(btn.dataset.slotPill));
+        });
+      }
+
+      function openCostSheet(slotId) {
+        const items = slotCostCache[slotId];
+        if (!items) return;
+        const sheet = document.getElementById('cost-sheet');
+        const backdrop = document.getElementById('cost-sheet-backdrop');
+        const poi = findPoiBySlotId(slotId);
+        document.getElementById('cost-sheet-title').textContent = poi ? `本段花销 · ${poi.name}` : '本段花销';
+        document.getElementById('cost-sheet-body').innerHTML = renderCostLinesHtml(items, slotId, true);
+        bindUserBudgetInputs(document.getElementById('cost-sheet-body'));
+        sheet.dataset.activeSlot = slotId;
+        sheet.classList.add('open');
+        sheet.setAttribute('aria-hidden', 'false');
+        backdrop.classList.add('open');
+        backdrop.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeCostSheet() {
+        const sheet = document.getElementById('cost-sheet');
+        const backdrop = document.getElementById('cost-sheet-backdrop');
+        sheet.classList.remove('open');
+        sheet.setAttribute('aria-hidden', 'true');
+        backdrop.classList.remove('open');
+        backdrop.setAttribute('aria-hidden', 'true');
+        delete sheet.dataset.activeSlot;
+        if (!document.getElementById('drawer').classList.contains('open')) {
+          document.body.style.overflow = '';
+        }
+      }
+
+      function findPoiBySlotId(slotId) {
+        const m = slotId.match(/^d(\d+)-p(\d+)$/);
+        if (!m) return null;
+        const day = (D.days || []).find(d => d.day === parseInt(m[1], 10));
+        return day ? (day.pois || []).find(p => p.idx === parseInt(m[2], 10)) : null;
       }
 
       function sumLineItemPrices() {
         let min = 0, max = 0;
-        (D.days || []).forEach(d => {
-          (d.pois || []).forEach(p => {
-            const t = priceTotals(p.price);
-            if (t) { min += t.tmin; max += t.tmax; }
-          });
-          (d.transports || []).forEach(t => {
-            const f = priceTotals(t.fare);
-            if (f) { min += f.tmin; max += f.tmax; }
-          });
-          const meals = d.meals || {};
-          ['breakfast', 'lunch', 'dinner'].forEach(mt => {
-            const m = meals[mt] && meals[mt].main;
-            const t = m && priceTotals(m.price);
-            if (t) { min += t.tmin; max += t.tmax; }
+        (D.days || []).forEach((day, dayArrIdx) => {
+          const mealsUsed = {};
+          const pendingMeals = [];
+          if (day.meals) {
+            ['breakfast', 'lunch', 'dinner'].forEach(type => {
+              if (day.meals[type] && day.meals[type].main) pendingMeals.push(type);
+            });
+          }
+          (day.pois || []).forEach((p, poiArrIdx) => {
+            const ctx = buildSlotContext(day, p, poiArrIdx, dayArrIdx, mealsUsed, pendingMeals);
+            if (ctx.matchedMealType) mealsUsed[ctx.matchedMealType] = true;
+            const items = buildSlotCostItems(day, p, ctx);
+            min += items.totalMin;
+            max += items.totalMax;
           });
         });
+        const h = D.hotel && D.hotel.price;
+        const ht = priceTotals(h);
+        if (ht) { min += ht.tmin; max += ht.tmax; }
         return { min, max };
       }
 
@@ -1651,7 +2116,12 @@
           // 删：POI 卡片"小红书"按钮（v2.0.2 改：与 next-leg 导航重复，保留大众点评作餐厅维度的第三方参考）
           if (links.dianping) linkParts.push(`<a href="${esc(links.dianping)}" target="_blank" rel="noopener">大众点评</a>`);
           const linksHtml = linkParts.length ? `<div class="links">${linkParts.join('')}</div>` : '';
-          const priceHtml = renderPriceCardHtml(p.price, `${p.name} 缺 price`);
+
+          const slotId = `d${d.day}-p${p.idx}`;
+          const ctx = buildSlotContext(d, p, poiArrIdx, dayIdx - 1, mealsUsed, pendingMeals);
+          const costItems = buildSlotCostItems(d, p, ctx);
+          slotCostCache[slotId] = costItems;
+          const costUi = renderCostMarginHtml(costItems, slotId);
 
           // "下一站"小条（从本 POI 出发的 transport）
           const nextTransport = d.transports && d.transports.find(t => t.from_idx === p.idx);
@@ -1674,7 +2144,7 @@
               <span class="next-leg-text">${esc(desc)} · ${esc(toName)}</span>
               <span class="leg-time">${esc(legTime)}</span>
               ${navLink}
-            </div>${renderPriceCardHtml(nextTransport.fare, '交通段缺 fare')}`;
+            </div>`;
           }
 
           // meal-leg（绑定到匹配时段的第一个 POI）
@@ -1697,17 +2167,24 @@
               <span class="meal-leg-name">${esc(m.main.name)}</span>
               <span class="meal-leg-why">${esc(m.main.why || '')}</span>
               ${m.alt ? `<span class="meal-leg-alt">备选：${esc(m.alt.name)}</span>` : ''}
-            </p>${renderPriceCardHtml(m.main.price, `${labelMap[matchedMealType]}缺 price`)}`;
+            </p>`;
           }
 
-          return `<li class="time-block">
-            <time>${esc(p.time)}</time>
-            <div class="place">
-              <h4>${esc(p.name)} <span class="cat ${esc(p.cat)}">${esc(p.cat)}</span>${ws}</h4>
-              ${note}${why}${linksHtml}
-              ${priceHtml}
-              ${nextLegHtml}
-              ${mealLegHtml}
+          return `<li class="time-block" data-slot-id="${esc(slotId)}">
+            <div class="time-block-grid">
+              <div class="time-block-main">
+                <div class="time-row">
+                  <time>${esc(p.time)}</time>
+                  ${costUi.pillHtml}
+                </div>
+                <div class="place">
+                  <h4>${esc(p.name)} <span class="cat ${esc(p.cat)}">${esc(p.cat)}</span>${ws}</h4>
+                  ${note}${why}${linksHtml}
+                  ${nextLegHtml}
+                  ${mealLegHtml}
+                </div>
+              </div>
+              ${costUi.marginHtml}
             </div>
           </li>`;
         }).join('');
@@ -1747,6 +2224,8 @@
             <ol class="timeline">${poiItems}</ol>
             ${wsTag}
           </article>`;
+        bindUserBudgetInputs();
+        bindCostMarginInteractions();
       }
 
       // ===== Drawer 列表 =====
@@ -1959,10 +2438,13 @@
       document.getElementById('drawer-toggle').addEventListener('click', openDrawer);
       document.getElementById('drawer-close').addEventListener('click', closeDrawer);
       document.getElementById('drawer-backdrop').addEventListener('click', closeDrawer);
+      document.getElementById('cost-sheet-backdrop').addEventListener('click', closeCostSheet);
+      document.getElementById('cost-sheet-close').addEventListener('click', closeCostSheet);
       document.addEventListener('keydown', e => {
         const drawer = document.getElementById('drawer');
-        if (e.key === 'Escape' && drawer.classList.contains('open') && !drawer.classList.contains('expanded')) {
-          closeDrawer();
+        if (e.key === 'Escape') {
+          if (document.getElementById('cost-sheet').classList.contains('open')) closeCostSheet();
+          else if (drawer.classList.contains('open') && !drawer.classList.contains('expanded')) closeDrawer();
         }
       });
       DESKTOP_MQ.addEventListener('change', e => {
@@ -2319,12 +2801,32 @@
       }
 
       // ===== Boot =====
+      function renderTripMeta() {
+        if (!D || !D.trip_name) return;
+        const hero = document.querySelector('header.hero');
+        if (!hero) return;
+        const h1 = hero.querySelector('h1');
+        const meta = hero.querySelector('.meta');
+        const summary = hero.querySelector('.summary');
+        if (h1 && h1.textContent.includes('{{')) h1.textContent = D.trip_name;
+        if (meta && meta.textContent.includes('{{')) {
+          meta.textContent = [D.date_range, D.n_days, D.city].filter(Boolean).join(' · ');
+        }
+        if (summary && summary.textContent.includes('{{')) {
+          summary.textContent = D.summary || '';
+        }
+        if (document.title.includes('{{')) {
+          document.title = [D.trip_name, D.date_range].filter(Boolean).join(' · ');
+        }
+      }
+
       function boot() {
         if (!D || !D.days || !D.days.length) {
           document.getElementById('day-panel').innerHTML =
             '<div class="day-card"><p>⚠️ 未找到 tripData 数据</p></div>';
           return;
         }
+        renderTripMeta();
         // v1.1.0: 验证报告**先**于其他渲染（banner 是顶部最显眼的元素）
         renderValidationBanner();
         renderValidationSection();

@@ -625,6 +625,15 @@ def check_v10(trip: dict[str, Any]) -> dict[str, Any]:
                 errors.append(err)
             else:
                 _add_price(p.get("price"))
+            for j, sc in enumerate(p.get("slot_costs") or []):
+                if not isinstance(sc, dict):
+                    warnings.append(f"{day_label}.pois[{i}].slot_costs[{j}] 非对象")
+                    continue
+                if not (sc.get("label") or "").strip():
+                    warnings.append(f"{day_label}.pois[{i}].slot_costs[{j}] 缺 label")
+                err = _valid_price_field(sc.get("price"), f"{day_label}.pois[{i}].slot_costs[{j}]")
+                if err:
+                    warnings.append(err)
         for i, t in enumerate(d.get("transports") or []):
             if not isinstance(t, dict):
                 continue

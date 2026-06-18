@@ -111,7 +111,15 @@
             xhs?: string
             dianping?: string
           }
-          price?: PriceObject     // v2.1.0 必填：时间轴 price-card
+          price?: PriceObject     // v2.1.0 必填（V10 溯源）；与 slot_costs 并存
+          slot_costs?: [          // v2.2.0 推荐：本时间段全部可能花销（批注 UI）
+            {
+              label: string       // 机票 / 船票 / 餐饮 / 打车 / 门票 / 逛街预算 …
+              price: PriceObject  // user_editable: true 仅 discretionary（逛街等）
+              attach?: "arrival" | "departure"  // 跨段一次性大项挂载点
+              from_transport_idx?: number
+            }
+          ]
         }
       ],
 
@@ -314,11 +322,18 @@ trip_data_js = json.dumps(data, ensure_ascii=False, indent=2)
 
 ## 字段演变历史
 
+### v2.2.0 (2026-06-18)
+
+- **改版**：时间轴花销改为 **Word 批注式**（每时间段右侧汇总 `slot_costs[]`）；前端**不展示** `source`
+- **新增**：`pois[].slot_costs[]` — AI 智能枚举该段全部可能花销（机票/路费仅为举例）
+- **新增**：`price.user_editable` — 逛街等 discretionary 预算，用户浏览器 localStorage 自填
+- `pois[].price` / `fare` 仍保留供 V10 溯源；无 `slot_costs` 时前端自动兜底聚合
+
 ### v2.1.0 (2026-06-18)
 
 - **新增**：`party_size`、`budget_summary`、统一 `PriceObject`（`pois[].price`、`transports[].fare`、`meals.*.price`、`hotel.price`、`prebook[].price`）
 - **新增**：V10 价格溯源验证；详见 `references/price-research.md`
-- 时间轴渲染 `price-card`；抽屉「花销预估」区
+- ~~时间轴渲染 price-card~~ → v2.2.0 改为段批注；抽屉「花销预估」区保留
 
 ### v1.3.0 (2026-06-17)
 

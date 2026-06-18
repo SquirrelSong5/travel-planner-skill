@@ -581,10 +581,12 @@ python scripts/validate.py trip_data.json --round 2 --pretty
 **AI 必做**（含原 Step 4 餐厅调研）：
 
 1. 美团攻略 WebFetch `guide.meituan.com/<city>/canyin` → 候选池
-2. 高德 `maps_text_search` + `maps_search_detail` → 硬信号 + **`pois[].price` / `meals.*.price`**（`cost` 字段）
+2. 高德 `maps_text_search` + `maps_search_detail` → 硬信号 + **`pois[].price` / `meals.*.price`** + **`pois[].slot_costs[]`**（枚举该段全部可能花销）
 3. 小红书搜「<店名> 排队」「<店名> 避雷」
 4. 户外 POI 补 `indoor_backup`；体验 critique（游客店/排队/节奏）
-5. Step 5–6 汇总 `prebook[].price` + `budget_summary`（详见 `references/price-research.md`）
+5. Step 5–6 汇总 `prebook[].price` + `budget_summary`（详见 `references/price-research.md` §7）
+
+HTML 时间轴花销为 **Word 批注式**（每段右侧 `slot_costs` 汇总，不展示 `source`）；逛街类 `user_editable` 由用户 localStorage 自填。
 
 ```bash
 python scripts/validate.py trip_data.json --round 3 --pretty

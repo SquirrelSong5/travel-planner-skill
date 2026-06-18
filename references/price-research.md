@@ -107,8 +107,28 @@
 }
 ```
 
-- `hotel` / `flights`：**仅抽屉汇总**，不在每日时间轴重复卡片（除非当天 POI 是机场等）
-- 时间轴展示：**POI `price` + transport `fare` + meal `price`**
+- `hotel` / `flights`：**仅抽屉汇总**；抵达/离境段通过 `slot_costs[].attach` 挂在对应时间块（只计一次）
+- 时间轴展示：**`pois[].slot_costs[]` 批注卡**（无 `source` 文案）；`price`/`fare` 仍写入 JSON 供 V10
+
+---
+
+## 7. 每段花销智能枚举（v2.2.0）
+
+> 用户举例的「机票、机场路费、逛街、打车」**不是完整清单**。AI 必须为每个 `time-block` 扫描并写入 `slot_costs[]`。
+
+| 信号 | 写入 `slot_costs` 项 | 调研来源 |
+|------|---------------------|---------|
+| Day1 抵达机场/高铁 | 出发机票、`attach: arrival` | `prebook[]` + direction `fare` |
+| 末日离境 | 返程机票、`attach: departure` | `prebook[]` |
+| `cat=scenery/culture` + 门票/预约 | 门票、讲解器、轮渡 | 官方站 + `maps_search_detail` |
+| 绑定 `meal` | 早餐/午餐/晚餐 | `maps_search_detail.cost` |
+| `next-leg` transport | 打车/公交/步行（0） | `transports[].fare` |
+| `cat=shopping` | 逛街预算，`user_editable: true` | AI 给参考区间 |
+| `requires_booking` | 预约/抢票费 | 同日 `prebook[]` |
+| 活动体验 | 单项体验费 | 官方/高德 detail |
+
+- `source` / `source_ref`：**仅 JSON + V10**；HTML 批注**不展示来源**
+- `user_editable: true`：仅 discretionary（逛街、伴手礼）；其余为调研价不可改
 
 ---
 

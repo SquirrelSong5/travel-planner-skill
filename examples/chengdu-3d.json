@@ -90,7 +90,40 @@
             "label": "入住",
             "source": "computed",
             "source_ref": "房费见抽屉住宿"
-          }
+          },
+          "slot_costs": [
+            {
+              "label": "步行",
+              "price": {
+                "min": 0.0,
+                "max": 0.0,
+                "currency": "CNY",
+                "unit": "free",
+                "quantity": 1,
+                "total_min": 0.0,
+                "total_max": 0.0,
+                "label": "步行",
+                "source": "computed",
+                "source_ref": "零元交通"
+              }
+            },
+            {
+              "label": "机票",
+              "price": {
+                "min": 600,
+                "max": 900,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 1200,
+                "total_max": 1800,
+                "label": "机票",
+                "source": "ctrip-webfetch",
+                "source_ref": "携程机票实查区间"
+              },
+              "attach": "arrival"
+            }
+          ]
         },
         {
           "idx": 2,
@@ -118,7 +151,39 @@
             "label": "参观",
             "source": "computed",
             "source_ref": "步行街/免费景点"
-          }
+          },
+          "slot_costs": [
+            {
+              "label": "晚餐",
+              "price": {
+                "min": 80,
+                "max": 150,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 160,
+                "total_max": 300,
+                "label": "餐饮",
+                "source": "amap-mcp",
+                "source_ref": "maps_search_detail cost"
+              }
+            },
+            {
+              "label": "步行",
+              "price": {
+                "min": 0.0,
+                "max": 0.0,
+                "currency": "CNY",
+                "unit": "free",
+                "quantity": 1,
+                "total_min": 0.0,
+                "total_max": 0.0,
+                "label": "步行",
+                "source": "computed",
+                "source_ref": "零元交通"
+              }
+            }
+          ]
         },
         {
           "idx": 3,
@@ -146,7 +211,24 @@
             "label": "餐饮",
             "source": "amap-mcp",
             "source_ref": "maps_search_detail cost 区间"
-          }
+          },
+          "slot_costs": [
+            {
+              "label": "餐饮",
+              "price": {
+                "min": 80,
+                "max": 120,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 160,
+                "total_max": 240,
+                "label": "餐饮",
+                "source": "amap-mcp",
+                "source_ref": "maps_search_detail cost 区间"
+              }
+            }
+          ]
         }
       ],
       "transports": [
@@ -312,7 +394,24 @@
             "label": "参观",
             "source": "computed",
             "source_ref": "步行街/免费景点"
-          }
+          },
+          "slot_costs": [
+            {
+              "label": "步行",
+              "price": {
+                "min": 0.0,
+                "max": 0.0,
+                "currency": "CNY",
+                "unit": "free",
+                "quantity": 1,
+                "total_min": 0.0,
+                "total_max": 0.0,
+                "label": "步行",
+                "source": "computed",
+                "source_ref": "零元交通"
+              }
+            }
+          ]
         },
         {
           "idx": 2,
@@ -340,7 +439,54 @@
             "label": "餐饮",
             "source": "amap-mcp",
             "source_ref": "maps_search_detail cost 区间"
-          }
+          },
+          "slot_costs": [
+            {
+              "label": "餐饮",
+              "price": {
+                "min": 80,
+                "max": 120,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 160,
+                "total_max": 240,
+                "label": "餐饮",
+                "source": "amap-mcp",
+                "source_ref": "maps_search_detail cost 区间"
+              }
+            },
+            {
+              "label": "午餐",
+              "price": {
+                "min": 80,
+                "max": 150,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 160,
+                "total_max": 300,
+                "label": "餐饮",
+                "source": "amap-mcp",
+                "source_ref": "maps_search_detail cost"
+              }
+            },
+            {
+              "label": "步行",
+              "price": {
+                "min": 0.0,
+                "max": 0.0,
+                "currency": "CNY",
+                "unit": "free",
+                "quantity": 1,
+                "total_min": 0.0,
+                "total_max": 0.0,
+                "label": "步行",
+                "source": "computed",
+                "source_ref": "零元交通"
+              }
+            }
+          ]
         },
         {
           "idx": 3,
@@ -369,7 +515,39 @@
             "label": "门票",
             "source": "amap-mcp",
             "source_ref": "note 解析 + 官方/高德"
-          }
+          },
+          "slot_costs": [
+            {
+              "label": "门票",
+              "price": {
+                "min": 18.0,
+                "max": 30.0,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 36.0,
+                "total_max": 60.0,
+                "label": "门票",
+                "source": "amap-mcp",
+                "source_ref": "note 解析 + 官方/高德"
+              }
+            },
+            {
+              "label": "公交/地铁",
+              "price": {
+                "min": 3,
+                "max": 6,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 6,
+                "total_max": 12,
+                "label": "公交/地铁",
+                "source": "amap-mcp",
+                "source_ref": "maps_direction_transit cost 估"
+              }
+            }
+          ]
         },
         {
           "idx": 4,
@@ -397,7 +575,39 @@
             "label": "费用",
             "source": "amap-mcp",
             "source_ref": "note 解析 + 官方/高德"
-          }
+          },
+          "slot_costs": [
+            {
+              "label": "费用",
+              "price": {
+                "min": 80.0,
+                "max": 120.0,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 160.0,
+                "total_max": 240.0,
+                "label": "费用",
+                "source": "amap-mcp",
+                "source_ref": "note 解析 + 官方/高德"
+              }
+            },
+            {
+              "label": "晚餐",
+              "price": {
+                "min": 80,
+                "max": 150,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 160,
+                "total_max": 300,
+                "label": "餐饮",
+                "source": "amap-mcp",
+                "source_ref": "maps_search_detail cost"
+              }
+            }
+          ]
         }
       ],
       "transports": [
@@ -631,7 +841,39 @@
             "label": "门票",
             "source": "official-site",
             "source_ref": "note 解析 + 官方/高德"
-          }
+          },
+          "slot_costs": [
+            {
+              "label": "门票",
+              "price": {
+                "min": 55.0,
+                "max": 55.0,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 110.0,
+                "total_max": 110.0,
+                "label": "门票",
+                "source": "official-site",
+                "source_ref": "note 解析 + 官方/高德"
+              }
+            },
+            {
+              "label": "步行",
+              "price": {
+                "min": 0.0,
+                "max": 0.0,
+                "currency": "CNY",
+                "unit": "free",
+                "quantity": 1,
+                "total_min": 0.0,
+                "total_max": 0.0,
+                "label": "步行",
+                "source": "computed",
+                "source_ref": "零元交通"
+              }
+            }
+          ]
         },
         {
           "idx": 2,
@@ -657,7 +899,54 @@
             "label": "餐饮",
             "source": "amap-mcp",
             "source_ref": "maps_search_detail cost 区间"
-          }
+          },
+          "slot_costs": [
+            {
+              "label": "餐饮",
+              "price": {
+                "min": 80,
+                "max": 120,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 160,
+                "total_max": 240,
+                "label": "餐饮",
+                "source": "amap-mcp",
+                "source_ref": "maps_search_detail cost 区间"
+              }
+            },
+            {
+              "label": "午餐",
+              "price": {
+                "min": 80,
+                "max": 150,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 160,
+                "total_max": 300,
+                "label": "餐饮",
+                "source": "amap-mcp",
+                "source_ref": "maps_search_detail cost"
+              }
+            },
+            {
+              "label": "公交/地铁",
+              "price": {
+                "min": 3,
+                "max": 6,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 6,
+                "total_max": 12,
+                "label": "公交/地铁",
+                "source": "amap-mcp",
+                "source_ref": "maps_direction_transit cost 估"
+              }
+            }
+          ]
         },
         {
           "idx": 3,
@@ -681,7 +970,24 @@
             "label": "入住",
             "source": "computed",
             "source_ref": "房费见抽屉住宿"
-          }
+          },
+          "slot_costs": [
+            {
+              "label": "公交/地铁",
+              "price": {
+                "min": 3,
+                "max": 6,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 6,
+                "total_max": 12,
+                "label": "公交/地铁",
+                "source": "amap-mcp",
+                "source_ref": "maps_direction_transit cost 估"
+              }
+            }
+          ]
         },
         {
           "idx": 4,
@@ -705,7 +1011,25 @@
             "label": "活动",
             "source": "computed",
             "source_ref": "无门票"
-          }
+          },
+          "slot_costs": [
+            {
+              "label": "机票",
+              "price": {
+                "min": 600,
+                "max": 900,
+                "currency": "CNY",
+                "unit": "per_person",
+                "quantity": 2,
+                "total_min": 1200,
+                "total_max": 1800,
+                "label": "机票",
+                "source": "ctrip-webfetch",
+                "source_ref": "携程机票实查区间"
+              },
+              "attach": "departure"
+            }
+          ]
         }
       ],
       "transports": [
