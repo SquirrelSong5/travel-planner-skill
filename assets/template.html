@@ -1167,7 +1167,7 @@
          浏览器加载时 JS 会用同样规则强制重算（不依赖 AI 的 self-report）。
          缺失/不完整 → 顶部红/黄条
     -->
-    <div id="validation-banner" role="status" aria-live="polite"></div>
+    <div id="validation-banner" role="status" aria-live="polite" hidden></div>
 
     <header class="hero">
       <h1>{{TRIP_NAME}}</h1>
@@ -1207,14 +1207,6 @@
       </section>
 
       <section class="day-section" id="day-panel"></section>
-
-      <!-- ===== Validation Report Section（v1.1.0 新增，代码级硬约束）=====
-           浏览器加载时由 JS 强制重算 V1/V3/V4/V5/V6（用 POI 坐标），
-           V2 浏览器内只能粗算（需高德 API），V7 完全靠 AI。
-      -->
-      <details id="validation-report-section">
-        <summary>📋 验证报告（加载中…）</summary>
-      </details>
 
     </main>
 
@@ -3017,65 +3009,10 @@
         return { round: aiReport ? aiReport.round : 0, rules, source: 'browser-recompute' };
       }
 
-      // 渲染顶部 banner（v2.0.0 起 no-op：用户不要"检测过程"，只展示方案）
-      function renderValidationBanner() {
-        // 不显示任何验证 banner
-        const banner = document.getElementById('validation-banner');
-        if (banner) banner.style.display = 'none';
-      }
+      // 验证报告不在前端展示（validate.py 仅开发期用）
+      function renderValidationBanner() {}
 
-      // 渲染底部「验证报告」折叠区
-      function renderValidationSection() {
-        const section = document.getElementById('validation-report-section');
-        if (!section) return;
-        const report = (D._validation_recomputed) || (D.validation_report) || null;
-        if (!report || !report.rules || !report.rules.length) {
-          section.style.display = 'none';
-          return;
-        }
-        const rounds = (D.validation_report && Array.isArray(D.validation_report.rounds))
-          ? D.validation_report.rounds : [];
-        let roundsHtml = '';
-        if (rounds.length) {
-          roundsHtml = rounds.map(rd => {
-            const phase = rd.phase ? esc(rd.phase) : '';
-            const conc = rd.conclusion ? `<div style="font-size:var(--fs-xs);color:var(--fg-muted);margin-top:4px;">${esc(rd.conclusion)}</div>` : '';
-            const issues = (rd.issues && rd.issues.length)
-              ? `<ul style="margin:6px 0 0 16px;font-size:var(--fs-xs);color:var(--fg-muted);">${rd.issues.map(i => '<li>' + esc(i) + '</li>').join('')}</ul>`
-              : '';
-            const rRules = (rd.rules || []).map(r => {
-              return `<div class="vr-rule" style="margin-left:12px;">
-                <div class="vr-status">${r.status}</div>
-                <div><strong>${r.id}</strong> — ${esc(r.note || '')}</div>
-              </div>`;
-            }).join('');
-            return `<div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);">
-              <strong>Round ${rd.round || '?'}</strong><span class="vr-phase">${phase}</span>
-              ${issues}${rRules}${conc}
-            </div>`;
-          }).join('');
-          roundsHtml = `<div style="margin-bottom:16px;"><div style="font-weight:600;margin-bottom:8px;">三阶段分轮筛检（v1.5.0）</div>${roundsHtml}</div>`;
-        }
-        const items = report.rules.map(r => {
-          const sourceClass = (r.source === 'browser' || r.source === 'browser-recompute') ? 'script' : (r.source === 'browser-stub' ? 'browser-stub' : 'ai');
-          const sourceLabel = (r.source === 'browser' || r.source === 'browser-recompute') ? '⚙️ 浏览器重算'
-            : r.source === 'browser-stub' ? '⚠️ 需高德'
-            : r.source === 'ai-only' ? '🤖 AI 报告'
-            : '🤖 AI 报告';
-          return `<div class="vr-rule">
-            <div class="vr-status">${r.status}</div>
-            <div>
-              <strong>${r.id} ${esc(r.rule || '')}</strong> — ${esc(r.note || '')}
-              <span class="vr-source ${sourceClass}">${sourceLabel}</span>
-            </div>
-          </div>`;
-        }).join('');
-        const sumHtml = report.summary ? `<div style="margin-top: 12px; font-size: var(--fs-xs); color: var(--fg-muted);">${esc(report.summary)}</div>` : '';
-        const phaseTag = (D.validation_report && D.validation_report.phase)
-          ? ` <span class="vr-phase">${esc(D.validation_report.phase)}</span>` : '';
-        const inner = `<summary>📋 验证报告（${report.rules.length} 条规则）${phaseTag} — 点开查看</summary>${roundsHtml}${items}${sumHtml}`;
-        section.innerHTML = inner;
-      }
+      function renderValidationSection() {}
 
       // ===== Boot =====
       function renderTripMeta() {
@@ -3104,9 +3041,6 @@
           return;
         }
         renderTripMeta();
-        // v1.1.0: 验证报告**先**于其他渲染（banner 是顶部最显眼的元素）
-        renderValidationBanner();
-        renderValidationSection();
         renderHotel();
         renderWeatherPlan();
         renderBudgetSummary();

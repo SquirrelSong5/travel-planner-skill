@@ -835,8 +835,7 @@ git push -u origin main
 
 ### 模板默认行为
 
-- ✅ `template.html` 的 `#validation-banner` 默认 `display: none`（`renderValidationBanner` no-op）
-- ✅ `template.html` 的 `details#validation-report-section` 保留但默认折叠
+- ✅ `template.html` 不渲染验证报告（`validate.py` 仅开发期用，不写入交付 HTML）
 - ✅ Drawer（行程信息侧边栏）默认隐藏，悬浮在右侧不挤压中间内容
 - ✅ Wrap `.wrap` 始终 `margin: 0 auto` 居中（drawer 开/关不影响）
 
