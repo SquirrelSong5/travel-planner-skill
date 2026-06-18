@@ -98,18 +98,26 @@ V8_ALLOWED_SOURCES = {"amap-mcp", "amap-rest-api"}  # v2.0.0 P24 降级：amap-r
 # V9 V2 高德实算 vs 粗算对比
 V9_DURATION_RATIO_FAIL = 0.5  # 高德实算 vs Haversine 粗算 偏差 > 50% → 失败
 
+# V10 价格溯源（v2.1.0）
+V10_ALLOWED_SOURCES = frozenset({
+    "amap-mcp", "amap-rest-api", "official-site",
+    "ctrip-webfetch", "meituan-webfetch", "computed",
+})
+V10_BAD_SOURCES = frozenset({"", "ai-guess", "memory"})
+V10_BUDGET_TOLERANCE = 0.15  # budget_summary 与明细加总偏差 > 15% → 警告
+
 # v1.5.0 三阶段分轮筛检：--round N 只跑当轮子集（见 references/iteration-rounds.md）
 ROUND_CHECKS: dict[int, tuple[str, ...]] = {
     1: ("V1", "V4"),
     2: ("V2", "V5", "V8", "V9"),
-    3: ("V3", "V6"),
+    3: ("V3", "V6", "V10"),
 }
 ROUND_PHASE: dict[int, str] = {
     1: "结构筛",
     2: "时空筛",
     3: "体验筛",
 }
-DEFAULT_CHECKS = ("V1", "V2", "V3", "V4", "V5", "V6", "V8", "V9")
+DEFAULT_CHECKS = ("V1", "V2", "V3", "V4", "V5", "V6", "V8", "V9", "V10")
 
 EARTH_R_KM = 6371.0088
 
@@ -553,6 +561,136 @@ def check_v9(days: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+# ===== V10（v2.1.0 新增）：价格溯源 =====
+
+def _valid_price_field(obj: Any, label: str) -> str | None:
+    """返回错误信息，无错返回 None。"""
+    if not isinstance(obj, dict):
+        return f"{label} 缺 price/fare 对象"
+    src = (obj.get("source") or "").strip()
+    if src in V10_BAD_SOURCES or not src:
+        return f"{label} source 缺失或禁止（{src!r}）"
+    if src not in V10_ALLOWED_SOURCES:
+        return f"{label} source 不在白名单：{src}"
+    unit = obj.get("unit")
+    if unit == "free":
+        return None
+    if obj.get("min") is None and obj.get("max") is None:
+        return f"{label} 缺 min/max"
+    return None
+
+
+def _price_totals(obj: dict[str, Any]) -> tuple[float, float]:
+    """从 price/fare 对象取 (total_min, total_max)。"""
+    if not isinstance(obj, dict):
+        return 0.0, 0.0
+    tmin, tmax = obj.get("total_min"), obj.get("total_max")
+    if tmin is not None:
+        return float(tmin), float(tmax if tmax is not None else tmin)
+    mn, mx = obj.get("min"), obj.get("max")
+    if mn is None:
+        return 0.0, 0.0
+    mx = mx if mx is not None else mn
+    q = float(obj.get("quantity") or 1)
+    return float(mn) * q, float(mx) * q
+
+
+def check_v10(trip: dict[str, Any]) -> dict[str, Any]:
+    """v2.1.0：POI/交通/餐饮必有调研价 + source；禁止 ai-guess。"""
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    party_size = trip.get("party_size")
+    if not isinstance(party_size, int) or party_size < 1:
+        errors.append("缺 tripData.party_size（正整数）")
+
+    days = trip.get("days") or []
+    line_min, line_max = 0.0, 0.0
+
+    def _add_price(obj: Any) -> None:
+        nonlocal line_min, line_max
+        if not isinstance(obj, dict):
+            return
+        a, b = _price_totals(obj)
+        line_min += a
+        line_max += b
+
+    for d in days:
+        day_label = f"Day {d.get('day', '?')}"
+        for i, p in enumerate(d.get("pois") or []):
+            if not isinstance(p, dict):
+                continue
+            err = _valid_price_field(p.get("price"), f"{day_label}.pois[{i}]")
+            if err:
+                errors.append(err)
+            else:
+                _add_price(p.get("price"))
+        for i, t in enumerate(d.get("transports") or []):
+            if not isinstance(t, dict):
+                continue
+            err = _valid_price_field(t.get("fare"), f"{day_label}.transports[{i}]")
+            if err:
+                errors.append(err)
+            else:
+                _add_price(t.get("fare"))
+        meals = d.get("meals") or {}
+        if isinstance(meals, dict):
+            for mt in ("breakfast", "lunch", "dinner"):
+                block = meals.get(mt)
+                if not isinstance(block, dict):
+                    continue
+                main = block.get("main")
+                if not isinstance(main, dict):
+                    if mt in ("lunch", "dinner"):
+                        errors.append(f"{day_label}.meals.{mt}.main 缺 price")
+                    continue
+                err = _valid_price_field(main.get("price"), f"{day_label}.meals.{mt}.main")
+                if err:
+                    errors.append(err)
+                else:
+                    _add_price(main.get("price"))
+
+    _add_price((trip.get("hotel") or {}).get("price"))
+    for pb in trip.get("prebook") or []:
+        if isinstance(pb, dict) and "机票" in (pb.get("item") or ""):
+            _add_price(pb.get("price"))
+
+    bs = trip.get("budget_summary")
+    if isinstance(bs, dict) and bs.get("total_min") is not None:
+        bmin, bmax = float(bs["total_min"]), float(bs.get("total_max") or bs["total_min"])
+        if line_min > 0 and bmin > 0:
+            diff = abs(bmin - line_min) / bmin
+            if diff > V10_BUDGET_TOLERANCE:
+                warnings.append(
+                    f"budget_summary.total_min({bmin:.0f}) 与时间轴明细加总({line_min:.0f}) 偏差 {diff*100:.0f}%"
+                )
+
+    if errors:
+        return {
+            "id": "V10",
+            "rule": "价格溯源（v2.1.0 新增）",
+            "status": "❌",
+            "note": f"❌ {len(errors)} 项缺价或无溯源：{errors[:4]}{'...' if len(errors) > 4 else ''}",
+            "errors": errors,
+        }
+    if warnings:
+        return {
+            "id": "V10",
+            "rule": "价格溯源（v2.1.0 新增）",
+            "status": "⚠️",
+            "note": "；".join(warnings),
+            "warnings": warnings,
+        }
+    n_poi = sum(len(d.get("pois") or []) for d in days)
+    n_trans = sum(len(d.get("transports") or []) for d in days)
+    return {
+        "id": "V10",
+        "rule": "价格溯源（v2.1.0 新增）",
+        "status": "✅",
+        "note": f"全部 {n_poi} POI + {n_trans} transport + 餐食均有 source 标价",
+    }
+
+
 # ===== 主流程 =====
 
 def main() -> int:
@@ -611,6 +749,8 @@ def main() -> int:
         rules.append(check_v8(days))
     if "V9" in selected:
         rules.append(check_v9(days))
+    if "V10" in selected:
+        rules.append(check_v10(trip))
 
     # 总结
     fail = sum(1 for r in rules if r["status"] == "❌")

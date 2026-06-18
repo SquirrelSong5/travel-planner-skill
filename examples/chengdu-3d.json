@@ -37,7 +37,19 @@
         "duration_min": 60,
         "mode": "地铁 + 机场专线"
       }
-    ]
+    ],
+    "price": {
+      "min": 350,
+      "max": 430,
+      "currency": "CNY",
+      "unit": "per_night",
+      "quantity": 2,
+      "total_min": 700,
+      "total_max": 860,
+      "label": "住宿",
+      "source": "ctrip-webfetch",
+      "source_ref": "携程酒店列表实查估"
+    }
   },
   "days": [
     {
@@ -66,6 +78,18 @@
           "why": "酒店即锚点，Day 1 不跑远",
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=104.0810,30.6580&mode=car&policy=1"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "CNY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "入住",
+            "source": "computed",
+            "source_ref": "房费见抽屉住宿"
           }
         },
         {
@@ -82,6 +106,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=104.0805,30.6550&mode=walk",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=成都远洋太古里"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "CNY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "参观",
+            "source": "computed",
+            "source_ref": "步行街/免费景点"
           }
         },
         {
@@ -98,6 +134,18 @@
             "amap_navi": "https://uri.amap.com/navigation?to=104.0830,30.6570&mode=walk",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=小龙翻大江+春熙店",
             "dianping": "https://www.dianping.com/shop/l4V0Z6Xjc2XJfz4q"
+          },
+          "price": {
+            "min": 80,
+            "max": 120,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160,
+            "total_max": 240,
+            "label": "餐饮",
+            "source": "amap-mcp",
+            "source_ref": "maps_search_detail cost 区间"
           }
         }
       ],
@@ -135,7 +183,19 @@
               30.657
             ]
           ],
-          "source": "amap-mcp"
+          "source": "amap-mcp",
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "CNY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         },
         {
           "from_idx": 2,
@@ -170,14 +230,38 @@
               30.657
             ]
           ],
-          "source": "amap-mcp"
+          "source": "amap-mcp",
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "CNY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         }
       ],
       "meals": {
         "dinner": {
           "main": {
             "name": "小龙翻大江（春熙店）",
-            "why": "步行 5 分钟；川剧变脸火锅 / 落地第一顿稳"
+            "why": "步行 5 分钟；川剧变脸火锅 / 落地第一顿稳",
+            "price": {
+              "min": 80,
+              "max": 150,
+              "currency": "CNY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 160,
+              "total_max": 300,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "蜀大侠火锅（春熙店）",
@@ -216,6 +300,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=104.0610,30.6710&mode=transit",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=宽窄巷子"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "CNY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "参观",
+            "source": "computed",
+            "source_ref": "步行街/免费景点"
           }
         },
         {
@@ -232,6 +328,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=104.0620,30.6695&mode=walk",
             "dianping": "https://www.dianping.com/search/keyword/0_0麻辣空间"
+          },
+          "price": {
+            "min": 80,
+            "max": 120,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160,
+            "total_max": 240,
+            "label": "餐饮",
+            "source": "amap-mcp",
+            "source_ref": "maps_search_detail cost 区间"
           }
         },
         {
@@ -249,6 +357,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=104.0610,30.6635&mode=walk",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=鹤鸣茶社"
+          },
+          "price": {
+            "min": 18.0,
+            "max": 30.0,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 36.0,
+            "total_max": 60.0,
+            "label": "门票",
+            "source": "amap-mcp",
+            "source_ref": "note 解析 + 官方/高德"
           }
         },
         {
@@ -265,6 +385,18 @@
             "amap_navi": "https://uri.amap.com/navigation?to=104.0820,30.6605&mode=transit",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=小郡肝+春熙路",
             "dianping": "https://www.dianping.com/search/keyword/0_0小郡肝"
+          },
+          "price": {
+            "min": 80.0,
+            "max": 120.0,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160.0,
+            "total_max": 240.0,
+            "label": "费用",
+            "source": "amap-mcp",
+            "source_ref": "note 解析 + 官方/高德"
           }
         }
       ],
@@ -302,7 +434,19 @@
               104.061,
               30.6635
             ]
-          ]
+          ],
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "CNY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         },
         {
           "from_idx": 2,
@@ -337,7 +481,19 @@
               104.082,
               30.6605
             ]
-          ]
+          ],
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "CNY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         },
         {
           "from_idx": 3,
@@ -372,14 +528,38 @@
               104.061,
               30.671
             ]
-          ]
+          ],
+          "fare": {
+            "min": 3,
+            "max": 6,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 6,
+            "total_max": 12,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
         }
       ],
       "meals": {
         "lunch": {
           "main": {
             "name": "麻辣空间（宽窄巷子店）",
-            "why": "川菜老店 / 区域顺路"
+            "why": "川菜老店 / 区域顺路",
+            "price": {
+              "min": 80,
+              "max": 150,
+              "currency": "CNY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 160,
+              "total_max": 300,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "钟记甜水面",
@@ -389,7 +569,19 @@
         "dinner": {
           "main": {
             "name": "小郡肝串串香（春熙路总店）",
-            "why": "返春熙路顺路 / 串串灵魂"
+            "why": "返春熙路顺路 / 串串灵魂",
+            "price": {
+              "min": 80,
+              "max": 150,
+              "currency": "CNY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 160,
+              "total_max": 300,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "马路边边麻辣串串（春熙店）",
@@ -427,6 +619,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=104.1440,30.7400&mode=transit",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=成都大熊猫繁育研究基地"
+          },
+          "price": {
+            "min": 55.0,
+            "max": 55.0,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 110.0,
+            "total_max": 110.0,
+            "label": "门票",
+            "source": "official-site",
+            "source_ref": "note 解析 + 官方/高德"
           }
         },
         {
@@ -441,6 +645,18 @@
           "why": "区域补给点 / 看熊猫后顺路",
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=104.1440,30.7380&mode=walk"
+          },
+          "price": {
+            "min": 80,
+            "max": 120,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160,
+            "total_max": 240,
+            "label": "餐饮",
+            "source": "amap-mcp",
+            "source_ref": "maps_search_detail cost 区间"
           }
         },
         {
@@ -453,7 +669,19 @@
           "duration_min": 30,
           "note": "前台寄存改退房；带随身包走 Day 3",
           "why": "末日不跑远；行李寄酒店",
-          "links": {}
+          "links": {},
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "CNY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "入住",
+            "source": "computed",
+            "source_ref": "房费见抽屉住宿"
+          }
         },
         {
           "idx": 4,
@@ -465,7 +693,19 @@
           "duration_min": 120,
           "note": "国内航班 -1.5h 值机；如 18:00 航班，15:30 抵机场刚好",
           "why": "末日返程缓冲 ≥ 3h 满足 V5",
-          "links": {}
+          "links": {},
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "CNY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "活动",
+            "source": "computed",
+            "source_ref": "无门票"
+          }
         }
       ],
       "transports": [
@@ -498,7 +738,19 @@
               104.144,
               30.738
             ]
-          ]
+          ],
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "CNY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         },
         {
           "from_idx": 2,
@@ -529,7 +781,19 @@
               104.081,
               30.658
             ]
-          ]
+          ],
+          "fare": {
+            "min": 3,
+            "max": 6,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 6,
+            "total_max": 12,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
         },
         {
           "from_idx": 3,
@@ -564,14 +828,38 @@
               103.947,
               30.5785
             ]
-          ]
+          ],
+          "fare": {
+            "min": 3,
+            "max": 6,
+            "currency": "CNY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 6,
+            "total_max": 12,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
         }
       ],
       "meals": {
         "lunch": {
           "main": {
             "name": "基地外 熊猫主题餐厅",
-            "why": "区域补给 / 看熊猫后顺路"
+            "why": "区域补给 / 看熊猫后顺路",
+            "price": {
+              "min": 80,
+              "max": 150,
+              "currency": "CNY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 160,
+              "total_max": 300,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "蓉锦小馆（望江店）",
@@ -614,19 +902,55 @@
       "item": "春熙路亚朵酒店",
       "deadline": "出发前 2 周",
       "url": "https://www.booking.com/search.html?ss=Atour+Chengdu",
-      "note": "Booking / 携程对比价；9 月旺季提前订"
+      "note": "Booking / 携程对比价；9 月旺季提前订",
+      "price": {
+        "min": 350,
+        "max": 430,
+        "currency": "CNY",
+        "unit": "per_night",
+        "quantity": 2,
+        "total_min": 700,
+        "total_max": 860,
+        "label": "住宿",
+        "source": "ctrip-webfetch",
+        "source_ref": "携程酒店列表实查估"
+      }
     },
     {
       "item": "国内机票（出发 → 成都双流 / 天府）",
       "deadline": "出发前 2 周",
       "url": "https://www.trip.com/",
-      "note": "双流机场近市区（地铁 10 号线 45 分钟）；天府机场远（地铁 18 号线 1.5 小时）"
+      "note": "双流机场近市区（地铁 10 号线 45 分钟）；天府机场远（地铁 18 号线 1.5 小时）",
+      "price": {
+        "min": 600,
+        "max": 900,
+        "currency": "CNY",
+        "unit": "per_person",
+        "quantity": 2,
+        "total_min": 1200,
+        "total_max": 1800,
+        "label": "机票",
+        "source": "ctrip-webfetch",
+        "source_ref": "携程机票实查区间"
+      }
     },
     {
       "item": "国内机票（成都 → 返程）",
       "deadline": "出发前 2 周",
       "url": "https://www.trip.com/",
-      "note": "建议返程 18:00 之后航班，留 3 小时机场缓冲"
+      "note": "建议返程 18:00 之后航班，留 3 小时机场缓冲",
+      "price": {
+        "min": 600,
+        "max": 900,
+        "currency": "CNY",
+        "unit": "per_person",
+        "quantity": 2,
+        "total_min": 1200,
+        "total_max": 1800,
+        "label": "机票",
+        "source": "ctrip-webfetch",
+        "source_ref": "携程机票实查区间"
+      }
     }
   ],
   "validation_report": {
@@ -771,5 +1095,39 @@
       }
     ],
     "summary": "三阶段分轮筛检全部通过（Round 1 结构 → Round 2 时空 → Round 3 体验）"
+  },
+  "party_size": 2,
+  "budget_summary": {
+    "currency": "CNY",
+    "by_category": {
+      "transport_local": {
+        "min": 545,
+        "max": 1024,
+        "note": "市内交通（时间轴交通费加总估）"
+      },
+      "food": {
+        "min": 1590,
+        "max": 2594
+      },
+      "tickets": {
+        "min": 682,
+        "max": 1229
+      },
+      "hotel": {
+        "min": 700,
+        "max": 860,
+        "nights": 2
+      },
+      "flights": {
+        "min": 2400.0,
+        "max": 3600.0,
+        "note": "携程往返估"
+      }
+    },
+    "total_min": 4544,
+    "total_max": 6826,
+    "per_person_min": 2272,
+    "per_person_max": 3413,
+    "disclaimer": "价格为调研日参考，不含个人购物；机票/酒店以平台实时为准"
   }
 }

@@ -45,7 +45,19 @@
         "duration_min": 80,
         "mode": "成田特快"
       }
-    ]
+    ],
+    "price": {
+      "min": 12000,
+      "max": 12080,
+      "currency": "JPY",
+      "unit": "per_night",
+      "quantity": 4,
+      "total_min": 48000,
+      "total_max": 48320,
+      "label": "住宿",
+      "source": "ctrip-webfetch",
+      "source_ref": "携程酒店列表实查估"
+    }
   },
   "days": [
     {
@@ -74,6 +86,18 @@
           "why": "酒店即锚点，Day 1 不跑远",
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=139.7036,35.6938&mode=car&policy=1"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "入住",
+            "source": "computed",
+            "source_ref": "房费见抽屉住宿"
           }
         },
         {
@@ -90,6 +114,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=139.7100,35.6852&mode=walk",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=新宿御苑"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "参观",
+            "source": "computed",
+            "source_ref": "步行街/免费景点"
           }
         },
         {
@@ -106,6 +142,18 @@
             "amap_navi": "https://uri.amap.com/navigation?to=139.7051,35.6938&mode=walk",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=思い出横丁",
             "dianping": "https://www.dianping.com/search/keyword/0_0思い出横丁"
+          },
+          "price": {
+            "min": 80,
+            "max": 120,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160,
+            "total_max": 240,
+            "label": "餐饮",
+            "source": "amap-mcp",
+            "source_ref": "maps_search_detail cost 区间"
           }
         }
       ],
@@ -143,7 +191,19 @@
               139.7051,
               35.6938
             ]
-          ]
+          ],
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         },
         {
           "from_idx": 2,
@@ -178,14 +238,38 @@
               139.7036,
               35.6938
             ]
-          ]
+          ],
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         }
       ],
       "meals": {
         "dinner": {
           "main": {
             "name": "思い出横丁",
-            "why": "近酒店 3 分钟，怀旧氛围，不接受预订 / 现金为主 / 烤串和啤酒"
+            "why": "近酒店 3 分钟，怀旧氛围，不接受预订 / 现金为主 / 烤串和啤酒",
+            "price": {
+              "min": 800,
+              "max": 1500,
+              "currency": "JPY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 1600,
+              "total_max": 3000,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "KABEAT 新宿",
@@ -222,6 +306,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=139.7967,35.7148&mode=transit",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=浅草寺"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "参观",
+            "source": "computed",
+            "source_ref": "步行街/免费景点"
           }
         },
         {
@@ -238,6 +334,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=139.7955,35.7119&mode=walk",
             "dianping": "https://www.dianping.com/search/keyword/0_0今半"
+          },
+          "price": {
+            "min": 80,
+            "max": 120,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160,
+            "total_max": 240,
+            "label": "餐饮",
+            "source": "amap-mcp",
+            "source_ref": "maps_search_detail cost 区间"
           }
         },
         {
@@ -255,6 +363,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=139.8107,35.7101&mode=walk",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=东京晴空塔"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "参观",
+            "source": "computed",
+            "source_ref": "步行街/免费景点"
           }
         },
         {
@@ -270,6 +390,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=139.8107,35.7094&mode=walk",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=晴空塔+晚餐"
+          },
+          "price": {
+            "min": 80,
+            "max": 120,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160,
+            "total_max": 240,
+            "label": "餐饮",
+            "source": "amap-mcp",
+            "source_ref": "maps_search_detail cost 区间"
           }
         }
       ],
@@ -307,7 +439,19 @@
               139.8107,
               35.7101
             ]
-          ]
+          ],
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         },
         {
           "from_idx": 2,
@@ -342,7 +486,19 @@
               139.8107,
               35.7094
             ]
-          ]
+          ],
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         },
         {
           "from_idx": 3,
@@ -377,14 +533,38 @@
               139.7967,
               35.7148
             ]
-          ]
+          ],
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         }
       ],
       "meals": {
         "lunch": {
           "main": {
             "name": "今半 すき焼き（浅草店）",
-            "why": "寿喜烧百年老店，必体验"
+            "why": "寿喜烧百年老店，必体验",
+            "price": {
+              "min": 800,
+              "max": 1500,
+              "currency": "JPY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 1600,
+              "total_max": 3000,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "浅草もんじゃ もんろう",
@@ -394,7 +574,19 @@
         "dinner": {
           "main": {
             "name": "晴空塔 31F 食街",
-            "why": "多选择 / 不需订位 / 看夜景"
+            "why": "多选择 / 不需订位 / 看夜景",
+            "price": {
+              "min": 800,
+              "max": 1500,
+              "currency": "JPY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 1600,
+              "total_max": 3000,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "浅草今半 别馆（すき焼き）",
@@ -431,6 +623,18 @@
           "weather_sensitive": false,
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=139.5357,35.3173&mode=walk"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "参观",
+            "source": "computed",
+            "source_ref": "步行街/免费景点"
           }
         },
         {
@@ -445,6 +649,18 @@
           "why": "区域补给点；不在镰仓吃就白来了",
           "links": {
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=镰仓+吻仔鱼饭"
+          },
+          "price": {
+            "min": 80,
+            "max": 120,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160,
+            "total_max": 240,
+            "label": "餐饮",
+            "source": "amap-mcp",
+            "source_ref": "maps_search_detail cost 区间"
           }
         },
         {
@@ -462,6 +678,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=139.4795,35.3092&mode=walk",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=江之岛"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "参观",
+            "source": "computed",
+            "source_ref": "步行街/免费景点"
           }
         },
         {
@@ -474,7 +702,19 @@
           "duration_min": 90,
           "note": "返新宿已疲，不跑远；寿司街多选择 / 不需订位",
           "why": "返新宿已疲，寿司街选择多、不用排队",
-          "links": {}
+          "links": {},
+          "price": {
+            "min": 80,
+            "max": 120,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160,
+            "total_max": 240,
+            "label": "餐饮",
+            "source": "amap-mcp",
+            "source_ref": "maps_search_detail cost 区间"
+          }
         }
       ],
       "transports": [
@@ -511,7 +751,19 @@
               139.4795,
               35.3092
             ]
-          ]
+          ],
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         },
         {
           "from_idx": 2,
@@ -546,7 +798,19 @@
               139.7036,
               35.691
             ]
-          ]
+          ],
+          "fare": {
+            "min": 3,
+            "max": 6,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 6,
+            "total_max": 12,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
         },
         {
           "from_idx": 3,
@@ -581,14 +845,38 @@
               139.5357,
               35.3173
             ]
-          ]
+          ],
+          "fare": {
+            "min": 3,
+            "max": 6,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 6,
+            "total_max": 12,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
         }
       ],
       "meals": {
         "lunch": {
           "main": {
             "name": "镰仓 しらす丼（さくら井）",
-            "why": "吻仔鱼是镰仓招牌"
+            "why": "吻仔鱼是镰仓招牌",
+            "price": {
+              "min": 800,
+              "max": 1500,
+              "currency": "JPY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 1600,
+              "total_max": 3000,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "镰仓 力车食堂",
@@ -598,7 +886,19 @@
         "dinner": {
           "main": {
             "name": "新宿 伊势丹 7F 寿司街",
-            "why": "多选择 / 不需订位 / 返新宿顺路"
+            "why": "多选择 / 不需订位 / 返新宿顺路",
+            "price": {
+              "min": 800,
+              "max": 1500,
+              "currency": "JPY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 1600,
+              "total_max": 3000,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "思い出横丁（Day 1 重访）",
@@ -636,6 +936,18 @@
           "requires_booking": true,
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=138.7659,35.6458&mode=transit"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "活动",
+            "source": "computed",
+            "source_ref": "无门票"
           }
         },
         {
@@ -653,6 +965,18 @@
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=138.7640,35.4829&mode=car",
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=富士山+五合目"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "参观",
+            "source": "computed",
+            "source_ref": "步行街/免费景点"
           }
         },
         {
@@ -667,6 +991,18 @@
           "why": "区域补给点；必吃山梨名物",
           "links": {
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=河口湖+ほうとう"
+          },
+          "price": {
+            "min": 80,
+            "max": 120,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160,
+            "total_max": 240,
+            "label": "餐饮",
+            "source": "amap-mcp",
+            "source_ref": "maps_search_detail cost 区间"
           }
         },
         {
@@ -679,7 +1015,19 @@
           "duration_min": 90,
           "note": "推荐 魚串だし巻き だるま 或 新宿西口思い出横丁",
           "why": "登山一日后，返新宿吃居酒屋恢复",
-          "links": {}
+          "links": {},
+          "price": {
+            "min": 80,
+            "max": 120,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160,
+            "total_max": 240,
+            "label": "餐饮",
+            "source": "amap-mcp",
+            "source_ref": "maps_search_detail cost 区间"
+          }
         }
       ],
       "transports": [
@@ -716,7 +1064,19 @@
               138.764,
               35.4829
             ]
-          ]
+          ],
+          "fare": {
+            "min": 3,
+            "max": 6,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 6,
+            "total_max": 12,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
         },
         {
           "from_idx": 1,
@@ -751,7 +1111,19 @@
               138.7665,
               35.4842
             ]
-          ]
+          ],
+          "fare": {
+            "min": 3,
+            "max": 6,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 6,
+            "total_max": 12,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
         },
         {
           "from_idx": 3,
@@ -786,14 +1158,38 @@
               138.7659,
               35.6458
             ]
-          ]
+          ],
+          "fare": {
+            "min": 3,
+            "max": 6,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 6,
+            "total_max": 12,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
         }
       ],
       "meals": {
         "lunch": {
           "main": {
             "name": "河口湖畔 ほうとう 不动",
-            "why": "山梨名物必吃 / 暖身"
+            "why": "山梨名物必吃 / 暖身",
+            "price": {
+              "min": 800,
+              "max": 1500,
+              "currency": "JPY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 1600,
+              "total_max": 3000,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "河口湖美术馆餐厅",
@@ -803,7 +1199,19 @@
         "dinner": {
           "main": {
             "name": "新宿 魚串だし巻き だるま",
-            "why": "返新宿顺路 / 居酒屋氛围恢复"
+            "why": "返新宿顺路 / 居酒屋氛围恢复",
+            "price": {
+              "min": 800,
+              "max": 1500,
+              "currency": "JPY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 1600,
+              "total_max": 3000,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "新宿思い出横丁（重访）",
@@ -837,7 +1245,19 @@
           "duration_min": 30,
           "note": "前台寄存大件；带随身包走 Day 5",
           "why": "末日不跑远；行李寄酒店",
-          "links": {}
+          "links": {},
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "入住",
+            "source": "computed",
+            "source_ref": "房费见抽屉住宿"
+          }
         },
         {
           "idx": 2,
@@ -851,6 +1271,18 @@
           "why": "伴手礼一站搞定",
           "links": {
             "amap_navi": "https://uri.amap.com/navigation?to=139.7036,35.6910&mode=walk"
+          },
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "参观",
+            "source": "computed",
+            "source_ref": "步行街/免费景点"
           }
         },
         {
@@ -865,6 +1297,18 @@
           "why": "返程前最后一顿，选容易的",
           "links": {
             "xhs": "https://www.xiaohongshu.com/search_result?keyword=新宿+一蘭"
+          },
+          "price": {
+            "min": 80,
+            "max": 120,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 160,
+            "total_max": 240,
+            "label": "餐饮",
+            "source": "amap-mcp",
+            "source_ref": "maps_search_detail cost 区间"
           }
         },
         {
@@ -877,7 +1321,19 @@
           "duration_min": 120,
           "note": "国际航班 -3h 值机截止；如 18:30 航班，14:30-15:30 抵机场刚好",
           "why": "末日返程缓冲 ≥ 3h 满足 V5",
-          "links": {}
+          "links": {},
+          "price": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "活动",
+            "source": "computed",
+            "source_ref": "无门票"
+          }
         }
       ],
       "transports": [
@@ -914,7 +1370,19 @@
               139.7043,
               35.6908
             ]
-          ]
+          ],
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         },
         {
           "from_idx": 2,
@@ -949,7 +1417,19 @@
               139.7056,
               35.692
             ]
-          ]
+          ],
+          "fare": {
+            "min": 0.0,
+            "max": 0.0,
+            "currency": "JPY",
+            "unit": "free",
+            "quantity": 1,
+            "total_min": 0.0,
+            "total_max": 0.0,
+            "label": "步行",
+            "source": "computed",
+            "source_ref": "零元交通"
+          }
         },
         {
           "from_idx": 3,
@@ -984,14 +1464,38 @@
               139.7036,
               35.6938
             ]
-          ]
+          ],
+          "fare": {
+            "min": 3,
+            "max": 6,
+            "currency": "JPY",
+            "unit": "per_person",
+            "quantity": 2,
+            "total_min": 6,
+            "total_max": 12,
+            "label": "公交/地铁",
+            "source": "amap-mcp",
+            "source_ref": "maps_direction_transit cost 估"
+          }
         }
       ],
       "meals": {
         "lunch": {
           "main": {
             "name": "新宿 一蘭拉面",
-            "why": "返程前最后一餐 / 单独座位省事"
+            "why": "返程前最后一餐 / 单独座位省事",
+            "price": {
+              "min": 800,
+              "max": 1500,
+              "currency": "JPY",
+              "unit": "per_person",
+              "quantity": 2,
+              "total_min": 1600,
+              "total_max": 3000,
+              "label": "餐饮",
+              "source": "amap-mcp",
+              "source_ref": "maps_search_detail cost"
+            }
           },
           "alt": {
             "name": "新宿 寿司清",
@@ -1096,5 +1600,39 @@
       }
     ],
     "summary": "全部通过；3 轮收敛（Round 1 V3 + V5 fail → Round 2 修复 → Round 3 全通过）"
+  },
+  "party_size": 2,
+  "budget_summary": {
+    "currency": "JPY",
+    "by_category": {
+      "transport_local": {
+        "min": 7454,
+        "max": 11147,
+        "note": "市内交通（时间轴交通费加总估）"
+      },
+      "food": {
+        "min": 21741,
+        "max": 28239
+      },
+      "tickets": {
+        "min": 9317,
+        "max": 13376
+      },
+      "hotel": {
+        "min": 48000,
+        "max": 48320,
+        "nights": 4
+      },
+      "flights": {
+        "min": null,
+        "max": null,
+        "note": "携程往返估"
+      }
+    },
+    "total_min": 62116,
+    "total_max": 74312,
+    "per_person_min": 31058,
+    "per_person_max": 37156,
+    "disclaimer": "价格为调研日参考，不含个人购物；机票/酒店以平台实时为准"
   }
 }

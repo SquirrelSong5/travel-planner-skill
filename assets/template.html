@@ -903,6 +903,73 @@
       ol.timeline li.time-block .meal-leg .meal-leg-name { color: #fef3c7; }
     }
 
+    /* ===== 价格卡片（v2.1.0） ===== */
+    .price-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: var(--sp-1) var(--sp-2);
+      margin-top: var(--sp-2);
+      padding: 8px 12px;
+      background: #f0f7f4;
+      border: 1px solid #c5e0d4;
+      border-radius: 8px;
+      font-size: var(--fs-xs);
+      line-height: 1.45;
+    }
+    .price-card .price-amount {
+      font-weight: 700;
+      font-size: var(--fs-sm);
+      color: #1f5a3a;
+    }
+    .price-card .price-label {
+      color: var(--fg-muted);
+    }
+    .price-card .price-source {
+      flex: 1 1 100%;
+      color: var(--fg-muted);
+      font-size: 11px;
+    }
+    .price-card-missing {
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+    .price-card-missing .price-amount { color: #b91c1c; }
+    @media (prefers-color-scheme: dark) {
+      .price-card { background: #1a2e24; border-color: #2d5a45; }
+      .price-card .price-amount { color: #86efac; }
+      .price-card-missing { background: #3f1d1d; border-color: #7f1d1d; }
+    }
+
+    /* ===== 抽屉花销汇总 ===== */
+    .budget-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: var(--sp-3) var(--sp-4);
+      font-size: var(--fs-sm);
+    }
+    .budget-card .budget-total-line {
+      font-weight: 700;
+      font-size: var(--fs-md);
+      margin-bottom: var(--sp-2);
+    }
+    .budget-card .budget-row {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--sp-2);
+      padding: 4px 0;
+      border-bottom: 1px dashed var(--line);
+      font-size: var(--fs-xs);
+    }
+    .budget-card .budget-row:last-child { border-bottom: none; }
+    .budget-card .budget-disclaimer {
+      margin-top: var(--sp-2);
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+    .budget-card.budget-fallback { border-color: #fbbf24; }
+
     /* ===== Footer ===== */
     footer.bottom {
       margin-top: 48px;
@@ -1061,6 +1128,19 @@
           天气策略
         </h3>
         <div class="weather-card" id="weather-plan-text"></div>
+      </section>
+
+      <!-- 花销预估 -->
+      <section id="budget-section">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="1" x2="12" y2="23"></line>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
+          花销预估
+          <span class="count" id="budget-total-badge"></span>
+        </h3>
+        <div class="budget-card" id="budget-breakdown"></div>
       </section>
 
       <!-- 提前订 -->
@@ -1267,6 +1347,125 @@
         return out;
       }
 
+      function priceTotals(p) {
+        if (!p || typeof p !== 'object') return null;
+        let tmin = p.total_min, tmax = p.total_max;
+        if (tmin == null) {
+          const mn = p.min, mx = p.max != null ? p.max : p.min;
+          if (mn == null && p.unit !== 'free') return null;
+          const q = p.quantity || D.party_size || 1;
+          tmin = (mn || 0) * q;
+          tmax = (mx != null ? mx : mn || 0) * q;
+        }
+        return Object.assign({}, p, { tmin, tmax: tmax != null ? tmax : tmin });
+      }
+
+      function formatMoney(n, currency) {
+        if (n == null || Number.isNaN(n)) return '—';
+        const sym = currency === 'JPY' ? '¥' : '¥';
+        return sym + Math.round(n).toLocaleString();
+      }
+
+      function renderPriceCardHtml(price, missingHint) {
+        if (!price) {
+          return `<div class="price-card price-card-missing" role="note"><span class="price-amount">待补价格调研</span><span class="price-source">${esc(missingHint || '需 MCP/WebFetch 实查')}</span></div>`;
+        }
+        const p = priceTotals(price);
+        if (!p) return renderPriceCardHtml(null, missingHint);
+        const cur = p.currency || 'CNY';
+        const unitMap = { per_person: '/人', per_order: '/次', per_night: '/晚', fixed: '', free: '' };
+        const unitSuffix = unitMap[p.unit] || '';
+        let amountStr;
+        if (p.unit === 'free' || (p.min === 0 && p.max === 0)) {
+          amountStr = '免费';
+        } else if (p.min === p.max) {
+          amountStr = formatMoney(p.min, cur) + unitSuffix;
+          const q = p.quantity || D.party_size || 1;
+          if (q > 1 && (p.unit === 'per_person' || p.unit === 'per_order')) {
+            amountStr += ` × ${q} ≈ ${formatMoney(p.tmin, cur)}`;
+          }
+        } else {
+          amountStr = `${formatMoney(p.min, cur)}–${formatMoney(p.max, cur)}${unitSuffix}`;
+        }
+        const src = esc(p.source_ref || p.source || '');
+        const label = p.label ? `<span class="price-label">${esc(p.label)}</span>` : '';
+        return `<div class="price-card" data-source="${esc(p.source || '')}"><span class="price-amount">${amountStr}</span>${label}<span class="price-source">来源：${src}</span></div>`;
+      }
+
+      function sumLineItemPrices() {
+        let min = 0, max = 0;
+        (D.days || []).forEach(d => {
+          (d.pois || []).forEach(p => {
+            const t = priceTotals(p.price);
+            if (t) { min += t.tmin; max += t.tmax; }
+          });
+          (d.transports || []).forEach(t => {
+            const f = priceTotals(t.fare);
+            if (f) { min += f.tmin; max += f.tmax; }
+          });
+          const meals = d.meals || {};
+          ['breakfast', 'lunch', 'dinner'].forEach(mt => {
+            const m = meals[mt] && meals[mt].main;
+            const t = m && priceTotals(m.price);
+            if (t) { min += t.tmin; max += t.tmax; }
+          });
+        });
+        return { min, max };
+      }
+
+      function renderBudgetSummary() {
+        const el = document.getElementById('budget-breakdown');
+        const badge = document.getElementById('budget-total-badge');
+        if (!el) return;
+        const ps = D.party_size || 1;
+        const bs = D.budget_summary;
+        const line = sumLineItemPrices();
+        const catLabels = {
+          transport_local: '市内交通',
+          food: '餐饮',
+          tickets: '门票/活动',
+          hotel: '住宿',
+          flights: '大交通（机票等）',
+        };
+        let html = '';
+        let totalMin, totalMax, isFallback = false;
+
+        if (bs && bs.total_min != null) {
+          totalMin = bs.total_min;
+          totalMax = bs.total_max != null ? bs.total_max : bs.total_min;
+          if (bs.by_category) {
+            Object.keys(catLabels).forEach(k => {
+              const c = bs.by_category[k];
+              if (!c || c.min == null) return;
+              const cmax = c.max != null ? c.max : c.min;
+              const note = c.note ? `（${esc(c.note)}）` : (c.nights ? `（${c.nights} 晚）` : '');
+              html += `<div class="budget-row"><span>${catLabels[k]}${note}</span><span>${formatMoney(c.min, bs.currency)}${cmax !== c.min ? '–' + formatMoney(cmax, bs.currency) : ''}</span></div>`;
+            });
+          }
+          html += `<div class="budget-row budget-total-line"><span>全程合计（${ps} 人）</span><span>${formatMoney(totalMin, bs.currency)}${totalMax !== totalMin ? '–' + formatMoney(totalMax, bs.currency) : ''}</span></div>`;
+          if (bs.per_person_min != null) {
+            html += `<div class="budget-row"><span>人均</span><span>${formatMoney(bs.per_person_min, bs.currency)}${bs.per_person_max !== bs.per_person_min ? '–' + formatMoney(bs.per_person_max, bs.currency) : ''}</span></div>`;
+          }
+          if (bs.disclaimer) {
+            html += `<p class="budget-disclaimer">${esc(bs.disclaimer)}</p>`;
+          }
+        } else {
+          isFallback = true;
+          totalMin = line.min;
+          totalMax = line.max;
+          html += `<div class="budget-row"><span>时间轴已标价合计</span><span>${formatMoney(totalMin)}${totalMax !== totalMin ? '–' + formatMoney(totalMax) : ''}</span></div>`;
+          html += `<div class="budget-row"><span>人均（估）</span><span>${formatMoney(totalMin / ps)}${totalMax !== totalMin ? '–' + formatMoney(totalMax / ps) : ''}</span></div>`;
+          html += `<p class="budget-disclaimer">⚠️ 未校验 budget_summary；酒店/机票等大项可能未计入</p>`;
+        }
+        el.className = isFallback ? 'budget-card budget-fallback' : 'budget-card';
+        el.innerHTML = html;
+        if (badge) {
+          badge.textContent = totalMax !== totalMin
+            ? `${formatMoney(totalMin)}–${formatMoney(totalMax)}`
+            : formatMoney(totalMin);
+        }
+      }
+
       // ===== Drawer 交互 =====
       function openDrawer() {
         const drawer = document.getElementById('drawer');
@@ -1452,6 +1651,7 @@
           // 删：POI 卡片"小红书"按钮（v2.0.2 改：与 next-leg 导航重复，保留大众点评作餐厅维度的第三方参考）
           if (links.dianping) linkParts.push(`<a href="${esc(links.dianping)}" target="_blank" rel="noopener">大众点评</a>`);
           const linksHtml = linkParts.length ? `<div class="links">${linkParts.join('')}</div>` : '';
+          const priceHtml = renderPriceCardHtml(p.price, `${p.name} 缺 price`);
 
           // "下一站"小条（从本 POI 出发的 transport）
           const nextTransport = d.transports && d.transports.find(t => t.from_idx === p.idx);
@@ -1474,7 +1674,7 @@
               <span class="next-leg-text">${esc(desc)} · ${esc(toName)}</span>
               <span class="leg-time">${esc(legTime)}</span>
               ${navLink}
-            </div>`;
+            </div>${renderPriceCardHtml(nextTransport.fare, '交通段缺 fare')}`;
           }
 
           // meal-leg（绑定到匹配时段的第一个 POI）
@@ -1497,7 +1697,7 @@
               <span class="meal-leg-name">${esc(m.main.name)}</span>
               <span class="meal-leg-why">${esc(m.main.why || '')}</span>
               ${m.alt ? `<span class="meal-leg-alt">备选：${esc(m.alt.name)}</span>` : ''}
-            </p>`;
+            </p>${renderPriceCardHtml(m.main.price, `${labelMap[matchedMealType]}缺 price`)}`;
           }
 
           return `<li class="time-block">
@@ -1505,6 +1705,7 @@
             <div class="place">
               <h4>${esc(p.name)} <span class="cat ${esc(p.cat)}">${esc(p.cat)}</span>${ws}</h4>
               ${note}${why}${linksHtml}
+              ${priceHtml}
               ${nextLegHtml}
               ${mealLegHtml}
             </div>
@@ -2129,6 +2330,7 @@
         renderValidationSection();
         renderHotel();
         renderWeatherPlan();
+        renderBudgetSummary();
         renderDrawerLists();
         renderTabs();
         initDrawerLayout();

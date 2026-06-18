@@ -11,8 +11,8 @@
 |-------|------|----------------|---------|-------------|
 | **1** | 结构筛 | `1` | V1, V4 | V7 禁忌审查、critique |
 | **2** | 时空筛 | `2` | V2, V5, V8, V9 | 高德 route 实算填 V2、critique |
-| **3** | 体验筛 | `3` | V3, V6 | 美团+高德+小红书、critique |
-| 全量 | 交付前复检 | （无） | V1–V6, V8, V9 | V7 若 Round 1 已验可沿用 |
+| **3** | 体验筛 | `3` | V3, V6, V10 | 美团+高德+小红书+价格汇总、critique |
+| 全量 | 交付前复检 | （无） | V1–V6, V8, V9, V10 | V7 若 Round 1 已验可沿用 |
 
 ```bash
 python scripts/validate.py trip_data.json --round 1 --pretty
@@ -30,7 +30,7 @@ python scripts/validate.py trip_data.json --pretty   # 最终全量
 **双层硬约束**：
 
 1. **服务端脚本**（`scripts/validate.py`）：AI 必跑的命令，真用 POI 坐标 + 阈值公式算
-2. **浏览器端 JS**（`assets/template.html`）：HTML 加载时**强制重算 V1/V3/V4/V5/V6/V8/V9**，**结果覆盖** AI self-report
+2. **浏览器端 JS**（`assets/template.html`）：HTML 加载时**强制重算 V1/V3/V4/V5/V6/V8/V9/V10**，**结果覆盖** AI self-report
 
 **AI 写假报告也挡不住**——用户点开 HTML，浏览器会算给你看。
 
@@ -47,6 +47,7 @@ python scripts/validate.py trip_data.json --pretty   # 最终全量
 | V9 | 实算 vs 粗算 | 2 | ⚙️ **脚本** | 重跑高德 direction |
 | V3 | 餐厅区域匹配 | 3 | ⚙️ **脚本** | 替换餐厅候选 |
 | V6 | 户外天气敏感 | 3 | ⚙️ **脚本** | 配室内备选 |
+| V10 | 价格溯源 | 3 | ⚙️ **脚本** | 补 price/fare + source |
 
 **AI 调用流程**：
 
@@ -218,6 +219,24 @@ python scripts/validate.py trip_data.json --pretty
 - 或挪到非雨天 / 阴天预测的日期
 
 **注意**：不要过度标 —— 城市内步行逛街不算 weather_sensitive。
+
+---
+
+## V10：价格溯源（v2.1.0 新增）
+
+**规则**：每个 POI、交通段、午餐/晚餐必有调研价 + 合法 `source`；禁止 LLM 猜测。
+
+**判定方式**（`scripts/validate.py`）：
+- 缺 `party_size` → 失败
+- 每个 `pois[].price` / `transports[].fare` / `meals.lunch|dinner.main.price` 缺对象或缺 `source` → 失败
+- `source` ∈ `{ai-guess, memory, ""}` 或不在白名单 → 失败
+- `budget_summary.total_min` 与时间轴明细加总偏差 > 15% → 警告
+
+**合法 source**：`amap-mcp` | `amap-rest-api` | `official-site` | `ctrip-webfetch` | `meituan-webfetch` | `computed`（仅 free/步行）
+
+**失败动作**：回 Round 2/3 补 MCP/WebFetch 调研；Step 6 重算 `budget_summary`
+
+详见 `references/price-research.md`。
 
 ---
 

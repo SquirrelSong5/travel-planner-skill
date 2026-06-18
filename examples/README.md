@@ -27,19 +27,45 @@
   n_days: string                 // 例："4 泊 5 日" / "3 泊 4 日"
   city: string                   // 主城市
   summary: string                // 一句话总结（带取舍说明），≤ 100 字
+  party_size: number             // v2.1.0 必填：出行人数（价格 quantity 默认）
 
   // ===== 顶层（可选）=====
   weather_plan: string           // 整体天气策略（行程前说明）
+  budget_summary?: {            // v2.1.0 推荐：全程花销汇总（抽屉展示）
+    currency: string             // "CNY" | "JPY" 等
+    by_category: {
+      transport_local?: { min, max, note? }
+      food?: { min, max }
+      tickets?: { min, max }
+      hotel?: { min, max, nights? }
+      flights?: { min, max, note? }
+    }
+    total_min: number
+    total_max: number
+    per_person_min: number
+    per_person_max: number
+    disclaimer?: string
+  }
+
+  // ===== 价格对象（v2.1.0，POI/meal/prebook/hotel 复用）=====
+  // PriceObject = {
+  //   min, max, currency, unit, quantity?,
+  //   total_min, total_max, label?,
+  //   source, source_ref, source_url?
+  // }
+  // unit: per_person | per_order | per_night | fixed | free
+  // source: amap-mcp | amap-rest-api | official-site | ctrip-webfetch | meituan-webfetch | computed
 
   // ===== 酒店（必填，1 个）=====
   hotel: {
     name: string
     address: string
-    lng: number                  // 经度（用于地图）
-    lat: number                  // 纬度
-    amap_uri: string             // 高德地图 link（酒店卡片唯一按钮）
-    why: string                  // 推荐理由 2-3 句
-    commute: [                   // 每天通勤表
+    lng: number
+    lat: number
+    amap_uri: string
+    why: string
+    price?: PriceObject          // per_night；仅抽屉汇总，不在时间轴
+    commute: [
       {
         day: number
         region: string
@@ -81,37 +107,32 @@
           indoor_backup?: string  // weather_sensitive=true 时必填
           requires_booking?: boolean
           links: {
-            amap_navi?: string    // 导航 URL
-            xhs?: string          // 小红书 URL
-            dianping?: string     // 大众点评 URL
+            amap_navi?: string
+            xhs?: string
+            dianping?: string
           }
+          price?: PriceObject     // v2.1.0 必填：时间轴 price-card
         }
       ],
 
-      // 交通段列表（POI 之间的连接，必填）
       transports: [
         {
-          from_idx: number        // 起点 POI 的 idx
-          to_idx: number          // 终点 POI 的 idx
-          mode: string            // walking | transit | subway | metro | bus | train | jr | driving | biking
-          duration_min: number    // 实算通勤时长（V2 验证用）
-          description: string     // 给人看的描述，如 "步行 10 分钟（穿过歌舞伎町外苑通）"
-
-          // v1.3.0 新增：真实路网路径（可选，没填则降级为直线）
-          // 数据源：高德 MCP maps_direction_walking/driving/bicycling/transit_integrated
-          // AI 调 MCP 拿 distance/duration 时同时提取 polyline，写到这里
-          // 浏览器渲染时优先用 path 画真实路径（沿公路/步行道/公交线）
-          path?: [lng, lat][]      // 真实路网 polyline 坐标数组
-          distance_m?: number      // 实算距离（米）
-          source?: string          // "amap-mcp" | "ai-amap" | "straight-line" | "ai-fallback"
+          from_idx: number
+          to_idx: number
+          mode: string
+          duration_min: number
+          description: string
+          path?: [lng, lat][]
+          distance_m?: number
+          source?: string
+          fare?: PriceObject      // v2.1.0 必填：next-leg 下 price-card
         }
       ],
 
-      // 餐食（按早 / 午 / 晚分，必填至少 lunch 和 dinner）
       meals: {
-        breakfast?: { main: { name, why }, alt?: { name, why } }
-        lunch: { main, alt? }
-        dinner: { main, alt? }
+        breakfast?: { main: { name, why, price?: PriceObject }, alt?: { name, why, price? } }
+        lunch: { main: { name, why, price?: PriceObject }, alt?: { name, why, price? } }
+        dinner: { main: { name, why, price?: PriceObject }, alt?: { name, why, price? } }
       }
     }
   ]
@@ -123,7 +144,7 @@
 
   // ===== 提前订（必填，至少 1 条）=====
   prebook: [
-    { item: string, deadline: string, url: string, note?: string }
+    { item: string, deadline: string, url: string, note?: string, price?: PriceObject }
   ]
 
   // ===== 验证报告（可选但推荐）=====
@@ -292,6 +313,12 @@ trip_data_js = json.dumps(data, ensure_ascii=False, indent=2)
 ---
 
 ## 字段演变历史
+
+### v2.1.0 (2026-06-18)
+
+- **新增**：`party_size`、`budget_summary`、统一 `PriceObject`（`pois[].price`、`transports[].fare`、`meals.*.price`、`hotel.price`、`prebook[].price`）
+- **新增**：V10 价格溯源验证；详见 `references/price-research.md`
+- 时间轴渲染 `price-card`；抽屉「花销预估」区
 
 ### v1.3.0 (2026-06-17)
 

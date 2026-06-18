@@ -140,9 +140,10 @@ python scripts/validate.py trip_data.json --round 2 --pretty
 ### AI 必做
 
 1. 美团攻略 WebFetch → 高德 POI 详情 → 小红书「排队/避雷」
-2. 每顿 2–3 候选（主推 + 备选），写清 `source` 留痕
+2. 每顿 2–3 候选（主推 + 备选），写清 `source` 留痕；**同步写 `pois[].price` / `meals.*.price`**
 3. 户外 POI 补 `indoor_backup`
 4. 体验 critique：游客店、排队风险、节奏太赶
+5. Step 5–6：`prebook[].price` + `budget_summary`（见 `price-research.md`）
 
 ### 脚本必跑
 
@@ -154,6 +155,7 @@ python scripts/validate.py trip_data.json --round 3 --pretty
 |------|------|
 | V3 餐厅区域匹配 | ⚙️ 脚本 |
 | V6 户外天气敏感 | ⚙️ 脚本 |
+| V10 价格溯源 | ⚙️ 脚本 |
 
 ### Round 3 产出
 
@@ -208,8 +210,8 @@ python scripts/validate.py trip_data.json --round 3 --pretty
 |-----------|---------|------|
 | `1` | V1, V4 | Step 3 Round 1 末 |
 | `2` | V2, V5, V8, V9 | Step 3 Round 2 末 |
-| `3` | V3, V6 | Step 3 Round 3 末 |
-| 缺省 / `--check` 全量 | V1–V6, V8, V9 | 增量修改后 / 最终交付前复检 |
+| `3` | V3, V6, V10 | Step 3 Round 3 末 |
+| 缺省 / `--check` 全量 | V1–V6, V8, V9, V10 | 增量修改后 / 最终交付前复检 |
 
 V7 **永不进脚本**——每轮由 AI 在 `rules` 里自填（Round 1 必查）。
 

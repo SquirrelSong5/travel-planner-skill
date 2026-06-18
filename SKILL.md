@@ -474,7 +474,7 @@ codex mcp add playwright -- npx @playwright/mcp@latest
 3. **酒店**：已有（地址截图）/ 待选（推荐）
 4. **想去点**：3-10 个地名/类型
 5. **禁忌**：明确不要去的类型（如"不要寺庙"、"不要网红打卡"）
-6. **人数 / 节奏**：几人 / 有无老人小孩 / 步行耐力
+6. **人数 / 节奏**：几人 / 有无老人小孩 / 步行耐力 → 写入 `party_size`（v2.1.0 必填，价格 quantity 默认）
 7. **餐饮预算 / 偏好**：能不能排队 / 必吃 / 忌口
 8. **酒店偏好**（仅当 Step 1 已说"待选"时）：预算区间 / 类型偏好 / 区域偏好
 
@@ -555,7 +555,9 @@ python scripts/validate.py trip_data.json --round 1 --pretty
 
 #### Round 2：时空可行性筛
 
-**AI 必做**：对相邻 POI 调 `maps_direction_*` → `transports[].path` + `duration_min` + `source: "amap-mcp"`；用高德结果填 V2。
+**AI 必做**（含 v2.1.0 价格）：
+
+1. 每对相邻 POI 调 `maps_direction_*` → `transports[].path` + `duration_min` + `source` + **`fare`**（公交 `cost` / 驾车 `taxi_cost` / 步行 `unit:free`）；用高德结果填 V2。
 
 | 距离/场景 | 工具 |
 |----------|------|
@@ -579,9 +581,10 @@ python scripts/validate.py trip_data.json --round 2 --pretty
 **AI 必做**（含原 Step 4 餐厅调研）：
 
 1. 美团攻略 WebFetch `guide.meituan.com/<city>/canyin` → 候选池
-2. 高德 `maps_text_search` + `maps_search_detail` → 硬信号
+2. 高德 `maps_text_search` + `maps_search_detail` → 硬信号 + **`pois[].price` / `meals.*.price`**（`cost` 字段）
 3. 小红书搜「<店名> 排队」「<店名> 避雷」
 4. 户外 POI 补 `indoor_backup`；体验 critique（游客店/排队/节奏）
+5. Step 5–6 汇总 `prebook[].price` + `budget_summary`（详见 `references/price-research.md`）
 
 ```bash
 python scripts/validate.py trip_data.json --round 3 --pretty
@@ -611,6 +614,7 @@ python scripts/validate.py trip_data.json --round 3 --pretty
 | V9 | 实算 vs 粗算 | 2 | ⚙️ 脚本 |
 | V3 | 餐厅区域匹配 | 3 | ⚙️ 脚本 |
 | V6 | 户外天气敏感 | 3 | ⚙️ 脚本 |
+| V10 | 价格溯源 | 3 | ⚙️ **脚本** | 补 price/fare + source |
 
 完整规则见 `references/validation-rules.md`；分轮规范见 `references/iteration-rounds.md`。
 
