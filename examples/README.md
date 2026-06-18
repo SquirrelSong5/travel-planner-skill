@@ -214,7 +214,7 @@
 1. **替换顶层占位符**：`{{TRIP_NAME}}` / `{{DATE_RANGE}}` / `{{SUMMARY}}` 等
 2. **填充 `window.tripData`**：把整个 JSON 转成 JS 对象字面量注入 `<script>` 块
 3. **填充 `window.AMAP_KEY`**：高德 Web API Key（用户在 Step 1 提供）
-4. **渲染 deleted / prebook 列表**：模板里有静态占位，但 JS 也会动态重渲
+4. **渲染 prebook 列表**：`#prebook-list` 由 JS `renderDrawerLists()` 从 `tripData.prebook` 动态渲染（支持 `**加粗**` mdLite）
 
 简化版渲染脚本（仅供开发期验证）：
 

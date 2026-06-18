@@ -1079,9 +1079,7 @@
           提前订
           <span class="count" id="prebook-count"></span>
         </h3>
-        <ul class="drawer-list" id="prebook-list">
-          {{PREBOOK_BLOCK}}
-        </ul>
+        <ul class="drawer-list" id="prebook-list"></ul>
       </section>
 
     </div>
@@ -1160,7 +1158,60 @@
       }
 
       function isPlaceholderUrl(url) {
-        return /ctrip\.com\/flight\/show-1|example\.com|placeholder|\/flight\/show-\d+\.html$/i.test(url || '');
+        if (!url) return true;
+        if (/ctrip\.com\/flight\/show-1|example\.com|placeholder|\/flight\/show-\d+\.html$/i.test(url)) return true;
+        try {
+          const u = new URL(url.trim());
+          const path = (u.pathname || '/').replace(/\/$/, '') || '/';
+          const host = u.hostname.replace(/^www\./, '');
+          // 泛域名首页 / 无搜索参数的占位链
+          if ((host === 'trip.com' || host === 'ctrip.com' || host === 'fliggy.com') && path === '/') return true;
+          if (host === 'booking.com' && path === '/search.html' && !u.searchParams.get('ss')) return true;
+        } catch (e) { return true; }
+        return false;
+      }
+
+      function isForeignOtaUrl(url) {
+        return /booking\.com|agoda\.com|expedia\.com|trip\.com/i.test(url || '');
+      }
+
+      function parseTripDates() {
+        const m = (D.date_range || '').match(/(\d{4}-\d{2}-\d{2})/g);
+        return { start: m?.[0] || '', end: m?.[1] || m?.[0] || '' };
+      }
+
+      /** prebook 链接降级：国内 OTA 深链（携程优先），禁止 Bing / Booking / Trip.com 首页 */
+      function buildDomesticPrebookFallback(x) {
+        const item = x.item || x.title || '';
+        const q = encodeURIComponent(item);
+        const { start, end } = parseTripDates();
+        const city = encodeURIComponent(D.city || '');
+        if (/机票|航班/.test(item)) {
+          if (/返程|离厦|厦门.*→|厦门.*到/.test(item) && end) {
+            return `https://flights.ctrip.com/itinerary/oneway/xmn-sha?date=${end}`;
+          }
+          if (/出发|抵达厦门|→.*厦门|到厦门/.test(item) && start) {
+            return `https://flights.ctrip.com/itinerary/oneway/sha-xmn?date=${start}`;
+          }
+          if (start && end) {
+            return `https://flights.ctrip.com/itinerary/round/sha-xmn?date=${start},${end}`;
+          }
+          return `https://flights.ctrip.com/`;
+        }
+        if (/高铁|火车/.test(item)) {
+          return `https://trains.ctrip.com/`;
+        }
+        if (/酒店|宾馆|民宿/.test(item)) {
+          const kw = encodeURIComponent(item.split(/[（(]/)[0].trim());
+          return `https://hotels.ctrip.com/hotels/list?keyword=${kw}${city ? `&cityname=${city}` : ''}`;
+        }
+        if (/船票|轮渡/.test(item) && /鼓浪屿|厦门/.test(item)) {
+          return 'https://www.xiamenferry.com/';
+        }
+        if (/门票|预约|入校/.test(item)) {
+          return `https://www.ctrip.com/search/searchresult?keyword=${q}`;
+        }
+        return `https://www.ctrip.com/search/searchresult?keyword=${q}`;
       }
 
       function isAmapNaviUrl(url) {
@@ -1191,11 +1242,10 @@
 
       function resolvePrebookLink(x) {
         const url = (x.url || '').trim();
-        if (isValidHttpUrl(url) && !isPlaceholderUrl(url)) {
+        if (isValidHttpUrl(url) && !isPlaceholderUrl(url) && !isForeignOtaUrl(url)) {
           return { href: url, search: false };
         }
-        const q = encodeURIComponent(x.item || x.title || '');
-        return { href: `https://www.bing.com/search?q=${q}`, search: true };
+        return { href: buildDomesticPrebookFallback(x), search: true };
       }
 
       function isDesktopDrawer() {
@@ -1516,7 +1566,7 @@
               ? `<a href="${esc(link.href)}" target="_blank" rel="noopener">${title}</a><span class="item-search-hint">（搜索）</span>`
               : `<a href="${esc(link.href)}" target="_blank" rel="noopener">${title}</a>`;
             return `<li>
-              <span class="item-title">${titleHtml}<span class="item-deadline">· ${esc(x.deadline)}</span></span>
+              <span class="item-title">${titleHtml}<span class="item-deadline">· ${mdLite(x.deadline)}</span></span>
               ${x.note ? `<span class="item-meta">${mdLite(x.note)}</span>` : ''}
             </li>`;
           }).join('');
