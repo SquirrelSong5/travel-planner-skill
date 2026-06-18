@@ -47,6 +47,19 @@ def get_loc(p: dict[str, Any]) -> tuple[float, float] | None:
     return None
 
 
+def get_transport_endpoints(t: dict[str, Any], pois: list[Any]) -> tuple[tuple[float, float] | None, tuple[float, float] | None]:
+    """transports[].from_idx/to_idx 是 1-based（与 POI.idx 对齐）。
+
+    pois[] 是 0-indexed，索引越界或坐标缺失时对应端返回 None。
+    """
+    fi, ti = t.get("from_idx"), t.get("to_idx")
+    if fi is None or ti is None or fi < 1 or ti < 1 or fi > len(pois) or ti > len(pois):
+        return None, None
+    from_loc = get_loc(pois[fi - 1])
+    to_loc = get_loc(pois[ti - 1])
+    return from_loc, to_loc
+
+
 # ===== 常量（与 references/validation-rules.md 阈值对齐） =====
 
 # V1 区域一致性：POI 到主区域中心直线距离
@@ -80,7 +93,7 @@ V8_STRAIGHT_LINE_RATIO = 0.005  # 中间点到 from→to 直线段 < 0.5% 总距
 # - 1km 距离偏差 ≥ 5m → 算"沿路拐弯"（真路网 polyline）
 # - 真实步行/驾车 500m 内街道本来就直，偏差 < 5m 正常
 # - 但 LLM 凭记忆"编"的 polyline 一般**完全在直线上**（偏差 0），不会被误判
-V8_ALLOWED_SOURCES = {"amap-mcp"}  # 唯一合法的 source 值
+V8_ALLOWED_SOURCES = {"amap-mcp", "amap-rest-api"}  # v2.0.0 P24 降级：amap-rest-api 合法（高德 Web API 直连）
 
 # V9 V2 高德实算 vs 粗算对比
 V9_DURATION_RATIO_FAIL = 0.5  # 高德实算 vs Haversine 粗算 偏差 > 50% → 失败
@@ -251,7 +264,8 @@ def check_v4(day: dict[str, Any], prebook: list[dict[str, Any]]) -> dict[str, An
     """每天 prebook 条数。
 
     只数**当日必须预约/取票的** POI（如 Day 3 熊猫基地提前 1 天预约）。
-    出发前 N 天的机票/酒店**不算**当日预约（启发式：note 里有「Day N」或「Day N 上午/下午」才算）。
+    出发前 N 天的机票/酒店**不算**当日预约（启发式：note 里有「Day N」才匹配当日，
+    且仅排除「出发前」一次性购买类条目；「提前 1 天预约/放票」算作当日重预约）。
     """
     day_idx = day.get("day")
     day_prebooks = []
@@ -262,10 +276,10 @@ def check_v4(day: dict[str, Any], prebook: list[dict[str, Any]]) -> dict[str, An
         if p.get("day") == day_idx:
             day_prebooks.append(p)
             continue
-        # 启发式：note 里提到 "Day N" 或 "Day N 上午/下午" 才算
+        # 启发式：note 里提到 "Day N" 才算
         if f"Day {day_idx}" in note:
-            # 排除"出发前 N 天"模式
-            if "出发前" in note or "提前" in note:
+            # 仅排除"出发前 N 天买机票/酒店"；"提前 N 天预约/放票"算作当日重预约
+            if "出发前" in note:
                 continue
             day_prebooks.append(p)
     n = len(day_prebooks)
@@ -430,15 +444,9 @@ def check_v8(days: list[dict[str, Any]]) -> dict[str, Any]:
                 continue
 
             # 3. path 不能是"近似直线"（AI 凭 LLM 记忆编的）
-            # 需要 from/to 坐标
-            from_idx = t.get("from_idx")
-            to_idx = t.get("to_idx")
-            pois = d.get("pois") or []
-            if from_idx is not None and to_idx is not None and from_idx < len(pois) and to_idx < len(pois):
-                from_loc = get_loc(pois[from_idx])
-                to_loc = get_loc(pois[to_idx])
-                if from_loc and to_loc and _is_straight_line(path, from_loc, to_loc):
-                    straight_line.append(f"{seg_label}（{len(path)} 个点全是直线排列，疑似 LLM 记忆编的）")
+            from_loc, to_loc = get_transport_endpoints(t, d.get("pois") or [])
+            if from_loc and to_loc and _is_straight_line(path, from_loc, to_loc):
+                straight_line.append(f"{seg_label}（{len(path)} 个点全是直线排列，疑似 LLM 记忆编的）")
 
     if total_transports == 0:
         return {"id": "V8", "rule": "MCP 必跑痕迹（v1.5.0 新增）", "status": "✅", "note": "无 transport 段，跳过"}
@@ -496,13 +504,7 @@ def check_v9(days: list[dict[str, Any]]) -> dict[str, Any]:
             seg_label = f"{day_label}.transports[{i}]"
 
             # 用 Haversine 算直线距离对应的粗算通勤
-            from_idx = t.get("from_idx")
-            to_idx = t.get("to_idx")
-            pois = d.get("pois") or []
-            if from_idx is None or to_idx is None or from_idx >= len(pois) or to_idx >= len(pois):
-                continue
-            from_loc = get_loc(pois[from_idx])
-            to_loc = get_loc(pois[to_idx])
+            from_loc, to_loc = get_transport_endpoints(t, d.get("pois") or [])
             if not from_loc or not to_loc:
                 continue
 
