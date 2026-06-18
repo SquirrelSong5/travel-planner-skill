@@ -1552,10 +1552,7 @@
           pushIfNew(p);
         }
 
-        if (!lastPoiIsDeparture(day) && findHotelLeg(day, 'evening') && hotel) {
-          pushIfNew(hotel);
-        }
-
+        // 全天驾车路线不以「回酒店」作终点（易与入住/途经酒店重复）；末 POI 即终点
         if (ordered.length < 2) return null;
         return finalizeDayRouteStops(ordered[0], ordered.slice(1, -1), ordered[ordered.length - 1]);
       }
@@ -1564,10 +1561,11 @@
       function finalizeDayRouteStops(start, vias, end) {
         let s = start;
         let e = end;
-        let v = vias.slice();
+        let v = vias.filter(p => !sameRouteCoords(p, s) && !sameRouteCoords(p, e));
         if (sameRouteCoords(s, e)) {
           if (!v.length) return null;
           e = v.pop();
+          v = v.filter(p => !sameRouteCoords(p, s) && !sameRouteCoords(p, e));
         }
         while (v.length && sameRouteCoords(e, v[v.length - 1])) v.pop();
         if (sameRouteCoords(s, e)) return null;
@@ -1587,25 +1585,36 @@
         };
       }
 
-      function formatAmapWebPosition(p) {
+      function dirEndpointQuery(role, p, id) {
         const c = poiCoords(p);
-        if (!c) return null;
+        if (!c) return '';
         const name = encodeURIComponent(naviPlaceName(p) || '地点');
-        return `${c.lng},${c.lat},${name}`;
+        return `${role}[lnglat]=${c.lng},${c.lat}&${role}[name]=${name}&${role}[id]=${id}`;
       }
 
-      function buildDayAmapWebFallback(start, vias, end, desktop) {
-        const from = formatAmapWebPosition(start);
-        const to = formatAmapWebPosition(end);
-        if (!from || !to) return null;
-        let url = `https://uri.amap.com/navigation?from=${from}&to=${to}&mode=car`;
-        if (!desktop) url += '&callnative=1';
-        // 网页 URI 最多 1 个途经点；多途经时仅起点→终点，避免错误 via 导致无法打开
-        if (vias.length === 1) {
-          const via = formatAmapWebPosition(vias[0]);
-          if (via) url += `&via=${via}`;
-        }
-        return url;
+      function dirViaQuery(p, index) {
+        const c = poiCoords(p);
+        if (!c) return '';
+        const name = encodeURIComponent(naviPlaceName(p) || '地点');
+        return `via[${index}][lnglat]=${c.lng},${c.lat}&via[${index}][name]=${name}`;
+      }
+
+      /** 高德地图路线规划页（ditu.amap.com/dir，支持 via[0]…via[n] 多途经点） */
+      function buildDayAmapDirUrl(start, vias, end, opts) {
+        const callnative = opts && opts.callnative;
+        const ts = Date.now();
+        const q = [
+          dirEndpointQuery('from', start, `${ts}-from`),
+          dirEndpointQuery('to', end, `${ts}-to`),
+          ...vias.map((v, i) => dirViaQuery(v, i)),
+          'type=car',
+          'src=uriapi',
+          'innersrc=uriapi',
+          'policy=1',
+        ];
+        if (callnative) q.push('callnative=1');
+        if (q.length < 5) return null;
+        return `https://ditu.amap.com/dir?${q.filter(Boolean).join('&')}`;
       }
 
       function buildDayAmapNativeUrls(start, vias, end) {
@@ -1634,11 +1643,11 @@
 
       function openAmapDayRoute(route) {
         const desktop = !isMobileAmapDevice();
-        const webUrl = buildDayAmapWebFallback(route.start, route.vias, route.end, desktop);
-        if (!webUrl) return;
+        const dirUrl = buildDayAmapDirUrl(route.start, route.vias, route.end, { callnative: !desktop });
+        if (!dirUrl) return;
         if (desktop) {
           const a = document.createElement('a');
-          a.href = webUrl;
+          a.href = dirUrl;
           a.target = '_blank';
           a.rel = 'noopener';
           document.body.appendChild(a);
@@ -1648,7 +1657,7 @@
         }
         const native = buildDayAmapNativeUrls(route.start, route.vias, route.end);
         const nativeUrl = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? native.ios : native.android;
-        let timer = setTimeout(() => { window.location.href = webUrl; }, 2000);
+        let timer = setTimeout(() => { window.location.href = dirUrl; }, 2000);
         const clear = () => {
           clearTimeout(timer);
           document.removeEventListener('visibilitychange', onVis);
@@ -2612,7 +2621,7 @@
 
         const dayRoute = collectDayRouteStops(d);
         const dayRouteBtn = dayRoute
-          ? `<button type="button" class="day-route-btn" data-day-route="${d.day}" title="按行程顺序规划驾车路线（手机含全部途经点；电脑仅起点→终点），不等同于分段公交方案">全天路线</button>`
+          ? `<button type="button" class="day-route-btn" data-day-route="${d.day}" title="按当天行程顺序规划驾车路线（含全部途经点），不等同于分段公交方案">全天路线</button>`
           : '';
 
         document.getElementById('day-panel').innerHTML = `

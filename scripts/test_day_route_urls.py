@@ -112,12 +112,13 @@ def collect_and_finalize(trip: dict, day: dict):
             continue
         push(p)
     if not last_poi_is_departure() and find_hotel_leg("evening") and hotel_pt:
-        push(hotel_pt)
+        pass  # 导航路线不以回酒店作终点
+
     if len(ordered) < 2:
         return None
 
     start, end = ordered[0], ordered[-1]
-    vias = ordered[1:-1]
+    vias = [p for p in ordered[1:-1] if not same_coords(p, start) and not same_coords(p, end)]
     if same_coords(start, end):
         if not vias:
             return None
@@ -129,18 +130,25 @@ def collect_and_finalize(trip: dict, day: dict):
     return {"start": start, "vias": vias, "end": end}
 
 
-def web_url(start, vias, end, hotel_name: str, desktop: bool = True) -> str:
-    def pos(p):
+def dir_url(start, vias, end, hotel_name: str) -> str:
+    ts = 1_781_792_351_000
+
+    def endpoint(role, p, eid):
         c = poi_coords(p)
         name = quote(navi_place_name(p, hotel_name) or "地点", safe="")
-        return f"{c['lng']},{c['lat']},{name}"
+        return f"{role}[lnglat]={c['lng']},{c['lat']}&{role}[name]={name}&{role}[id]={eid}"
 
-    url = f"https://uri.amap.com/navigation?from={pos(start)}&to={pos(end)}&mode=car"
-    if not desktop:
-        url += "&callnative=1"
-    if len(vias) == 1:
-        url += f"&via={pos(vias[0])}"
-    return url
+    def via_pt(p, index):
+        c = poi_coords(p)
+        name = quote(navi_place_name(p, hotel_name) or "地点", safe="")
+        return f"via[{index}][lnglat]={c['lng']},{c['lat']}&via[{index}][name]={name}"
+
+    q = (
+        [endpoint("from", start, f"{ts}-from"), endpoint("to", end, f"{ts}-to")]
+        + [via_pt(v, i) for i, v in enumerate(vias)]
+        + ["type=car", "src=uriapi", "innersrc=uriapi", "policy=1"]
+    )
+    return f"https://ditu.amap.com/dir?{'&'.join(q)}"
 
 
 def main() -> int:
@@ -159,16 +167,14 @@ def main() -> int:
                 print(f"  Day {day['day']}: skip (no route)")
                 continue
             same = same_coords(route["start"], route["end"])
-            url = web_url(route["start"], route["vias"], route["end"], hotel_name)
-            has_via = "via=" in url
-            q = parse_qs(urlparse(url).query)
+            url = dir_url(route["start"], route["vias"], route["end"], hotel_name)
             issues = []
             if same:
                 issues.append("SAME_START_END")
-            if len(route["vias"]) > 1 and has_via:
-                issues.append("MULTI_VIA_ON_WEB")
-            if "%7C" in q.get("via", [""])[0]:
-                issues.append("BAD_VIA_ENCODING")
+            if len(route["vias"]) > 1 and "via[1]" not in url:
+                issues.append("MISSING_MULTI_VIA")
+            if len(route["vias"]) > 0 and "via[0]" not in url:
+                issues.append("MISSING_VIA0")
             status = "OK" if not issues else "FAIL " + ",".join(issues)
             if issues:
                 failed += 1
