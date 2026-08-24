@@ -1313,7 +1313,7 @@
     </main>
 
     <footer class="bottom">
-      <p>由 <strong>travel-planner</strong> skill 生成 · 来源与核对时间见行前复核</p>
+      <p>由 <strong>travel-planner</strong> skill 生成 · 信息源与核对时间见侧栏</p>
       <p>计划 = 参考坐标 · 天气 / 体力 / 饥饿均可覆盖</p>
     </footer>
 
@@ -1373,6 +1373,11 @@
           天气策略
         </h3>
         <div class="weather-card" id="weather-plan-text"></div>
+      </section>
+
+      <section id="source-coverage-section" style="display:none">
+        <h3>信息源覆盖 <span class="count" id="source-coverage-count"></span></h3>
+        <ul class="drawer-list" id="source-coverage-list"></ul>
       </section>
 
       <section id="safety-section" style="display:none">
@@ -1446,6 +1451,7 @@
       },
       days: [],
       prebook: [],
+      source_coverage: [],
       safety_notes: [],
       rechecks: []
     };
@@ -2777,6 +2783,41 @@
       }
 
       function renderOperationalLists() {
+        const platformMap = {
+          official: '官方与运营方', amap: '高德地图', ota: '国内 OTA',
+          xiaohongshu: '小红书', meituan: '美团攻略'
+        };
+        const coverageStatusMap = {
+          used: '已使用', degraded: '降级使用', unavailable: '暂不可用', not_applicable: '本次不适用'
+        };
+        const stageMap = {
+          discovery: '目的地发现', constraints: '规则确认', spatial: '路线落地',
+          dining: '餐饮筛选', booking: '预订核对', pricing: '价格核对',
+          experience: '体验复核', recheck: '行前复核'
+        };
+        const coverage = (D.source_coverage || []).filter(x => x && typeof x === 'object');
+        const coverageSection = document.getElementById('source-coverage-section');
+        const coverageList = document.getElementById('source-coverage-list');
+        if (coverage.length) {
+          coverageSection.style.display = '';
+          document.getElementById('source-coverage-count').textContent = `${coverage.length}/5`;
+          coverageList.innerHTML = coverage.map(x => {
+            const stages = (x.stages || []).map(stage => stageMap[stage] || stage).join('、');
+            const refs = (x.source_refs || []).filter(isValidHttpUrl).map((ref, index) =>
+              `<a href="${esc(ref)}" target="_blank" rel="noopener">证据 ${index + 1}</a>`
+            ).join(' · ');
+            return `<li>
+              <span class="item-title">${esc(platformMap[x.platform] || x.platform || '未知平台')}</span>
+              <span class="item-badges"><span class="item-badge ${x.status === 'used' ? '' : 'warning'}">${esc(coverageStatusMap[x.status] || x.status || '待确认')}</span></span>
+              <span class="item-meta">${esc(stages)}${x.checked_at ? ` · ${esc(String(x.checked_at).slice(0, 10))}` : ''}</span>
+              <span class="item-meta">${mdLite(x.purpose || '')}${refs ? ` · ${refs}` : ''}</span>
+              ${x.note ? `<span class="item-meta">${mdLite(x.note)}</span>` : ''}
+            </li>`;
+          }).join('');
+        } else {
+          coverageSection.style.display = 'none';
+        }
+
         const severityMap = { notice: '提示', warning: '注意', critical: '重要' };
         const safety = (D.safety_notes || []).filter(x => x && typeof x === 'object');
         const safetySection = document.getElementById('safety-section');
