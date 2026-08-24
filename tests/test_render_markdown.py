@@ -19,6 +19,14 @@ class RenderMarkdownTests(unittest.TestCase):
             "city": "成都",
             "party_size": 2,
             "hotel": {"name": "测试酒店"},
+            "source_coverage": [{
+                "platform": "official",
+                "status": "used",
+                "stages": ["constraints", "recheck"],
+                "purpose": "核对开放和天气",
+                "checked_at": "2026-08-24T10:00:00+08:00",
+                "source_refs": ["https://example.com/official"],
+            }],
             "days": [{
                 "day": 1,
                 "date": "2026-09-18",
@@ -66,6 +74,9 @@ class RenderMarkdownTests(unittest.TestCase):
             "需要实名/证件",
             "注意｜湿滑",
             "行前复核",
+            "信息源使用情况",
+            "[已使用] 官方与运营方",
+            "规则确认、行前复核",
         ):
             self.assertIn(expected, rendered)
 
