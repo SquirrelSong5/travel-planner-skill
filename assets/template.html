@@ -518,6 +518,45 @@
       color: var(--accent);
       font-weight: 500;
     }
+    .item-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .item-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .item-badge.warning { background: #fff4db; color: #8a5500; }
+    .item-badge.critical { background: #feeceb; color: #a42821; }
+    .decision-card {
+      margin: var(--sp-4);
+      padding: var(--sp-4);
+      border: 1px solid #d8c8a3;
+      border-radius: var(--radius);
+      background: #fffaf0;
+      color: var(--fg);
+      font-size: var(--fs-sm);
+      line-height: 1.6;
+    }
+    .decision-card strong { color: #745117; }
+    .decision-card p { margin: 4px 0 0; }
+    .safety-card {
+      margin: var(--sp-3) var(--sp-4) var(--sp-4);
+      padding: var(--sp-3) var(--sp-4);
+      border-left: 3px solid #b54a40;
+      background: #fff7f6;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: var(--fs-sm);
+      line-height: 1.6;
+    }
 
     /* ===== Weather card ===== */
     .weather-card {
@@ -1229,11 +1268,7 @@
 
   <div class="wrap">
 
-    <!-- ===== Validation Banner（v1.1.0 新增，代码级硬约束）=====
-         AI 必须在 tripData.validation_report 嵌入完整 7 条规则结果；
-         浏览器加载时 JS 会用同样规则强制重算（不依赖 AI 的 self-report）。
-         缺失/不完整 → 顶部红/黄条
-    -->
+    <!-- scripts/validate.py 是渲染前的权威校验入口；此隐藏节点预留给未来的页内报告。 -->
     <div id="validation-banner" role="status" aria-live="polite" hidden></div>
 
     <header class="hero">
@@ -1278,7 +1313,7 @@
     </main>
 
     <footer class="bottom">
-      <p>由 <strong>travel-planner</strong> skill 生成 · 数据来源：高德 MCP / 小红书 MCP</p>
+      <p>由 <strong>travel-planner</strong> skill 生成 · 来源与核对时间见行前复核</p>
       <p>计划 = 参考坐标 · 天气 / 体力 / 饥饿均可覆盖</p>
     </footer>
 
@@ -1340,6 +1375,16 @@
         <div class="weather-card" id="weather-plan-text"></div>
       </section>
 
+      <section id="safety-section" style="display:none">
+        <h3>安全提醒 <span class="count" id="safety-count"></span></h3>
+        <ul class="drawer-list" id="safety-list"></ul>
+      </section>
+
+      <section id="recheck-section" style="display:none">
+        <h3>行前复核 <span class="count" id="recheck-count"></span></h3>
+        <ul class="drawer-list" id="recheck-list"></ul>
+      </section>
+
       <!-- 花销预估 -->
       <section id="budget-section">
         <h3>
@@ -1372,7 +1417,7 @@
     </div>
   </aside>
 
-  <!-- ====== AI 在 Step 7 填这里 ======
+  <!-- ====== scripts/render_html.py 在这里注入已校验的 tripData ======
        window.AMAP_KEY：高德 Web (JS) API Key（空字符串则地图降级为文字版）
        window.tripData：完整行程数据
        可选字段 trip_center：[lng, lat] —— 多城行程的整体中心点（用于初始化地图视野），
@@ -1400,7 +1445,9 @@
         commute: []
       },
       days: [],
-      prebook: []
+      prebook: [],
+      safety_notes: [],
+      rechecks: []
     };
     // TRIP_DATA_END
   </script>
@@ -2537,6 +2584,22 @@
 
         const wsTag = d.weather_decision ?
           `<p class="note" style="margin-top:8px">📋 ${mdLite(d.weather_decision)}</p>` : '';
+        const rawPlanB = Array.isArray(d.plan_b) ? d.plan_b : (d.plan_b ? [d.plan_b] : []);
+        const planBHtml = rawPlanB.filter(x => x && x.trigger && x.alternative).map(x => `
+          <div class="decision-card">
+            <strong>Plan B · ${esc(x.trigger)}</strong>
+            <p>替代安排：${mdLite(x.alternative)}</p>
+            ${x.impact ? `<p>调整影响：${mdLite(x.impact)}</p>` : ''}
+            ${x.route_note ? `<p>路线：${mdLite(x.route_note)}</p>` : ''}
+          </div>`).join('');
+        const daySafety = [
+          ...(d.safety_notes || []),
+          ...(D.safety_notes || []).filter(x => x && x.day === d.day),
+        ];
+        const daySafetyHtml = daySafety.length ? `
+          <div class="safety-card">
+            ${daySafety.map(x => `<p><strong>${esc(x.risk || '安全提醒')}</strong>：${mdLite(x.action || x)}</p>`).join('')}
+          </div>` : '';
 
         // 收集要"嵌入"到 POI 卡片末尾的 meal：按时段匹配第一个符合的 POI，
         // 没匹配到的 fallback 到最后 POI
@@ -2670,6 +2733,8 @@
             <p class="theme">${esc(d.theme || '')}</p>
             <ol class="timeline">${morningLegHtml}${poiItems}</ol>
             ${wsTag}
+            ${planBHtml}
+            ${daySafetyHtml}
           </article>`;
         bindUserBudgetInputs();
         bindCostMarginInteractions();
@@ -2683,12 +2748,20 @@
         if (D.prebook && D.prebook.length) {
           prebookEl.innerHTML = D.prebook.map(x => {
             const link = resolvePrebookLink(x);
-            const title = esc(x.item);
+            const title = esc(x.item || x.title || '待办事项');
             const titleHtml = link.search
               ? `<a href="${esc(link.href)}" target="_blank" rel="noopener">${title}</a><span class="item-search-hint">（搜索）</span>`
               : `<a href="${esc(link.href)}" target="_blank" rel="noopener">${title}</a>`;
+            const priorityMap = { must: '必须', recommended: '建议', optional: '可选' };
+            const statusMap = { booked: '已完成', not_booked: '待办理', not_required: '无需办理', unknown: '待确认' };
+            const badges = [
+              `<span class="item-badge">${esc(priorityMap[x.priority] || x.priority || '未分级')}</span>`,
+              `<span class="item-badge ${x.status === 'unknown' ? 'warning' : ''}">${esc(statusMap[x.status] || x.status || '待确认')}</span>`,
+              x.id_required ? '<span class="item-badge warning">实名/证件</span>' : '',
+            ].filter(Boolean).join('');
             return `<li>
-              <span class="item-title">${titleHtml}<span class="item-deadline">· ${mdLite(x.deadline)}</span></span>
+              <span class="item-title">${titleHtml}${x.deadline ? `<span class="item-deadline">· ${mdLite(x.deadline)}</span>` : ''}</span>
+              <span class="item-badges">${badges}</span>
               ${x.note ? `<span class="item-meta">${mdLite(x.note)}</span>` : ''}
             </li>`;
           }).join('');
@@ -2698,6 +2771,48 @@
         } else {
           document.getElementById('prebook-count').textContent = '0';
           document.getElementById('drawer-badge').style.display = 'none';
+        }
+
+        renderOperationalLists();
+      }
+
+      function renderOperationalLists() {
+        const severityMap = { notice: '提示', warning: '注意', critical: '重要' };
+        const safety = (D.safety_notes || []).filter(x => x && typeof x === 'object');
+        const safetySection = document.getElementById('safety-section');
+        const safetyList = document.getElementById('safety-list');
+        if (safety.length) {
+          safetySection.style.display = '';
+          document.getElementById('safety-count').textContent = `${safety.length} 项`;
+          safetyList.innerHTML = safety.map(x => `<li>
+            <span class="item-title">${esc(x.risk || '安全提醒')}</span>
+            <span class="item-badges"><span class="item-badge ${esc(x.severity || '')}">${esc(severityMap[x.severity] || x.severity || '提示')}</span></span>
+            <span class="item-meta">${mdLite(x.action || '')}</span>
+          </li>`).join('');
+        } else {
+          safetySection.style.display = 'none';
+        }
+
+        const statusMap = { verified: '已核对', due: '待复核', unknown: '待确认' };
+        const rechecks = (D.rechecks || []).filter(x => x && typeof x === 'object');
+        const recheckSection = document.getElementById('recheck-section');
+        const recheckList = document.getElementById('recheck-list');
+        if (rechecks.length) {
+          recheckSection.style.display = '';
+          document.getElementById('recheck-count').textContent = `${rechecks.length} 项`;
+          recheckList.innerHTML = rechecks.map(x => {
+            const sourceLink = isValidHttpUrl(x.source_ref)
+              ? `<a href="${esc(x.source_ref)}" target="_blank" rel="noopener">来源</a>`
+              : esc(x.source_ref || '');
+            return `<li>
+              <span class="item-title">${esc(x.item || '待复核事项')}<span class="item-deadline">· ${esc(x.recheck_at || '未设置')}</span></span>
+              <span class="item-badges"><span class="item-badge ${x.status === 'verified' ? '' : 'warning'}">${esc(statusMap[x.status] || x.status || '待确认')}</span></span>
+              <span class="item-meta">上次核对：${esc(x.checked_at || '未知')} · ${sourceLink}</span>
+              ${x.note ? `<span class="item-meta">${mdLite(x.note)}</span>` : ''}
+            </li>`;
+          }).join('');
+        } else {
+          recheckSection.style.display = 'none';
         }
       }
 
@@ -2846,7 +2961,7 @@
         const script = document.createElement('script');
         script.src = `https://webapi.amap.com/maps?v=2.0&key=${window.AMAP_KEY}&plugin=AMap.Marker,AMap.InfoWindow`;
         script.onload = () => {
-          // 地图中心：优先取 tripData.trip_center（AI 在 Step 7 注入），否则取首日主区域中心
+          // 地图中心：优先取已渲染 JSON 的 trip_center，否则取首日主区域中心
           const tripCenter = D.trip_center || (D.days[0] && D.days[0].center);
           const initCenter = tripCenter || [116.397, 39.908]; // 兜底北京（GCJ-02）
           map = new AMap.Map('map', {
@@ -2917,11 +3032,9 @@
         }
       });
 
-      // ===== Validation（v1.1.0 新增，代码级硬约束）=====
-      // 浏览器端强制重算 V1/V3/V4/V5/V6（用 POI 坐标 + 阈值公式），
-      // 结果**覆盖** tripData.validation_report.rules（AI 作弊也挡不住）。
-      // V2 通勤需高德 API，浏览器内只能粗算 → 提示用户看 AI 高德复核报告。
-      // V7 用户禁忌需 AI 上下文判断，**不能脚本化** → 保留 AI self-report。
+      // ===== Legacy browser diagnostics =====
+      // 最终交付以 scripts/validate.py 的完整规则集与渲染前结果为准。
+      // 以下辅助函数仅保留给开发调试，不在成品页展示。
 
       const VALIDATION_RULE_IDS = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9'];
       const VALIDATION_THRESHOLDS = {
@@ -3171,8 +3284,7 @@
         rules.push(browserCheckV8(D.days));
         // V9 高德实算 vs 粗算
         rules.push(browserCheckV9(D.days));
-        // V7 完全由 AI 判断，浏览器无法验
-        // 保留 AI self-report 里的 V7（如有）
+        // V7 只能复用离线校验报告，浏览器无法独立判断用户约束。
         const aiReport = D.validation_report;
         if (aiReport && Array.isArray(aiReport.rules)) {
           const v7 = aiReport.rules.find(r => r.id === 'V7');
