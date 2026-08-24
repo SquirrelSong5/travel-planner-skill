@@ -1,16 +1,19 @@
 # Examples
 
-`chengdu-2026-09-18.json` 是仓库的国内行程示例，用于验证数据、测试路线 URL 和渲染 HTML。
+`chengdu-2026-09-18.json` 是仓库的国内行程示例，用于验证数据、测试路线 URL，以及渲染同源 Markdown/HTML。
 
 ## 运行
 
 ```bash
-python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn
+python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn --as-of 2026-08-24
 python scripts/test_day_route_urls.py examples/chengdu-2026-09-18.json
+python scripts/render_markdown.py examples/chengdu-2026-09-18.json -o /tmp/chengdu-trip.md
 python scripts/render_html.py assets/template.html examples/chengdu-2026-09-18.json -o /tmp/chengdu-trip.html
 ```
 
-机器可读的核心结构见 [trip-schema.json](../references/trip-schema.json)。示例包含模板使用的扩展字段，因此 Schema 有意只约束核心必填结构。
+机器可读结构见 [trip-schema.json](../references/trip-schema.json)，包括预订状态、Plan B、安全提醒和行前复核。
+
+`--as-of` 只用于冻结示例的历史核对日期；真实行程应按当天运行 V12。
 
 ## 文件命名
 
@@ -18,6 +21,7 @@ python scripts/render_html.py assets/template.html examples/chengdu-2026-09-18.j
 
 ```text
 chengdu-2026-09-18.json
+chengdu-2026-09-18.md
 chengdu-2026-09-18.html
 ```
 
