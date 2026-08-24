@@ -25,10 +25,12 @@ jobs:
         run: python -m unittest discover -s tests -v
 
       - name: Validate example strictly
-        run: python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn
+        run: python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn --as-of 2026-08-24
 
       - name: Smoke-test route URLs
         run: python scripts/test_day_route_urls.py
 
       - name: Render example
-        run: python scripts/render_html.py assets/template.html examples/chengdu-2026-09-18.json -o /tmp/chengdu-trip.html
+        run: |
+          python scripts/render_markdown.py examples/chengdu-2026-09-18.json -o /tmp/chengdu-trip.md
+          python scripts/render_html.py assets/template.html examples/chengdu-2026-09-18.json -o /tmp/chengdu-trip.html
