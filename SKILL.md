@@ -1,6 +1,6 @@
 ---
 name: travel-planner
-description: 面向中国大陆行程的旅行规划与迭代 Skill。使用地图、官方渠道、OTA、目的地攻略和餐饮指南等实时信息，生成并校验包含酒店、每日路线、交通、餐饮、预算和预订事项的对话版攻略与响应式单文件 HTML。Use when the user asks to plan, optimize, review, update, or publish a domestic trip itinerary, including requests based on flight, train, hotel, attraction, restaurant, or route details.
+description: 面向中国大陆行程的旅行规划、行前复核与临场调整 Skill。使用地图、官方渠道、OTA、目的地攻略和餐饮指南等实时信息，生成并校验包含路线、餐饮、预算、预订状态、Plan B 和安全提醒的对话版攻略与响应式单文件 HTML。Use when the user asks to plan, optimize, review, update, recheck, or publish a domestic trip itinerary, including requests based on flight, train, hotel, attraction, restaurant, weather, safety, or route details.
 ---
 
 # Travel Planner
@@ -25,12 +25,14 @@ description: 面向中国大陆行程的旅行规划与迭代 Skill。使用地�
 | 来源 | 主要用途 | 角色 |
 | --- | --- | --- |
 | 高德地图 | POI、坐标、地理编码、距离、路线、通勤时长 | 路线与地理硬数据 |
-| 官方渠道与网页搜索 | 开放时间、预约、票务、临时通知、天气和公共交通规则 | 最高优先级硬事实 |
+| 官方与运营方渠道 | 开放时间、预约、票务、临时通知、天气和公共交通规则 | 最高优先级硬事实 |
 | 携程等国内 OTA | 酒店、机票、火车与可预订价格区间、国内深链 | 价格和预订 |
 | 小红书 | 分区、游玩节奏、排队、拍照、踩雷等近期体验 | 可选软信号 |
 | 美团攻略 | 餐厅候选、菜系与场景化推荐 | 可选候选池 |
 
 大众点评不属于默认主链路。仅在用户明确要求且当前环境已有合规能力时作为补充，不要求安装或绕过反爬。
+
+网页搜索、浏览器、WebFetch 和 MCP 是检索方式，不是信息源。用搜索发现页面后，尽量打开原始官方页并记录它；不要把搜索摘要标成官方来源。
 
 ## 能力发现
 
@@ -67,7 +69,7 @@ description: 面向中国大陆行程的旅行规划与迭代 Skill。使用地�
 - 酒店、机票、火车及门票价格区间；
 - 旅行日期对应的天气或季节风险。
 
-为每条会变化的信息保存 `source`、`source_ref`，建议同时保存 `checked_at`。无法核验时写 `unknown` 或 `estimate`，且不要让它通过严格价格校验。
+为易变事实保存 `source`、`source_ref`、`checked_at`，并在顶层 `rechecks` 安排 `recheck_at`。无法核验时写 `unknown`，不要伪装成已验证，也不要让估算价格通过严格校验。
 
 ### 3. 建候选池并排日程
 
@@ -78,6 +80,8 @@ description: 面向中国大陆行程的旅行规划与迭代 Skill。使用地�
 - 控制每日 POI 数量和步行强度；
 - 午晚餐靠近当日区域或明确成为路线一站；
 - 最后一日从返程时间倒排，保留安检、取行李和拥堵缓冲。
+- 为天气敏感或可能临时关闭的日程写结构化 `plan_b`：触发条件、替代安排和路线影响；
+- 按同行人、天气、海拔、夜间交通、行李和返程风险生成具体 `safety_notes`，避免通用套话。
 
 酒店选择与换住判断见 [references/hotel-planning.md](references/hotel-planning.md)，整体编排细节见 [references/planning.md](references/planning.md)。
 
@@ -91,7 +95,8 @@ description: 面向中国大陆行程的旅行规划与迭代 Skill。使用地�
 - POI 的序号、时间、停留时长与坐标；
 - `transports` 的端点、方式、时长与来源；
 - 主餐厅坐标和价格；
-- `prebook`、预算和关键提醒。
+- 带 `priority`、`status`、`deadline`、`id_required` 的 `prebook`；
+- 结构化 `plan_b`、`safety_notes`、`rechecks`、预算和关键提醒。
 
 不要用 `scripts/seed_prices.py` 生成的演示估算冒充实时调研结果。该脚本只用于旧数据迁移和模板演示。
 
@@ -113,17 +118,20 @@ python scripts/add_hotel_legs.py trip.json --output trip-with-hotel-legs.json
 python scripts/add_hotel_legs.py trip.json --in-place
 ```
 
-### 6. 渲染 HTML
+V12 会阻止缺失或过期的关键复核项。测试历史/未来日期时可显式传 `--as-of YYYY-MM-DD`，但真实交付默认使用今天。
+
+### 6. 渲染双输出
 
 ```bash
+python scripts/render_markdown.py trip.json -o trip.md
 python scripts/render_html.py assets/template.html trip.json -o trip.html
 ```
 
-打开 HTML 检查标题、日期、地图、预订链接、预算和移动端布局。高德 Web Key 只允许用户在页面内输入并保存到当前设备；不得通过 `?k=` 参数传递。
+对话版必须直接使用 `trip.md` 的内容，不要另写一份可能漂移的攻略。打开 HTML 检查标题、日期、地图、预订状态、Plan B、安全提醒、行前复核、预算和移动端布局。高德 Web Key 只允许用户在页面内输入并保存到当前设备；不得通过 `?k=` 参数传递。
 
 ### 7. 生成对话版攻略
 
-根据已校验的同一份 JSON，在对话中直接给出一份无需打开附件也能使用的完整攻略，至少包含：
+把 `trip.md` 的完整内容放进对话，确保无需打开附件也能使用，至少包含：
 
 - 行程概览、关键假设和待核验项；
 - 每日时段、POI 顺序、区域和主要交通；
@@ -147,6 +155,17 @@ python scripts/render_html.py assets/template.html trip.json -o trip.html
 
 部署细节见 [references/deployment.md](references/deployment.md)。
 
+## 行前复核与临场调整
+
+根据首日日期自动选择核对强度：
+
+- 距出发超过 7 天：保留当前证据，并安排每类易变事实的 `recheck_at`；
+- 距出发 7 天内：重新查询开放/预约、主要路线、末班、可售状态和未付款价格；
+- 距出发 1 天内：再查逐小时天气、预警、临时闭馆和机场/车站路线；
+- 用户说“今天”“明天”或现场发生变化：只重算受影响日期，立即给出触发条件明确的替代方案。
+
+细则见 [references/recheck-and-safety.md](references/recheck-and-safety.md)。这不是后台定时任务；每次 Skill 被调用时根据当前日期执行。
+
 ## 增量修改
 
 用户后续改酒店、日期、航班或 POI 时，不要重做无关部分：
@@ -155,8 +174,8 @@ python scripts/render_html.py assets/template.html trip.json -o trip.html
 2. 找出受影响的日期、路线、价格和预订项；
 3. 只重新查询会失效的事实；
 4. 重跑全量校验；
-5. 重渲 HTML；
-6. 从更新后的 JSON 重新生成完整对话版攻略；
+5. 重新生成 Markdown 与 HTML；
+6. 直接使用最新 Markdown 作为完整对话版攻略；
 7. 在同一回复中重新交付两种最新输出；
 8. 已发布且用户要求同步时，再更新同一页面。
 
@@ -167,7 +186,8 @@ python scripts/render_html.py assets/template.html trip.json -o trip.html
 - [data-sources.md](references/data-sources.md)：五类信息源、优先级和证据规范
 - [planning.md](references/planning.md)：行程编排方法
 - [hotel-planning.md](references/hotel-planning.md)：酒店与换住策略
-- [validation-rules.md](references/validation-rules.md)：V0–V13 校验规则
+- [validation-rules.md](references/validation-rules.md)：V0–V13 校验规则（含 V12 时效性）
+- [recheck-and-safety.md](references/recheck-and-safety.md)：行前复核、临场调整与安全提醒
 - [deployment.md](references/deployment.md)：本地交付与可选发布
 - [setup-guide.md](references/setup-guide.md)：用户明确要求时的能力配置
 - [amap-mcp-usage.md](references/amap-mcp-usage.md)：高德查询与路线字段
