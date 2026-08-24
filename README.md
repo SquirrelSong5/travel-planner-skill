@@ -5,12 +5,16 @@
 **把实时旅行信息变成能直接阅读、也能保存分享的可执行行程**
 
 [![CI](https://github.com/SquirrelSong5/travel-planner-skill/actions/workflows/validate.yml/badge.svg)](https://github.com/SquirrelSong5/travel-planner-skill/actions/workflows/validate.yml)
+[![GitHub stars](https://img.shields.io/github/stars/SquirrelSong5/travel-planner-skill?style=flat)](https://github.com/SquirrelSong5/travel-planner-skill/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/SquirrelSong5/travel-planner-skill?style=flat)](https://github.com/SquirrelSong5/travel-planner-skill/forks)
+[![Version](https://img.shields.io/badge/version-3.1.0-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [在线预览](https://squirrelsong5.github.io/travel-plans/chengdu-2026-09-18.html) ·
+[项目亮点](#为什么用-travel-planner) ·
 [快速开始](#快速开始) ·
 [信息源](#现在有哪几个信息源) ·
-[文档](#文档)
+[Star History](#star-history)
 
 </div>
 
@@ -18,7 +22,20 @@
 
 对话版攻略和 HTML 是同等重要的必选交付：前者无需打开文件即可使用，后者适合离线保存和分享。公开网页链接只是可选的额外交付。
 
-## 能做什么
+## 为什么用 travel-planner
+
+普通 AI 攻略经常“看起来很完整，真正出门时却不好用”：路线绕、时间过期、下雨没备选、需要预约却没提醒。`travel-planner` 把这些容易翻车的地方变成固定检查项。
+
+| 普通 AI 攻略 | travel-planner |
+| --- | --- |
+| 给出一段看起来合理的文字 | 同时给出聊天内完整攻略与可保存的 HTML |
+| 营业时间、票价可能来自旧记忆 | 记录信息来源、核对时间和下次复核节点 |
+| 只列景点，不一定真的顺路 | 检查酒店往返、相邻地点通勤和返程缓冲 |
+| “下雨就改室内”但没有具体方案 | 写清触发条件、替代安排和路线影响 |
+| 提醒“记得预约” | 跟踪待订、已订、已付款、证件和截止时间 |
+| 临时变化后整份攻略容易失效 | 只重查受影响部分，再同步更新两种输出 |
+
+### 核心亮点
 
 - 基于日期、人数、预算、偏好和已订交通规划多日行程；
 - 用实时来源核对开放时间、预约、票价、坐标和通勤；
@@ -31,15 +48,17 @@
 
 ## 现在有哪几个信息源
 
-当前主模型包含 **5 类信息源**：
+当前默认使用 **5 类信息源**。不是每次旅行都必须凑齐五类，而是根据任务选择；官方事实不足时会明确标注“待核对”，不会用攻略或模型记忆补成确定结论。
 
-| 信息源 | 主要提供什么 | 使用方式 |
-| --- | --- | --- |
-| 高德地图 | POI、坐标、路线、距离、通勤时长 | 地理与路线硬数据 |
-| 官方与运营方渠道 | 营业/闭馆、预约、票务、临时通知、天气、公共交通规则 | 硬事实最高优先级 |
-| 携程等国内 OTA | 酒店、机票、火车、实时价格区间与国内预订深链 | 价格与预订 |
-| 小红书 | 分区、节奏、排队、拍照、近期踩雷 | 可选体验信号 |
-| 美团攻略 | 城市餐厅候选、菜系与场景化推荐 | 可选餐饮候选池 |
+| 优先级 | 信息源 | 主要提供什么 | 怎么使用 |
+| --- | --- | --- | --- |
+| 1 | **官方与运营方渠道** | 景区公告、预约规则、票务、临时闭馆、天气预警、机场/铁路/地铁规则 | 决定能不能去、什么时候去，是硬事实的最高优先级 |
+| 2 | **高德地图** | POI、坐标、距离、路线和通勤时长 | 判断地点是否真实、路线是否顺、时间是否来得及 |
+| 3 | **携程等国内 OTA** | 酒店、机票、火车、价格区间和预订入口 | 核对可售状态、价格和国内预订链接 |
+| 4 | **小红书** | 分区思路、游玩节奏、排队、拍照和近期踩雷 | 只作为近期体验信号，不覆盖官方结论 |
+| 5 | **美团攻略** | 餐厅候选、菜系和用餐场景 | 用于发现餐饮候选，再结合地图位置和价格筛选 |
+
+信息冲突时遵循：**官方最新公告 > 地图与运营信息 > OTA 实时页面 > 近期攻略 > 模型常识**。如果官方说闭馆，攻略再推荐也不会排进行程。
 
 网页搜索、Playwright、WebFetch 和 MCP 是获取信息的方式，不是独立信息源；GitHub Pages 等静态托管是交付渠道，也不是信息源。搜索摘要只用于发现，硬事实尽量回到原始官方页面。
 
@@ -162,6 +181,12 @@ python scripts/test_day_route_urls.py
 - 校验脚本能验证结构和部分数值关系，不能证明外部查询真的发生过；
 - 攻略内容是软信号，不代表官方事实或对每个人都适用；
 - 路线与地图服务受对应平台配额、覆盖范围和服务条款限制。
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=SquirrelSong5/travel-planner-skill&type=Date)](https://star-history.com/#SquirrelSong5/travel-planner-skill&Date)
+
+如果这个项目帮你省下了做攻略和反复核对的时间，欢迎点一个 [Star](https://github.com/SquirrelSong5/travel-planner-skill)。也欢迎通过 [Issues](https://github.com/SquirrelSong5/travel-planner-skill/issues) 提交真实旅行场景、失效信息源或行程页体验问题。
 
 ## License
 
