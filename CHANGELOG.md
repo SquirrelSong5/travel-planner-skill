@@ -2,6 +2,18 @@
 
 本 skill 遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [3.1.0] - 2026-08-24
+
+### 双输出与行前韧性
+
+- 新增零依赖 `render_markdown.py`，对话版攻略与 HTML 从同一 JSON 确定性生成；
+- 新增 V12 信息时效性，检查来源、核对时间、复核节点和临近出发的再查询要求；
+- 结构化预订优先级/状态/实名要求、Plan B、安全提醒与 `rechecks`；
+- HTML 新增预订状态、Plan B、安全和行前复核界面；
+- 区分“信息源”与网页搜索/WebFetch/MCP 等检索方式；
+- 发布流程改为平台中立，GitHub Pages、Cloudflare Pages、Netlify Drop、Vercel Drop 均为可选适配器；
+- 新增雨天、老人同行、深夜抵达和节假日返程场景测试。
+
 ## [3.0.0] - 2026-08-24
 
 ### 工作流与信息源重构
