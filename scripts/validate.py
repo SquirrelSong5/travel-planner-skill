@@ -23,6 +23,7 @@ import json
 import math
 import re
 import sys
+from datetime import date, datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse
 
@@ -131,14 +132,14 @@ V10_BUDGET_TOLERANCE = 0.15  # budget_summary 与明细加总偏差 > 15% → �
 ROUND_CHECKS: dict[int, tuple[str, ...]] = {
     1: ("V0", "V1", "V4", "V11"),
     2: ("V0", "V2", "V5", "V8", "V9", "V13"),
-    3: ("V0", "V3", "V6", "V8", "V10"),
+    3: ("V0", "V3", "V6", "V8", "V10", "V12"),
 }
 ROUND_PHASE: dict[int, str] = {
     1: "结构筛",
     2: "时空筛",
     3: "体验筛",
 }
-DEFAULT_CHECKS = ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V8", "V9", "V10", "V11", "V13")
+DEFAULT_CHECKS = ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V8", "V9", "V10", "V11", "V12", "V13")
 
 EARTH_R_KM = 6371.0088
 
@@ -179,6 +180,20 @@ def status(v: float, warn: float, fail: float) -> str:
     return "✅"
 
 
+def _as_date(value: Any) -> date | None:
+    """兼容 YYYY-MM-DD 与 ISO datetime，返回日期部分。"""
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw[:10])
+    except ValueError:
+        try:
+            return datetime.fromisoformat(raw.replace("Z", "+00:00")).date()
+        except ValueError:
+            return None
+
+
 # ===== V0：核心数据完整性 =====
 
 def check_v0(trip: dict[str, Any]) -> dict[str, Any]:
@@ -189,6 +204,40 @@ def check_v0(trip: dict[str, Any]) -> dict[str, Any]:
             errors.append(f"缺 tripData.{field}")
     if not isinstance(trip.get("party_size"), int) or trip["party_size"] < 1:
         errors.append("tripData.party_size 必须为正整数")
+
+    prebook = trip.get("prebook")
+    if not isinstance(prebook, list):
+        errors.append("tripData.prebook 必须为数组")
+    else:
+        for index, item in enumerate(prebook):
+            label = f"prebook[{index}]"
+            if not isinstance(item, dict):
+                errors.append(f"{label} 必须为对象")
+                continue
+            for field in ("item", "deadline", "url"):
+                if not str(item.get(field) or "").strip():
+                    errors.append(f"{label}.{field} 不能为空")
+            if item.get("priority") not in {"must", "recommended", "optional"}:
+                errors.append(f"{label}.priority 不合法")
+            if item.get("status") not in {"booked", "not_booked", "not_required", "unknown"}:
+                errors.append(f"{label}.status 不合法")
+            if not isinstance(item.get("id_required"), bool):
+                errors.append(f"{label}.id_required 必须为布尔值")
+
+    safety_notes = trip.get("safety_notes")
+    if not isinstance(safety_notes, list) or not safety_notes:
+        errors.append("tripData.safety_notes 必须为非空数组")
+    else:
+        for index, item in enumerate(safety_notes):
+            label = f"safety_notes[{index}]"
+            if not isinstance(item, dict):
+                errors.append(f"{label} 必须为对象")
+                continue
+            for field in ("risk", "action", "source", "source_ref", "checked_at"):
+                if not str(item.get(field) or "").strip():
+                    errors.append(f"{label}.{field} 不能为空")
+            if item.get("severity") not in {"notice", "warning", "critical"}:
+                errors.append(f"{label}.severity 不合法")
 
     days = trip.get("days")
     if not isinstance(days, list) or not days:
@@ -477,7 +526,7 @@ def check_v5(last_day: dict[str, Any], trip_meta: dict[str, Any]) -> dict[str, A
 # ===== V6：户外天气敏感 =====
 
 def check_v6(day: dict[str, Any]) -> dict[str, Any]:
-    """检查 outdoor POI 是否配 indoor_backup。"""
+    """检查天气敏感 POI 是否有具体 Plan B。"""
     pois = day.get("pois") or []
     if not pois:
         return {"id": "V6", "rule": "户外天气敏感", "status": "✅", "note": "无 POI"}
@@ -485,17 +534,37 @@ def check_v6(day: dict[str, Any]) -> dict[str, Any]:
     weather = (day.get("weather") or "").lower()
     bad_weather = any(k in weather for k in ("雨", "雪", "雷", "storm", "rain", "snow"))
 
-    outdoor_pois = [p for p in pois if p.get("type") == "outdoor" or any(k in (p.get("tags") or []) for k in ("outdoor", "户外", "露台", "天台", "观景"))]
+    outdoor_pois = [
+        p for p in pois
+        if p.get("weather_sensitive") is True
+        or p.get("type") == "outdoor"
+        or any(k in (p.get("tags") or []) for k in ("outdoor", "户外", "露台", "天台", "观景"))
+    ]
     if not outdoor_pois:
         return {"id": "V6", "rule": "户外天气敏感", "status": "✅", "note": "无户外 POI"}
 
+    raw_plan_b = day.get("plan_b")
+    plan_b_items = raw_plan_b if isinstance(raw_plan_b, list) else [raw_plan_b]
+    plan_b_items = [item for item in plan_b_items if isinstance(item, dict)]
+    has_decision = any(
+        all(str(item.get(field) or "").strip() for field in ("trigger", "alternative", "impact"))
+        for item in plan_b_items
+    )
+    if not has_decision:
+        return {
+            "id": "V6",
+            "rule": "户外天气敏感",
+            "status": "❌",
+            "note": "存在天气敏感 POI，但 day.plan_b 缺 trigger / alternative / impact 决策",
+        }
+
     if not bad_weather:
-        return {"id": "V6", "rule": "户外天气敏感", "status": "✅", "note": f"天气好（{day.get('weather')}），{len(outdoor_pois)} 个户外 POI 不强制要 indoor_backup"}
+        return {"id": "V6", "rule": "户外天气敏感", "status": "✅", "note": f"天气好（{day.get('weather')}），{len(outdoor_pois)} 个敏感 POI 已配结构化 Plan B"}
 
     missing = [p.get("name", "?") for p in outdoor_pois if not p.get("indoor_backup")]
     if missing:
         return {"id": "V6", "rule": "户外天气敏感", "status": "❌", "note": f"天气{day.get('weather')}，户外 POI 缺 indoor_backup：{'、'.join(missing)}"}
-    return {"id": "V6", "rule": "户外天气敏感", "status": "✅", "note": f"户外 POI 均配 indoor_backup"}
+    return {"id": "V6", "rule": "户外天气敏感", "status": "✅", "note": "户外 POI 均配 indoor_backup 与结构化 Plan B"}
 
 
 # ===== V8：MCP 必跑痕迹（source + duration_min）=====
@@ -919,6 +988,125 @@ def check_v11(trip: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# ===== V12：信息时效性与行前复核 =====
+
+V12_CATEGORIES = {"opening", "booking", "transport", "price", "weather", "safety"}
+V12_STATUSES = {"verified", "due", "unknown"}
+
+
+def check_v12(trip: dict[str, Any], as_of: date | None = None) -> dict[str, Any]:
+    """检查易变事实是否有核对时间、下一次复核时间与可追溯来源。"""
+    today = as_of or date.today()
+    errors: list[str] = []
+    warnings: list[str] = []
+    rechecks = trip.get("rechecks")
+    if not isinstance(rechecks, list) or not rechecks:
+        return {
+            "id": "V12",
+            "rule": "信息时效性",
+            "status": "❌",
+            "note": "缺 rechecks 行前复核清单；易变事实没有统一的核对时间与复核节点",
+            "errors": ["tripData.rechecks 必须为非空数组"],
+        }
+
+    categories: set[str] = set()
+    parsed: list[tuple[str, date | None, date | None, str]] = []
+    for index, item in enumerate(rechecks):
+        label = f"rechecks[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{label} 必须为对象")
+            continue
+        title = str(item.get("item") or "").strip()
+        category = str(item.get("category") or "").strip()
+        status_value = str(item.get("status") or "").strip()
+        checked_at = _as_date(item.get("checked_at"))
+        recheck_at = _as_date(item.get("recheck_at"))
+        if not title:
+            errors.append(f"{label}.item 不能为空")
+        if category not in V12_CATEGORIES:
+            errors.append(f"{label}.category 不合法：{category!r}")
+        else:
+            categories.add(category)
+        if status_value not in V12_STATUSES:
+            errors.append(f"{label}.status 不合法：{status_value!r}")
+        if not checked_at:
+            errors.append(f"{label}.checked_at 缺失或格式错误")
+        elif checked_at > today:
+            errors.append(f"{label}.checked_at 不能晚于核验日期 {today.isoformat()}")
+        if not recheck_at:
+            errors.append(f"{label}.recheck_at 缺失或格式错误")
+        elif recheck_at <= today:
+            warnings.append(f"{title or label} 已到复核时间 {recheck_at.isoformat()}")
+        if not str(item.get("source") or "").strip():
+            errors.append(f"{label}.source 不能为空")
+        if not str(item.get("source_ref") or "").strip():
+            errors.append(f"{label}.source_ref 不能为空")
+        if status_value in {"due", "unknown"}:
+            warnings.append(f"{title or label} 状态为 {status_value}")
+        parsed.append((category, checked_at, recheck_at, title or label))
+
+    required = {"opening", "transport", "price"}
+    if trip.get("prebook"):
+        required.add("booking")
+    has_weather_risk = bool(trip.get("weather_plan")) or any(
+        isinstance(poi, dict) and (
+            poi.get("weather_sensitive") is True
+            or poi.get("type") == "outdoor"
+            or any(tag in {"outdoor", "户外", "露台", "天台", "观景"} for tag in (poi.get("tags") or []))
+        )
+        for day_item in trip.get("days") or [] if isinstance(day_item, dict)
+        for poi in day_item.get("pois") or []
+    )
+    if has_weather_risk:
+        required.add("weather")
+    if trip.get("safety_notes"):
+        required.add("safety")
+    missing_categories = sorted(required - categories)
+    if missing_categories:
+        errors.append(f"缺复核类别：{missing_categories}")
+
+    days = [item for item in trip.get("days") or [] if isinstance(item, dict)]
+    trip_start = _as_date(days[0].get("date")) if days else None
+    if trip_start:
+        days_until = (trip_start - today).days
+        if days_until <= 7:
+            recent_categories = {"opening", "booking", "transport", "price"}
+            for category, checked_at, _, title in parsed:
+                if category in recent_categories and checked_at and checked_at < today - timedelta(days=7):
+                    warnings.append(f"{title} 距出发不足 7 天，但最近核对为 {checked_at.isoformat()}")
+        if days_until <= 1 and has_weather_risk:
+            weather_records = [row for row in parsed if row[0] == "weather"]
+            if not weather_records or any(
+                checked_at is None or checked_at < today - timedelta(days=1)
+                for _, checked_at, _, _ in weather_records
+            ):
+                warnings.append("距出发不足 1 天，天气/预警需要在 24 小时内重新核对")
+
+    if errors:
+        return {
+            "id": "V12",
+            "rule": "信息时效性",
+            "status": "❌",
+            "note": f"{len(errors)} 项时效数据错误：{errors[:4]}{'...' if len(errors) > 4 else ''}",
+            "errors": errors,
+            "warnings": warnings,
+        }
+    if warnings:
+        return {
+            "id": "V12",
+            "rule": "信息时效性",
+            "status": "⚠️",
+            "note": "；".join(warnings),
+            "warnings": warnings,
+        }
+    return {
+        "id": "V12",
+        "rule": "信息时效性",
+        "status": "✅",
+        "note": f"{len(rechecks)} 项易变事实均有来源、核对时间和下一次复核节点",
+    }
+
+
 # ===== 主流程 =====
 
 def main() -> int:
@@ -937,7 +1125,12 @@ def main() -> int:
     )
     p.add_argument("--pretty", action="store_true", help="缩进输出")
     p.add_argument("--fail-on-warn", action="store_true", help="存在警告时也返回非零退出码（CI 推荐）")
+    p.add_argument("--as-of", help="按 YYYY-MM-DD 计算 V12 到期状态；默认使用今天")
     args = p.parse_args()
+
+    as_of = _as_date(args.as_of) if args.as_of else date.today()
+    if args.as_of and not as_of:
+        p.error("--as-of 必须为 YYYY-MM-DD")
 
     with open(args.trip_json, "r", encoding="utf-8") as f:
         trip = json.load(f)
@@ -987,6 +1180,8 @@ def main() -> int:
         rules.append(check_v10(trip))
     if "V11" in selected:
         rules.append(check_v11(trip))
+    if "V12" in selected:
+        rules.append(check_v12(trip, as_of=as_of))
     if "V13" in selected:
         rules.append(check_v13(trip, days))
 
@@ -1002,8 +1197,8 @@ def main() -> int:
         "phase": phase,
         "rules": rules,
         "summary": f"{pass_} 通过 / {warn} 警告 / {fail} 失败（{round_note}；**V7 用户禁忌需 AI 自行核对**）",
-        "script_version": "3.0.0",
-        "note": "V0 校验核心 schema；V8 只验证声明的来源字段，不把字符串本身视为外部查询证明",
+        "script_version": "3.1.0",
+        "note": "V0 校验核心 schema；V8 只验证来源声明；V12 检查易变事实的核对与复核节点",
     }
 
     indent = 2 if args.pretty else None
