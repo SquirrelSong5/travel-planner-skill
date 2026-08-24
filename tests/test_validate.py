@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import sys
 import unittest
+from datetime import date
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from validate import _valid_price_field, check_v0, check_v5, check_v8  # noqa: E402
+from validate import _valid_price_field, check_v0, check_v5, check_v8, check_v12  # noqa: E402
 
 
 class ValidateTests(unittest.TestCase):
@@ -44,6 +45,49 @@ class ValidateTests(unittest.TestCase):
         result = check_v5(day, trip)
         self.assertEqual(result["status"], "✅")
         self.assertEqual(result["buffer_hours"], 3.0)
+
+    def test_v12_requires_recheck_ledger(self) -> None:
+        result = check_v12({"days": []}, as_of=date(2026, 8, 24))
+        self.assertEqual(result["status"], "❌")
+
+    def test_v12_warns_when_recheck_is_due(self) -> None:
+        trip = {
+            "days": [{"date": "2026-09-18", "pois": []}],
+            "rechecks": [
+                {
+                    "item": category,
+                    "category": category,
+                    "status": "verified",
+                    "checked_at": "2026-08-24",
+                    "recheck_at": "2026-08-24" if category == "price" else "2026-09-17",
+                    "source": "official-site",
+                    "source_ref": "https://example.com/source",
+                }
+                for category in ("opening", "transport", "price")
+            ],
+        }
+        result = check_v12(trip, as_of=date(2026, 8, 24))
+        self.assertEqual(result["status"], "⚠️")
+        self.assertIn("已到复核时间", result["note"])
+
+    def test_v12_passes_complete_future_rechecks(self) -> None:
+        trip = {
+            "days": [{"date": "2026-09-18", "pois": []}],
+            "rechecks": [
+                {
+                    "item": category,
+                    "category": category,
+                    "status": "verified",
+                    "checked_at": "2026-08-24",
+                    "recheck_at": "2026-09-17",
+                    "source": "official-site",
+                    "source_ref": "https://example.com/source",
+                }
+                for category in ("opening", "transport", "price")
+            ],
+        }
+        result = check_v12(trip, as_of=date(2026, 8, 24))
+        self.assertEqual(result["status"], "✅")
 
 
 if __name__ == "__main__":
