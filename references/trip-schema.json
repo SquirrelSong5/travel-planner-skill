@@ -10,6 +10,7 @@
     "party_size",
     "days",
     "prebook",
+    "source_coverage",
     "safety_notes",
     "rechecks"
   ],
@@ -45,6 +46,12 @@
     "prebook": {
       "type": "array",
       "items": {"$ref": "#/$defs/prebook"}
+    },
+    "source_coverage": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {"$ref": "#/$defs/sourceCoverage"}
     },
     "safety_notes": {
       "type": "array",
@@ -109,6 +116,27 @@
         "source": {"type": "string", "minLength": 1},
         "source_ref": {"type": "string", "minLength": 1},
         "checked_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "sourceCoverage": {
+      "type": "object",
+      "required": ["platform", "status", "stages", "purpose", "checked_at", "source_refs"],
+      "properties": {
+        "platform": {"enum": ["official", "amap", "ota", "xiaohongshu", "meituan"]},
+        "status": {"enum": ["used", "degraded", "unavailable", "not_applicable"]},
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["discovery", "constraints", "spatial", "dining", "booking", "pricing", "experience", "recheck"]}
+        },
+        "purpose": {"type": "string", "minLength": 1},
+        "checked_at": {"type": "string", "format": "date-time"},
+        "source_refs": {
+          "type": "array",
+          "items": {"type": "string", "format": "uri"}
+        },
+        "note": {"type": "string"}
       }
     },
     "recheck": {
