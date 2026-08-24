@@ -21,6 +21,29 @@ STATUS_LABELS = {
 }
 SEVERITY_LABELS = {"notice": "提示", "warning": "注意", "critical": "重要"}
 RECHECK_STATUS_LABELS = {"verified": "已核对", "due": "待复核", "unknown": "待确认"}
+PLATFORM_LABELS = {
+    "official": "官方与运营方",
+    "amap": "高德地图",
+    "ota": "国内 OTA",
+    "xiaohongshu": "小红书",
+    "meituan": "美团攻略",
+}
+COVERAGE_STATUS_LABELS = {
+    "used": "已使用",
+    "degraded": "降级使用",
+    "unavailable": "暂不可用",
+    "not_applicable": "本次不适用",
+}
+STAGE_LABELS = {
+    "discovery": "目的地发现",
+    "constraints": "规则确认",
+    "spatial": "路线落地",
+    "dining": "餐饮筛选",
+    "booking": "预订核对",
+    "pricing": "价格核对",
+    "experience": "体验复核",
+    "recheck": "行前复核",
+}
 MODE_LABELS = {
     "walking": "步行",
     "walk": "步行",
@@ -131,6 +154,32 @@ def render_trip_markdown(trip: dict[str, Any]) -> str:
 
     if trip.get("summary"):
         lines.extend(["", _md_text(trip["summary"])])
+
+    source_coverage = [item for item in trip.get("source_coverage") or [] if isinstance(item, dict)]
+    if source_coverage:
+        lines.extend(["", "## 信息源使用情况"])
+        for item in source_coverage:
+            platform = PLATFORM_LABELS.get(item.get("platform"), _text(item.get("platform")) or "未知平台")
+            coverage_status = COVERAGE_STATUS_LABELS.get(
+                item.get("status"), _text(item.get("status")) or "待确认"
+            )
+            stages = "、".join(
+                STAGE_LABELS.get(stage, _text(stage)) for stage in item.get("stages") or [] if _text(stage)
+            )
+            checked = _md_text(item.get("checked_at"))[:10]
+            suffix = " · ".join(value for value in (stages, checked) if value)
+            line = f"- **[{coverage_status}] {platform}**"
+            if suffix:
+                line += f"（{suffix}）"
+            if item.get("purpose"):
+                line += f"：{_md_text(item['purpose'])}"
+            lines.append(line)
+            refs = [ref for ref in item.get("source_refs") or [] if _safe_url(ref)]
+            if refs:
+                links = "、".join(_linked(f"证据 {index}", ref) for index, ref in enumerate(refs, 1))
+                lines.append(f"  - {links}")
+            if item.get("note"):
+                lines.append(f"  - {_md_text(item['note'])}")
 
     assumptions = trip.get("assumptions") or []
     if assumptions:
