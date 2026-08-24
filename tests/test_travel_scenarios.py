@@ -28,6 +28,27 @@ def recheck(category: str) -> dict:
     }
 
 
+def source_coverage() -> list[dict]:
+    stages = {
+        "official": ["constraints", "recheck"],
+        "amap": ["spatial", "recheck"],
+        "ota": ["booking", "pricing"],
+        "xiaohongshu": ["discovery", "experience"],
+        "meituan": ["dining", "experience"],
+    }
+    return [
+        {
+            "platform": platform,
+            "status": "used",
+            "stages": platform_stages,
+            "purpose": f"{platform} 场景证据",
+            "checked_at": "2026-08-24T10:00:00+08:00",
+            "source_refs": [f"https://example.com/{platform}"],
+        }
+        for platform, platform_stages in stages.items()
+    ]
+
+
 def base_trip(name: str) -> dict:
     return {
         "trip_name": name,
@@ -51,6 +72,7 @@ def base_trip(name: str) -> dict:
             "transports": [],
         }],
         "prebook": [],
+        "source_coverage": source_coverage(),
         "safety_notes": [{
             "risk": "人流拥挤",
             "action": "错峰出行并保留集合点",
