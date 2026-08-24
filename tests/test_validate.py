@@ -18,6 +18,13 @@ class ValidateTests(unittest.TestCase):
         self.assertEqual(result["status"], "❌")
         self.assertTrue(result["errors"])
 
+    def test_core_schema_requires_all_five_source_platforms(self) -> None:
+        result = check_v0({"source_coverage": []})
+        self.assertEqual(result["status"], "❌")
+        source_errors = [error for error in result["errors"] if "source_coverage" in error]
+        self.assertTrue(source_errors)
+        self.assertIn("xiaohongshu", " ".join(source_errors))
+
     def test_multi_poi_day_without_transports_fails(self) -> None:
         days = [{"day": 1, "pois": [{"idx": 1}, {"idx": 2}], "transports": []}]
         result = check_v8(days, {})
