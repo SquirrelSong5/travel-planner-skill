@@ -1,7 +1,7 @@
 interface:
   display_name: "Travel Planner"
-  short_description: "规划并校验中国大陆旅行行程与可分享网页"
-  default_prompt: "Use $travel-planner to plan a realistic domestic trip with verified routes, costs, and booking details."
+  short_description: "规划、复核并双交付中国大陆旅行攻略、Plan B 与安全提醒"
+  default_prompt: "Use $travel-planner to plan or recheck a domestic trip and deliver a verified chat itinerary plus matching HTML with bookings, Plan B, and safety notes."
 
 policy:
   allow_implicit_invocation: true
