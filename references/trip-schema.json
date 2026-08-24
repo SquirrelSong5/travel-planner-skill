@@ -8,7 +8,10 @@
     "city",
     "date_range",
     "party_size",
-    "days"
+    "days",
+    "prebook",
+    "safety_notes",
+    "rechecks"
   ],
   "properties": {
     "trip_name": {"type": "string", "minLength": 1},
@@ -16,13 +19,22 @@
     "date_range": {"type": "string", "minLength": 1},
     "party_size": {"type": "integer", "minimum": 1},
     "summary": {"type": "string"},
+    "assumptions": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "weather_plan": {"type": "string"},
     "hotel": {
       "type": "object",
+      "required": ["name", "lng", "lat"],
       "properties": {
-        "name": {"type": "string"},
+        "name": {"type": "string", "minLength": 1},
+        "address": {"type": "string"},
+        "why": {"type": "string"},
         "lng": {"type": "number", "minimum": 73, "maximum": 136},
         "lat": {"type": "number", "minimum": 3, "maximum": 54},
-        "amap_uri": {"type": "string", "format": "uri"}
+        "amap_uri": {"type": "string", "format": "uri"},
+        "price": {"$ref": "#/$defs/price"}
       }
     },
     "days": {
@@ -32,8 +44,19 @@
     },
     "prebook": {
       "type": "array",
-      "items": {"type": "object"}
-    }
+      "items": {"$ref": "#/$defs/prebook"}
+    },
+    "safety_notes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/safetyNote"}
+    },
+    "rechecks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/recheck"}
+    },
+    "budget_summary": {"$ref": "#/$defs/price"}
   },
   "$defs": {
     "coordinates": {
@@ -45,13 +68,98 @@
       "minItems": 2,
       "maxItems": 2
     },
+    "price": {
+      "type": "object",
+      "properties": {
+        "min": {"type": "number", "minimum": 0},
+        "max": {"type": "number", "minimum": 0},
+        "total_min": {"type": "number", "minimum": 0},
+        "total_max": {"type": "number", "minimum": 0},
+        "currency": {"type": "string", "default": "CNY"},
+        "unit": {"type": "string", "minLength": 1},
+        "quantity": {"type": "number", "exclusiveMinimum": 0},
+        "source": {"type": "string", "minLength": 1},
+        "source_ref": {"type": "string", "minLength": 1},
+        "checked_at": {"type": "string", "format": "date-time"},
+        "note": {"type": "string"}
+      }
+    },
+    "planB": {
+      "type": "object",
+      "required": ["trigger", "alternative", "impact"],
+      "properties": {
+        "trigger": {"type": "string", "minLength": 1},
+        "alternative": {"type": "string", "minLength": 1},
+        "impact": {"type": "string", "minLength": 1},
+        "route_note": {"type": "string"},
+        "source": {"type": "string"},
+        "source_ref": {"type": "string"},
+        "checked_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "safetyNote": {
+      "type": "object",
+      "required": ["risk", "action", "severity", "source", "source_ref", "checked_at"],
+      "properties": {
+        "risk": {"type": "string", "minLength": 1},
+        "action": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["notice", "warning", "critical"]},
+        "applies_to": {"type": "string"},
+        "day": {"type": "integer", "minimum": 1},
+        "source": {"type": "string", "minLength": 1},
+        "source_ref": {"type": "string", "minLength": 1},
+        "checked_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "recheck": {
+      "type": "object",
+      "required": [
+        "item",
+        "category",
+        "status",
+        "checked_at",
+        "recheck_at",
+        "source",
+        "source_ref"
+      ],
+      "properties": {
+        "item": {"type": "string", "minLength": 1},
+        "category": {"enum": ["opening", "booking", "transport", "price", "weather", "safety"]},
+        "status": {"enum": ["verified", "due", "unknown"]},
+        "checked_at": {"type": "string", "format": "date-time"},
+        "recheck_at": {"type": "string", "format": "date-time"},
+        "source": {"type": "string", "minLength": 1},
+        "source_ref": {"type": "string", "minLength": 1},
+        "note": {"type": "string"}
+      }
+    },
+    "prebook": {
+      "type": "object",
+      "required": ["item", "deadline", "priority", "status", "id_required", "url"],
+      "properties": {
+        "item": {"type": "string", "minLength": 1},
+        "day": {"type": "integer", "minimum": 1},
+        "deadline": {"type": "string", "minLength": 1},
+        "priority": {"enum": ["must", "recommended", "optional"]},
+        "status": {"enum": ["booked", "not_booked", "not_required", "unknown"]},
+        "id_required": {"type": "boolean"},
+        "url": {"type": "string", "format": "uri"},
+        "channel": {"enum": ["official", "ota", "operator"]},
+        "depart_time": {"type": "string"},
+        "note": {"type": "string"},
+        "price": {"$ref": "#/$defs/price"}
+      }
+    },
     "day": {
       "type": "object",
       "required": ["day", "date", "region", "center", "pois"],
       "properties": {
         "day": {"type": "integer", "minimum": 1},
-        "date": {"type": "string", "minLength": 1},
+        "date": {"type": "string", "format": "date"},
         "region": {"type": "string", "minLength": 1},
+        "theme": {"type": "string"},
+        "weather": {"type": "string"},
+        "weather_decision": {"type": "string"},
         "center": {"$ref": "#/$defs/coordinates"},
         "pois": {
           "type": "array",
@@ -61,6 +169,16 @@
         "transports": {
           "type": "array",
           "items": {"$ref": "#/$defs/transport"}
+        },
+        "plan_b": {
+          "oneOf": [
+            {"$ref": "#/$defs/planB"},
+            {"type": "array", "items": {"$ref": "#/$defs/planB"}}
+          ]
+        },
+        "safety_notes": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/safetyNote"}
         }
       }
     },
@@ -71,9 +189,13 @@
         "idx": {"type": "integer", "minimum": 1},
         "name": {"type": "string", "minLength": 1},
         "time": {"type": "string", "minLength": 1},
-        "duration_min": {"type": "number", "minimum": 0},
+        "duration_min": {"type": "number", "exclusiveMinimum": 0},
         "lng": {"type": "number", "minimum": 73, "maximum": 136},
-        "lat": {"type": "number", "minimum": 3, "maximum": 54}
+        "lat": {"type": "number", "minimum": 3, "maximum": 54},
+        "weather_sensitive": {"type": "boolean"},
+        "indoor_backup": {"type": "string"},
+        "requires_booking": {"type": "boolean"},
+        "price": {"$ref": "#/$defs/price"}
       }
     },
     "transport": {
@@ -84,7 +206,9 @@
         "to_idx": {"type": "integer", "minimum": 0},
         "mode": {"type": "string", "minLength": 1},
         "duration_min": {"type": "number", "exclusiveMinimum": 0},
-        "source": {"enum": ["amap-mcp", "amap-rest-api"]}
+        "source": {"enum": ["amap-mcp", "amap-rest-api"]},
+        "source_ref": {"type": "string"},
+        "fare": {"$ref": "#/$defs/price"}
       }
     }
   }
