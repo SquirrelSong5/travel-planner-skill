@@ -130,7 +130,13 @@ python scripts/render_html.py assets/template.html examples/chengdu-2026-09-18.j
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=SquirrelSong5/travel-planner-skill&type=Date)](https://star-history.com/#SquirrelSong5/travel-planner-skill&Date)
+<a href="https://www.star-history.com/?repos=SquirrelSong5%2Ftravel-planner-skill&amp;type=date&amp;legend=top-left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=SquirrelSong5/travel-planner-skill&amp;type=date&amp;theme=dark&amp;legend=top-left&amp;sealed_token=yxquobHVTFQOm7Se2jFWumGmpTOtOrFIqLns343P0XPGTdhjzEiMJ8_S1dYDMxOyyr6yPTgWsZ5vldXHNm52XFHfobpDDrdZ5NBgMeLwAdCoGd26NcGw4PgqcfB06k4WitF_UoO8R4c5bxbUEwofmXxxr5DbCahXEoKNM3jAt7KsZzAQbIaKsulWJxGi" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=SquirrelSong5/travel-planner-skill&amp;type=date&amp;legend=top-left&amp;sealed_token=yxquobHVTFQOm7Se2jFWumGmpTOtOrFIqLns343P0XPGTdhjzEiMJ8_S1dYDMxOyyr6yPTgWsZ5vldXHNm52XFHfobpDDrdZ5NBgMeLwAdCoGd26NcGw4PgqcfB06k4WitF_UoO8R4c5bxbUEwofmXxxr5DbCahXEoKNM3jAt7KsZzAQbIaKsulWJxGi" />
+    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=SquirrelSong5/travel-planner-skill&amp;type=date&amp;legend=top-left&amp;sealed_token=yxquobHVTFQOm7Se2jFWumGmpTOtOrFIqLns343P0XPGTdhjzEiMJ8_S1dYDMxOyyr6yPTgWsZ5vldXHNm52XFHfobpDDrdZ5NBgMeLwAdCoGd26NcGw4PgqcfB06k4WitF_UoO8R4c5bxbUEwofmXxxr5DbCahXEoKNM3jAt7KsZzAQbIaKsulWJxGi" />
+  </picture>
+</a>
 
 如果它帮你省下了做攻略和反复核对的时间，欢迎点一个 [Star](https://github.com/SquirrelSong5/travel-planner-skill)。问题和真实旅行场景可以提交到 [Issues](https://github.com/SquirrelSong5/travel-planner-skill/issues)。
 
