@@ -24,9 +24,10 @@
 - 用实时来源核对开放时间、预约、票价、坐标和通勤；
 - 按区域组织每天路线，处理酒店往返与末日返程缓冲；
 - 给餐厅主选、备选、位置与价格证据；
-- 同时输出可独立使用的对话版攻略和手机可读的单文件 HTML；
+- 从同一 JSON 确定性生成对话版攻略和手机可读的单文件 HTML；
+- 管理预订状态、行前复核、Plan B 和针对性安全提醒；
 - 对改酒店、换景点、延长日期等请求做增量更新；
-- 用 V0–V13 规则阻止缺字段、假来源、不可行路线和错误预订链接。
+- 用 V0–V13 规则阻止缺字段、过期事实、假来源、不可行路线和错误预订链接。
 
 ## 现在有哪几个信息源
 
@@ -35,12 +36,12 @@
 | 信息源 | 主要提供什么 | 使用方式 |
 | --- | --- | --- |
 | 高德地图 | POI、坐标、路线、距离、通勤时长 | 地理与路线硬数据 |
-| 官方渠道 + 网页搜索 | 营业/闭馆、预约、票务、临时通知、天气、公共交通规则 | 硬事实最高优先级 |
+| 官方与运营方渠道 | 营业/闭馆、预约、票务、临时通知、天气、公共交通规则 | 硬事实最高优先级 |
 | 携程等国内 OTA | 酒店、机票、火车、实时价格区间与国内预订深链 | 价格与预订 |
 | 小红书 | 分区、节奏、排队、拍照、近期踩雷 | 可选体验信号 |
 | 美团攻略 | 城市餐厅候选、菜系与场景化推荐 | 可选餐饮候选池 |
 
-Playwright、WebFetch、MCP 是获取信息的工具，不是独立信息源；GitHub Pages 是交付渠道，也不是信息源。
+网页搜索、Playwright、WebFetch 和 MCP 是获取信息的方式，不是独立信息源；GitHub Pages 等静态托管是交付渠道，也不是信息源。搜索摘要只用于发现，硬事实尽量回到原始官方页面。
 
 大众点评已移出默认链路。只有用户明确要求，且当前环境已经具备合规访问能力时，才作为补充信号；项目不会要求安装扩展、扫码登录或绕过反爬。
 
@@ -52,9 +53,9 @@ Playwright、WebFetch、MCP 是获取信息的工具，不是独立信息源；G
 2. 先查官方硬事实，再查地图与 OTA；
 3. 用小红书/美团发现候选，不让攻略覆盖官方结论；
 4. 按区域和固定时段排日程，实查主要通勤；
-5. 写入来源、价格和预订项；
-6. 严格校验，修到没有失败和警告；
-7. 从同一份 JSON 生成完整对话版攻略并渲染 HTML；
+5. 写入来源、价格、预订状态、Plan B、安全提醒和复核节点；
+6. 严格校验，包括 V12 信息时效性，修到没有失败和警告；
+7. 从同一份 JSON 确定性生成 Markdown 攻略并渲染 HTML；
 8. 在同一回复中交付两者，按用户选择额外公开发布。
 
 ## 快速开始
@@ -88,7 +89,11 @@ git clone https://github.com/SquirrelSong5/travel-planner-skill.git travel-plann
 仓库内置成都示例：
 
 ```bash
-python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn
+python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn --as-of 2026-08-24
+
+python scripts/render_markdown.py \
+  examples/chengdu-2026-09-18.json \
+  -o /tmp/chengdu-trip.md
 
 python scripts/render_html.py \
   assets/template.html \
@@ -98,11 +103,13 @@ python scripts/render_html.py \
 
 不需要第三方 Python 包。交互地图的高德 Web Key 由浏览者在页面内输入，仅保存在当前浏览器；Key 不应放入 URL、HTML、JSON 或 Git 仓库。
 
+示例固定使用 `--as-of 2026-08-24` 以保证回归测试可复现；规划真实行程时不要传该参数，V12 应按当天判断哪些信息需要重查。
+
 ## 输出与隐私
 
 每次必须同时交付：
 
-- **对话版攻略**：在聊天中直接呈现完整日程、交通、餐饮、预算、预约和安全提醒，无需打开附件也能执行；
+- **对话版攻略**：由 `render_markdown.py` 生成，在聊天中直接呈现完整日程、交通、餐饮、预算、预约、Plan B、安全提醒和行前复核；
 - **`trip.html`**：包含相同核心行程事实、可离线打开的单文件行程页。
 
 `trip.json` 是两种输出共同的数据源和后续修改底稿，可一并提供，但不替代以上任一输出。修改已有方案后，两种输出都要从最新 JSON 重新生成，不能只更新其中一种。
@@ -119,6 +126,7 @@ travel-planner-skill/
 ├── examples/                    # 可运行示例
 ├── references/                  # 按需读取的研究与规则
 ├── scripts/validate.py          # V0–V13 校验
+├── scripts/render_markdown.py   # 确定性生成对话版攻略
 ├── scripts/render_html.py       # 安全注入 JSON 并渲染 HTML
 ├── scripts/add_hotel_legs.py    # 显式补酒店通勤
 └── tests/                        # 回归测试
@@ -128,7 +136,7 @@ travel-planner-skill/
 
 ```bash
 python -m unittest discover -s tests -v
-python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn
+python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn --as-of 2026-08-24
 python scripts/test_day_route_urls.py
 ```
 
@@ -143,6 +151,7 @@ python scripts/test_day_route_urls.py
 | [planning.md](references/planning.md) | 行程编排方法 |
 | [hotel-planning.md](references/hotel-planning.md) | 酒店选址与换住判断 |
 | [validation-rules.md](references/validation-rules.md) | V0–V13 规则 |
+| [recheck-and-safety.md](references/recheck-and-safety.md) | 行前复核、现场调整与安全提醒 |
 | [deployment.md](references/deployment.md) | 本地交付与可选公开发布 |
 | [setup-guide.md](references/setup-guide.md) | 用户明确要求时的能力配置 |
 | [trip-schema.json](references/trip-schema.json) | 核心 JSON Schema |
