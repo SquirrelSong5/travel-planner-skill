@@ -42,8 +42,10 @@ class TemplateStaticTests(unittest.TestCase):
         for fragment in (
             'id="safety-section"',
             'id="recheck-section"',
+            'id="source-coverage-section"',
             "const rawPlanB",
             "renderOperationalLists()",
+            "coverageStatusMap",
             "priorityMap",
             "statusMap",
         ):
@@ -51,7 +53,7 @@ class TemplateStaticTests(unittest.TestCase):
 
     def test_footer_does_not_claim_fixed_source_tools(self) -> None:
         self.assertNotIn("数据来源：高德 MCP / 小红书 MCP", self.html)
-        self.assertIn("来源与核对时间见行前复核", self.html)
+        self.assertIn("信息源与核对时间见侧栏", self.html)
 
     def test_template_comments_do_not_describe_obsolete_pipeline(self) -> None:
         for fragment in ("AI 在 Step 7", "嵌入完整 7 条规则结果", "AI 作弊也挡不住"):
