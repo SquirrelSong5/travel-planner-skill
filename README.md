@@ -74,7 +74,7 @@ git clone https://github.com/SquirrelSong5/travel-planner-skill.git travel-plann
 | `trip.html` | 手机查看、离线保存和分享 |
 | `trip.json` | 保存结构化行程，方便后续继续修改 |
 
-如果需要在线分享，可以选择将 `trip.html` 部署到 GitHub Pages、Cloudflare Pages、Netlify 或 Vercel 等静态托管平台，获得可直接访问的网页链接。
+需要在线分享时，直接告诉 AI“把行程部署到线上”。travel-planner 自带部署引导，会根据当前环境推荐 GitHub Pages、Cloudflare Pages、Netlify 或 Vercel 等托管方式，并协助生成可直接访问的网页链接。
 
 ## 五个信息源怎么分工
 
