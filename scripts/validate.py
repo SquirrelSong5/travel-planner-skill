@@ -1263,7 +1263,7 @@ def main() -> int:
         "phase": phase,
         "rules": rules,
         "summary": f"{pass_} 通过 / {warn} 警告 / {fail} 失败（{round_note}；**V7 用户禁忌需 AI 自行核对**）",
-        "script_version": "3.2.0",
+        "script_version": "3.3.0",
         "note": "V0 校验核心 schema；V8 只验证来源声明；V12 检查易变事实的核对与复核节点",
     }
 

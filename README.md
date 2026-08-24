@@ -7,7 +7,8 @@
 [![CI](https://github.com/SquirrelSong5/travel-planner-skill/actions/workflows/validate.yml/badge.svg)](https://github.com/SquirrelSong5/travel-planner-skill/actions/workflows/validate.yml)
 [![GitHub stars](https://img.shields.io/github/stars/SquirrelSong5/travel-planner-skill?style=flat)](https://github.com/SquirrelSong5/travel-planner-skill/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/SquirrelSong5/travel-planner-skill?style=flat)](https://github.com/SquirrelSong5/travel-planner-skill/forks)
-[![Version](https://img.shields.io/badge/version-3.2.0-blue.svg)](CHANGELOG.md)
+[![Install with npx](https://img.shields.io/badge/install-npx%20skills%20add-CB3837?logo=npm)](#安装)
+[![Version](https://img.shields.io/badge/version-3.3.0-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [在线预览](https://squirrelsong5.github.io/travel-plans/chengdu-2026-09-18.html) ·
@@ -84,13 +85,41 @@
 
 ### 安装
 
-把仓库克隆到你的 Agent 能发现的 skills 目录。例如：
+使用推荐安装方式需要本机已有 Node.js / `npx`。在项目目录执行：
+
+```bash
+npx skills add SquirrelSong5/travel-planner-skill
+```
+
+安装器会识别仓库中的 `travel-planner`，自动检测或让你选择目标 Agent。希望在所有项目中使用时加 `--global`：
+
+```bash
+npx skills add SquirrelSong5/travel-planner-skill --global
+```
+
+该命令使用通用的 [Skills CLI](https://github.com/vercel-labs/skills)，本仓库不需要发布 npm 包，也不会因此增加运行时 Node 依赖。没有 `npx` 时仍可用 Git clone：
 
 ```bash
 git clone https://github.com/SquirrelSong5/travel-planner-skill.git travel-planner
 ```
 
-不同宿主的 skills 目录和 MCP 配置方式不同。Skill 本身不会自动安装地图、浏览器或第三方账号能力；只有你明确要求配置时，才参考 [setup-guide.md](references/setup-guide.md)。
+### 推荐搭配
+
+核心 Skill 可以单独运行；缺少某项外部能力时会明确降级，不会伪造“五源齐全”。为了让五类信息源发挥各自作用，推荐按需补充：
+
+| 推荐级别 | 能力 | 覆盖的信息源 | 如何获得 |
+| --- | --- | --- | --- |
+| 强烈推荐 | 网页搜索或浏览器 | 官方渠道、OTA、美团攻略，也可发现公开的小红书页面 | 优先使用 Agent 已有能力，通常无需另装 Skill |
+| 强烈推荐 | 高德地图 MCP | POI、坐标、路线、通勤时长 | 按[高德官方接入文档](https://lbs.amap.com/api/mcp-server/gettingstarted)配置，不属于本仓库依赖 |
+| 可选增强 | 小红书 MCP Skill | 近期分区、排队、体感和避雷软信号 | 仅在确实需要、并接受本地登录配置时安装下方 Skill |
+
+```bash
+npx skills add autoclaw-cc/xiaohongshu-mcp-skills --skill xiaohongshu
+```
+
+小红书增强来自 [`autoclaw-cc/xiaohongshu-mcp-skills`](https://github.com/autoclaw-cc/xiaohongshu-mcp-skills)，还需要其 MCP 服务和登录能力；只安装 Skill 文件并不会自动获得平台访问权限。小红书是软信号，因此不想登录或配置失败时直接跳过，不影响官方、高德、OTA 和餐饮链路继续工作。
+
+不推荐为了本项目额外安装发布类 Skill：对话内攻略与本地 HTML 已是完整交付，GitHub Pages、Cloudflare Pages 等托管都只是用户明确要求时的可选项。完整配置边界见 [setup-guide.md](references/setup-guide.md)。
 
 ### 使用
 

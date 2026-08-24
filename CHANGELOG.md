@@ -2,6 +2,16 @@
 
 本 skill 遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [3.3.0] - 2026-08-24
+
+### 轻量安装与配套能力
+
+- 新增 `npx skills add SquirrelSong5/travel-planner-skill` 安装入口，不需要把仓库发布成 npm 包；
+- README 增加项目级、全局和 Git clone 备用安装方式；
+- 将网页搜索/浏览器、高德 MCP 与小红书 Skill 按平台职责区分为推荐能力；
+- 小红书配套 Skill 保持可选，并明确 MCP、登录、隐私和降级边界；
+- 公开托管继续保持可选，不为 GitHub Pages 等交付方式增加安装负担。
+
 ## [3.2.0] - 2026-08-24
 
 ### 五源分阶段协作

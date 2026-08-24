@@ -2,6 +2,22 @@
 
 只有用户明确要求配置环境时才使用本文。不同 Agent 宿主的配置格式变化很快，应优先查对应产品的官方文档，不要照搬其他客户端命令。
 
+## 安装 travel-planner
+
+推荐使用通用的 Skills CLI。项目级安装：
+
+```bash
+npx skills add SquirrelSong5/travel-planner-skill
+```
+
+全局安装：
+
+```bash
+npx skills add SquirrelSong5/travel-planner-skill --global
+```
+
+安装器只负责把 Skill 文件放到目标 Agent 能发现的位置，不会配置地图 Key、浏览器账号或第三方 MCP。`npx` 只用于安装；travel-planner 自身的验证和渲染脚本没有 npm 运行时依赖。
+
 ## 最小可用配置
 
 运行仓库内的验证、渲染和测试只需要：
@@ -26,9 +42,26 @@ python scripts/render_html.py assets/template.html examples/chengdu-2026-09-18.j
 
 Playwright 是一种浏览工具，不是 travel-planner 的强制依赖。美团攻略可以通过当前环境已有的网页能力访问。大众点评不需要配置。
 
+## 推荐安装的配套 Skill
+
+没有配套 Skill 是 travel-planner 的硬依赖。只有用户希望实际读取小红书近期内容，且当前环境没有等价能力时，才推荐安装：
+
+```bash
+npx skills add autoclaw-cc/xiaohongshu-mcp-skills --skill xiaohongshu
+```
+
+该项目还需要单独运行 `xiaohongshu-mcp` 并完成登录。安装前应让用户知道：
+
+- 它会访问用户自己的小红书登录状态；
+- 登录、验证码或扫码必须由用户本人完成；
+- 不应把 Cookie、Token 或登录信息写入行程 JSON、HTML 或仓库；
+- 用户不愿登录或能力不可用时，在 `source_coverage` 标为 `unavailable` 并继续规划。
+
+网页搜索/浏览器通常是宿主能力，高德提供的是 MCP Server，都不应包装成 travel-planner 的 npm 依赖。不要为了凑齐来源自动安装扩展或第三方工具。
+
 ## 高德地图
 
-优先使用宿主已提供的高德工具。若用户选择配置：
+优先使用宿主已提供的高德工具。若用户选择配置，先参考[高德地图 MCP Server 官方快速接入](https://lbs.amap.com/api/mcp-server/gettingstarted)：
 
 1. 让用户在高德开放平台自行创建应用与 Key；
 2. 按当前宿主的官方 MCP 配置文档添加服务；
