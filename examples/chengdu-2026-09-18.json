@@ -1449,6 +1449,62 @@
       }
     }
   ],
+  "source_coverage": [
+    {
+      "platform": "xiaohongshu",
+      "status": "used",
+      "stages": ["discovery", "experience"],
+      "purpose": "发现成都三日游常见分区、熊猫基地早场节奏与近期排队体验",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "source_refs": [
+        "https://www.xiaohongshu.com/search_result?keyword=%E6%88%90%E9%83%BD%E4%B8%89%E6%97%A5%E6%B8%B8"
+      ],
+      "note": "只作为体验信号，开放和预约以官方渠道为准"
+    },
+    {
+      "platform": "official",
+      "status": "used",
+      "stages": ["constraints", "recheck"],
+      "purpose": "确认熊猫基地开放预约、天气风险和临时通知",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "source_refs": [
+        "https://www.panda.org.cn/",
+        "https://www.weather.com.cn/weather/101270101.shtml"
+      ]
+    },
+    {
+      "platform": "amap",
+      "status": "used",
+      "stages": ["spatial", "recheck"],
+      "purpose": "核对酒店、景点和餐厅位置，计算主要通勤与机场路线",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "source_refs": [
+        "https://www.amap.com/"
+      ]
+    },
+    {
+      "platform": "meituan",
+      "status": "used",
+      "stages": ["dining", "experience"],
+      "purpose": "围绕每日主区域建立川菜、火锅和串串餐厅候选池",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "source_refs": [
+        "https://guide.meituan.com/chengdu/canyin"
+      ],
+      "note": "候选餐厅再用高德确认位置，价格与营业状态单独复核"
+    },
+    {
+      "platform": "ota",
+      "status": "used",
+      "stages": ["booking", "pricing", "recheck"],
+      "purpose": "核对酒店和往返机票价格区间、可售状态与国内预订入口",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "source_refs": [
+        "https://hotels.ctrip.com/",
+        "https://flights.ctrip.com/"
+      ]
+    }
+  ],
   "safety_notes": [
     {
       "risk": "9 月阵雨导致路面湿滑和户外体验下降",
