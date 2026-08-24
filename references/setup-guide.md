@@ -10,7 +10,8 @@
 - 一个能打开本地 HTML 的现代浏览器。
 
 ```bash
-python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn
+python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn --as-of 2026-08-24
+python scripts/render_markdown.py examples/chengdu-2026-09-18.json -o /tmp/trip.md
 python scripts/render_html.py assets/template.html examples/chengdu-2026-09-18.json -o /tmp/trip.html
 ```
 
@@ -20,7 +21,7 @@ python scripts/render_html.py assets/template.html examples/chengdu-2026-09-18.j
 | --- | --- | --- |
 | 高德地图 MCP 或 REST | POI、坐标、路线、时长 | 路线标待核验，不伪造实算来源 |
 | 网页搜索/浏览 | 官方通知、OTA、攻略 | 只做可验证范围内的草案 |
-| GitHub | 可选公开发布 | 交付本地 JSON/HTML |
+| 已有静态托管或文件分享能力 | 可选公开 URL | 交付本地 Markdown/HTML，不阻塞规划 |
 | 小红书访问能力 | 近期体验软信号 | 跳过，不阻塞基础规划 |
 
 Playwright 是一种浏览工具，不是 travel-planner 的强制依赖。美团攻略可以通过当前环境已有的网页能力访问。大众点评不需要配置。
