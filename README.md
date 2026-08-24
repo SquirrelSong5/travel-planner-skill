@@ -2,350 +2,155 @@
 
 # travel-planner
 
-**用 AI 做真正能带出门的旅行方案 —— 交付物是一个手机点开就能看的行程网页**
+**把实时旅行信息变成能执行、能校验、能继续修改的行程网页**
 
-[![GitHub stars](https://img.shields.io/github/stars/SquirrelSong5/travel-planner-skill)](https://github.com/SquirrelSong5/travel-planner-skill/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/SquirrelSong5/travel-planner-skill)](https://github.com/SquirrelSong5/travel-planner-skill/network/members)
 [![CI](https://github.com/SquirrelSong5/travel-planner-skill/actions/workflows/validate.yml/badge.svg)](https://github.com/SquirrelSong5/travel-planner-skill/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)](CHANGELOG.md)
 
 [在线预览](https://squirrelsong5.github.io/travel-plans/chengdu-2026-09-18.html) ·
-[快速开始](#-快速开始) ·
-[文档索引](#-文档) ·
-[更新日志](CHANGELOG.md)
+[快速开始](#快速开始) ·
+[信息源](#现在有哪几个信息源) ·
+[文档](#文档)
 
 </div>
 
----
+`travel-planner` 是面向中国大陆行程的 AI Agent Skill。它组织 POI、官方通知、路线、酒店、餐厅、价格和预订事项，生成结构化 JSON 与响应式单文件 HTML，并用脚本检查路线、时间、预算和来源字段。
 
-面向 **国内行程** 的 AI Agent Skill。不是输出 Markdown 或 PDF，而是调研真实 POI / 路线 / 餐厅后，生成**单文件 HTML** 并部署到 **GitHub Pages**，返回可分享的 URL。
+默认结果保存在本地。公开 GitHub Pages 链接是可选交付，不再是强制步骤。
 
-数据源：**高德 MCP** + **[小红书 Step 1.5 目的地攻略](references/xhs-research.md#0-step-15目的地攻略必做前置)** + **美团攻略 WebFetch** + Round 3 店级避雷。大众点评因反爬过严，**已废弃不用**。
+## 能做什么
 
----
+- 基于日期、人数、预算、偏好和已订交通规划多日行程；
+- 用实时来源核对开放时间、预约、票价、坐标和通勤；
+- 按区域组织每天路线，处理酒店往返与末日返程缓冲；
+- 给餐厅主选、备选、位置与价格证据；
+- 输出 JSON + 手机可读的单文件 HTML；
+- 对改酒店、换景点、延长日期等请求做增量更新；
+- 用 V0–V13 规则阻止缺字段、假来源、不可行路线和错误预订链接。
 
-## 目录
+## 现在有哪几个信息源
 
-- [亮点](#-亮点)
-- [在线预览](#-在线预览)
-- [工作原理](#-工作原理)
-- [快速开始](#-快速开始)
-- [环境依赖](#-环境依赖)
-- [功能](#-功能)
-- [文档](#-文档)
-- [开发者](#-开发者)
-- [常见问题](#-常见问题)
-- [参与贡献](#-参与贡献)
-- [相关项目](#-相关项目)
-- [Star History](#star-history)
-- [许可证](#-许可证)
+当前主模型包含 **5 类信息源**：
 
----
+| 信息源 | 主要提供什么 | 使用方式 |
+| --- | --- | --- |
+| 高德地图 | POI、坐标、路线、距离、通勤时长 | 地理与路线硬数据 |
+| 官方渠道 + 网页搜索 | 营业/闭馆、预约、票务、临时通知、天气、公共交通规则 | 硬事实最高优先级 |
+| 携程等国内 OTA | 酒店、机票、火车、实时价格区间与国内预订深链 | 价格与预订 |
+| 小红书 | 分区、节奏、排队、拍照、近期踩雷 | 可选体验信号 |
+| 美团攻略 | 城市餐厅候选、菜系与场景化推荐 | 可选餐饮候选池 |
 
-## 亮点
+Playwright、WebFetch、MCP 是获取信息的工具，不是独立信息源；GitHub Pages 是交付渠道，也不是信息源。
 
-| | |
-|:---:|:---|
-| **可分享的网页** | 唯一交付物 = GitHub Pages URL，手机 / 电脑浏览器直接打开 |
-| **真实数据驱动** | POI、通勤时间来自高德 MCP；市内默认公交/地铁方案，打车仅作备选 |
-| **攻略前置** | **v2.3.0**：Step 1.5 先搜小红书目的地攻略（必去/避雷/分区），再分组排线；Round 3 只做店级验证 |
-| **开箱引导** | Step 0 自动自检环境，缺高德 / 小红书时 AI 带着装，不用先啃教程 |
-| **可迭代** | 对话里改景点、加一天、换酒店 → 重校验、重渲染、重新部署 |
-| **花销可视化** | 每时间段批注汇总门票 / 交通 / 餐饮；逛街等支持用户自填预算 |
-| **质量门禁** | `validate.py` V1–V11 分轮校验，浏览器端二次重算防 AI 自嗨 |
+大众点评已移出默认链路。只有用户明确要求，且当前环境已经具备合规访问能力时，才作为补充信号；项目不会要求安装扩展、扫码登录或绕过反爬。
 
----
+更完整的证据优先级和降级策略见 [references/data-sources.md](references/data-sources.md)。
 
-## 在线预览
+## 工作流
 
-| 行程 | 链接 | 说明 |
-|------|------|------|
-| 成都 3 日 2 晚 | [chengdu-2026-09-18.html](https://squirrelsong5.github.io/travel-plans/chengdu-2026-09-18.html) | 熊猫/宽窄巷子/春熙路 · 含地图、段花销批注 |
-
-> 交互地图需在 URL 后加 `?k=你的高德WebKey`（[说明](#网页地图-key交付后)）。不配 Key 也可正常浏览文字行程与花销。
-
----
-
-## 工作原理
-
-```mermaid
-flowchart TB
-  subgraph input [用户输入]
-    U[目的地 / 日期 / 人数 / 偏好]
-  end
-
-  subgraph step0 [Step 0 环境自检]
-    E[高德 MCP · 小红书 · Playwright]
-  end
-
-  subgraph step1 [Step 1 硬约束]
-    H[日期 / 酒店 / 禁忌 / 人数]
-  end
-
-  subgraph step15 [Step 1.5 小红书目的地攻略]
-    XBrief[xhs_destination_brief<br/>必去 / 避雷 / 分区 / 节奏]
-    WS[Web search 补闭馆预约]
-  end
-
-  subgraph step2 [Step 2 分组排线]
-    G[清单分组 + 酒店区域]
-  end
-
-  subgraph pipeline [三阶段筛检]
-    R1[Round 1 结构]
-    R2[Round 2 时空]
-    R3[Round 3 体验 + 店级小红书]
-  end
-
-  subgraph deliver [交付]
-    V[validate.py]
-    Htm[template.html]
-    P[GitHub Pages URL]
-  end
-
-  U --> E --> H --> XBrief
-  WS --> XBrief
-  XBrief --> G --> R1 --> R2 --> R3 --> V --> Htm --> P
-```
-
----
+1. 归一化目的地、日期、人数、预算、偏好和已订项目；
+2. 先查官方硬事实，再查地图与 OTA；
+3. 用小红书/美团发现候选，不让攻略覆盖官方结论；
+4. 按区域和固定时段排日程，实查主要通勤；
+5. 写入来源、价格和预订项；
+6. 严格校验，修到没有失败和警告；
+7. 渲染 HTML；按用户选择本地交付或公开发布。
 
 ## 快速开始
 
-### 安装 Skill
+### 安装
+
+把仓库克隆到你的 Agent 能发现的 skills 目录。例如：
 
 ```bash
-git clone https://github.com/SquirrelSong5/travel-planner-skill.git \
-  ~/.claude/skills/travel-planner
+git clone https://github.com/SquirrelSong5/travel-planner-skill.git travel-planner
 ```
 
-> Cursor / Hermes / Codex 等路径见 [setup-guide.md](references/setup-guide.md#客户端适配)。
+不同宿主的 skills 目录和 MCP 配置方式不同。Skill 本身不会自动安装地图、浏览器或第三方账号能力；只有你明确要求配置时，才参考 [setup-guide.md](references/setup-guide.md)。
 
-### 开聊即可
+### 使用
 
-```
-帮我做个成都 3 天 2 晚行程，2 个人
-```
+直接描述行程：
 
-**之后交给 AI。** 典型对话：
-
-```
-你 → 帮我做个成都行程
-AI → 🔍 环境自检
-AI → （缺什么就带着装：高德 Key、小红书扫码…）
-AI → 问硬约束 → **小红书目的地攻略（Step 1.5）** → 分组排线 → 三阶段规划 → validate → 渲染 HTML → 部署 → 给你 URL
+```text
+帮我规划成都 3 天 2 晚，2 个人，住春熙路，想看熊猫、吃川菜，最后一天 18:00 的航班。
 ```
 
-零配置想先看效果？说 **「先用 demo 演示」** → AI 渲染内置 [成都示例](examples/chengdu-2026-09-18.json)。
+也可以要求它修改已有方案：
 
-### Step 1.5 做什么？（v2.3.0）
+```text
+把第二天晚餐换到宽窄巷子附近，只重新核对受影响的路线和预算。
+```
 
-在分组排线**之前**，AI 会：
+### 本地验证与渲染
 
-1. 搜小红书「`{城市} {N}天 攻略`」「`{城市} 避雷`」等，精读 3–5 篇
-2. 并行 Web search 补闭馆、预约、季节信息
-3. 产出 **`xhs_destination_brief`**（写入 `tripData` 可选字段）：
-   - **必去** / **避雷** / **建议分区** / **节奏提示**
-4. Step 2 分组与 Round 1 POI 池**必须对照 brief**，`must_visit` 未纳入须说明原因
+仓库内置成都示例：
 
-未装 [xiaohongshu-skills](https://github.com/autoclaw-cc/xiaohongshu-skills) 时降级 WebFetch + Web search，并在 brief 标注 `degraded: true`。详见 [xhs-research.md §0](references/xhs-research.md)。
+```bash
+python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn
 
----
+python scripts/render_html.py \
+  assets/template.html \
+  examples/chengdu-2026-09-18.json \
+  -o /tmp/chengdu-trip.html
+```
 
-## 环境依赖
+不需要第三方 Python 包。交互地图的高德 Web Key 由浏览者在页面内输入，仅保存在当前浏览器；Key 不应放入 URL、HTML、JSON 或 Git 仓库。
 
-| 组件 | 级别 | 说明 |
-|------|------|------|
-| AI 客户端 + 本 Skill | 必需 | Claude Code / Cursor / Codex / Hermes 等 |
-| [高德地图 MCP](https://lbs.amap.com/) | 必需 | POI、路线、天气；Step 0 引导配置 |
-| [Playwright MCP](https://github.com/microsoft/playwright-mcp) | 装环境时推荐 | 有它 AI 可代填注册表单，省大量手动步骤 |
-| [xiaohongshu-skills](https://github.com/autoclaw-cc/xiaohongshu-skills) | 推荐 | **Step 1.5 目的地攻略** + Round 3 店级避雷；未装则降级 WebFetch |
-| 美团攻略 | 推荐 | 零装，AI 直接 WebFetch |
-| `gh` CLI | 部署时 | 发布 GitHub Pages |
-| 高德 Web JS Key | 可选 | 仅最终网页里的交互地图 |
+## 输出与隐私
 
-<details>
-<summary><strong>为什么不用大众点评？</strong></summary>
+默认交付：
 
-平台反爬（签名 / 滑块 / 指纹）极严，OpenCLI / Playwright 直抓基本不可用。**v1.2.0 起已废弃**。餐厅筛选靠高德 `maps_search_detail` + 美团攻略 + 小红书即可。
+- `trip.json`：可继续修改、校验和渲染的结构化数据；
+- `trip.html`：可离线打开的单文件行程页。
 
-</details>
+公开发布前需要确认，因为页面可能暴露旅行城市、日期、酒店和每日路线。若只想发给同行人，优先使用私密文件分享；若使用 GitHub Pages，应先删除不想公开的信息。
 
----
+## 项目结构
 
-## 功能
+```text
+travel-planner-skill/
+├── SKILL.md                     # Agent 主工作流
+├── agents/openai.yaml           # UI 元数据
+├── assets/template.html         # 单文件行程模板
+├── examples/                    # 可运行示例
+├── references/                  # 按需读取的研究与规则
+├── scripts/validate.py          # V0–V13 校验
+├── scripts/render_html.py       # 安全注入 JSON 并渲染 HTML
+├── scripts/add_hotel_legs.py    # 显式补酒店通勤
+└── tests/                        # 回归测试
+```
 
-<details open>
-<summary><strong>行程页（template.html）</strong></summary>
+## 开发与测试
 
-- 按天 Tab + 高德地图 POI / 路网路线
-- 时间段右侧**花销批注**（门票、交通、餐饮、逛街自填）
-- 侧栏抽屉：酒店、提前订、天气策略、花销汇总
-- 响应式：桌面批注 / 平板折叠 / 手机底部抽屉
+```bash
+python -m unittest discover -s tests -v
+python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn
+python scripts/test_day_route_urls.py
+```
 
-</details>
-
-<details>
-<summary><strong>规划引擎（SKILL.md + references/）</strong></summary>
-
-- 三阶段分轮筛检：结构 → 时空 → 体验
-- **Step 1.5 小红书目的地攻略**（v2.3.0 必做，先于分组）
-- 增量修改协议：换点、加天、改酒店不必重头做
-- 国内 OTA 深链（`flights.ctrip.com` 等），校验拦截 Trip.com 国际版（V11）
-- 价格调研 + `slot_costs` 智能枚举 + V10 溯源
-
-</details>
-
----
+`scripts/seed_prices.py` 只用于旧数据迁移或演示。它产生的 `demo-estimate` / `note-derived` 来源不会通过严格价格校验，不能冒充实时调研。
 
 ## 文档
 
 | 文档 | 内容 |
-|------|------|
-| [SKILL.md](SKILL.md) | AI 主流程（Step 0–7，含 **Step 1.5**） |
-| [setup-guide.md](references/setup-guide.md) | 环境配置、7 客户端适配 |
-| [planning.md](references/planning.md) | 规划方法论、OTA 链接规范 |
-| [amap-mcp-usage.md](references/amap-mcp-usage.md) | 高德 MCP 调用模式 |
-| [price-research.md](references/price-research.md) | 价格调研与 `slot_costs` |
-| [validation-rules.md](references/validation-rules.md) | V1–V11 规则说明 |
-| [iteration-rounds.md](references/iteration-rounds.md) | 三阶段分轮筛检 |
-| [multi-turn-protocol.md](references/multi-turn-protocol.md) | 增量修改、对话协议 |
-| [xhs-research.md](references/xhs-research.md) | 小红书调研（**§0 Step 1.5 目的地攻略** + 店级两段式） |
-| [meituan-guide-research.md](references/meituan-guide-research.md) | 美团攻略 WebFetch |
-| [examples/README.md](examples/README.md) | tripData JSON Schema |
+| --- | --- |
+| [SKILL.md](SKILL.md) | Agent 必须遵守的主工作流 |
+| [data-sources.md](references/data-sources.md) | 五类信息源、证据优先级与降级 |
+| [planning.md](references/planning.md) | 行程编排方法 |
+| [hotel-planning.md](references/hotel-planning.md) | 酒店选址与换住判断 |
+| [validation-rules.md](references/validation-rules.md) | V0–V13 规则 |
+| [deployment.md](references/deployment.md) | 本地交付与可选公开发布 |
+| [setup-guide.md](references/setup-guide.md) | 用户明确要求时的能力配置 |
+| [trip-schema.json](references/trip-schema.json) | 核心 JSON Schema |
 
----
+## 限制
 
-## 开发者
+- 第三方价格、营业状态和天气会变化，出发前应再次核对；
+- 校验脚本能验证结构和部分数值关系，不能证明外部查询真的发生过；
+- 攻略内容是软信号，不代表官方事实或对每个人都适用；
+- 路线与地图服务受对应平台配额、覆盖范围和服务条款限制。
 
-### 项目结构
+## License
 
-```
-travel-planner/
-├── SKILL.md                 # Agent 入口
-├── assets/template.html     # 单文件行程页模板
-├── scripts/
-│   ├── validate.py          # V1–V13 校验
-│   ├── render_html.py       # JSON → HTML
-│   ├── add_hotel_legs.py    # 酒店早晚通勤（idx=0）
-│   └── seed_prices.py       # 示例价格回填
-├── examples/chengdu-2026-09-18.json   # 国内 demo（命名：城市拼音-出发日）
-├── scripts/trip_slug.py     # 生成 {slug} 文件名
-└── references/                # 规划与集成文档
-```
-
-### 本地命令
-
-```bash
-# 校验示例
-python3 scripts/validate.py examples/chengdu-2026-09-18.json --pretty
-
-# 分轮校验
-python3 scripts/validate.py trip.json --round 1
-
-# 渲染 HTML
-python3 scripts/render_html.py assets/template.html trip.json \
-  --auto-dir ~/.travel-planner/travel-plans --sync-json
-# 输出：{城市拼音}-{出发日}.html / .json，如 chengdu-2026-09-18.html
-```
-
-### 网页地图 Key（交付后）
-
-规划用 MCP Key ≠ 网页地图 Key。要看交互地图时：
-
-1. 高德控制台申请 **Web 端 (JS API)** Key
-2. 白名单填 `你的用户名.github.io`
-3. 访问 `行程页.html?k=你的Key`（勿写入 git）
-
----
-
-## 常见问题
-
-<details>
-<summary><strong>小红书 Step 1.5 和 Round 3 有什么区别？</strong></summary>
-
-| | Step 1.5 | Round 3 |
-|---|----------|---------|
-| **时机** | Step 1 后、分组前 | 三阶段第 3 轮 |
-| **搜索词** | `{城市} N天攻略` / `避雷` | `{店名} 排队` / `踩雷` |
-| **产出** | `xhs_destination_brief` | POI `note` / `meals` 软信号 |
-| **目的** | 定分区、必去、避雷 | 验证具体餐厅/景点体验 |
-
-</details>
-
-<details>
-<summary><strong>我要先自己配好高德和小红书吗？</strong></summary>
-
-不用。装好 Skill 直接开聊，Step 0 会检测并引导；也可先说「demo 演示」跳过。
-
-</details>
-
-<details>
-<summary><strong>和「自己 ChatGPT 写攻略」有什么区别？</strong></summary>
-
-本 Skill 强制走 MCP 实查 + 脚本校验 + 固定 HTML 交付物，减少幻觉和「排太满 / 路线不现实」；产出是可分享网页而非聊天里的长文。
-
-</details>
-
-<details>
-<summary><strong>为什么不用 Trip.com？</strong></summary>
-
-国内行程用携程子域深链（`flights.ctrip.com` 等）。`trip.com` 是国际站，V11 校验会拦截。
-
-</details>
-
-<details>
-<summary><strong>PDF 可以吗？</strong></summary>
-
-正式交付物是网页 URL。可自行浏览器打印为 PDF。
-
-</details>
-
----
-
-## 参与贡献
-
-欢迎 Issue 与 Pull Request：
-
-- 改进 `template.html` 移动端体验
-- 补充国内城市 `examples/`
-- 完善文档或校验规则
-
-提交前建议：
-
-```bash
-python3 scripts/validate.py examples/chengdu-2026-09-18.json --pretty
-```
-
----
-
-## 相关项目
-
-| 项目 | 说明 |
-|------|------|
-| [xiaohongshu-skills](https://github.com/autoclaw-cc/xiaohongshu-skills) | 小红书 CLI（推荐搭配） |
-| [trip-map-builder](https://github.com/hiyeshu/trip-map-builder) | 「参考坐标」规划理念（MIT） |
-| [高德开放平台](https://lbs.amap.com/) | 地图与 POI 数据 |
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=SquirrelSong5/travel-planner-skill&type=Date)](https://star-history.com/#SquirrelSong5/travel-planner-skill&Date)
-
----
-
-## 许可证
-
-[MIT License](LICENSE)
-
-行程中的 POI、价格等来自第三方实时查询，**仅供参考**；出行请以官方与平台实时信息为准。
-
----
-
-<div align="center">
-
-**如果这个项目帮你省下了做攻略的时间，欢迎 [Star ⭐](https://github.com/SquirrelSong5/travel-planner-skill)**
-
-</div>
+[MIT](LICENSE)

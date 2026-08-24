@@ -8,37 +8,48 @@
 from __future__ import annotations
 
 import argparse
+import html as html_module
 import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 from trip_slug import trip_paths
 
 
 def inject_trip_data(html: str, trip: dict) -> str:
-    marker = "window.tripData = "
-    start = html.find(marker)
-    if start < 0:
-        raise ValueError("template 中未找到 window.tripData")
-    brace = html.find("{", start + len(marker))
-    if brace < 0:
-        raise ValueError("window.tripData 后未找到 {")
-    depth = 0
-    end = brace
-    for i in range(brace, len(html)):
-        ch = html[i]
-        if ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                end = i + 1
-                break
+    start_marker = "// TRIP_DATA_START"
+    end_marker = "// TRIP_DATA_END"
+    start = html.find(start_marker)
+    end = html.find(end_marker)
+    if start < 0 or end < 0 or end <= start:
+        raise ValueError("template 中缺少 TRIP_DATA_START/TRIP_DATA_END 标记")
+
+    # JSON 位于 <script> 中，必须转义可提前结束 script 的字符。
     trip_json = json.dumps(trip, ensure_ascii=False, indent=2)
-    html = html[:brace] + trip_json + html[end:]
+    trip_json = (
+        trip_json.replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
+    assignment = f"{start_marker}\n    window.tripData = {trip_json};\n    "
+    html = html[:start] + assignment + html[end:]
 
     hotel = trip.get("hotel") or {}
+    def text(value: object) -> str:
+        return html_module.escape("" if value is None else str(value), quote=True)
+
+    def safe_url(value: object) -> str:
+        raw = "" if value is None else str(value).strip()
+        try:
+            parsed = urlparse(raw)
+        except ValueError:
+            return "#"
+        return text(raw) if parsed.scheme in {"http", "https"} and parsed.netloc else "#"
+
     repl = {
         "{{TRIP_NAME}}": trip.get("trip_name", ""),
         "{{DATE_RANGE}}": trip.get("date_range", ""),
@@ -48,16 +59,17 @@ def inject_trip_data(html: str, trip: dict) -> str:
         "{{HOTEL_NAME}}": hotel.get("name", ""),
         "{{HOTEL_ADDRESS}}": hotel.get("address", ""),
         "{{HOTEL_WHY}}": hotel.get("why", ""),
-        "{{HOTEL_AMAP_URI}}": hotel.get("amap_uri", "#"),
+        "{{HOTEL_AMAP_URI}}": safe_url(hotel.get("amap_uri", "#")),
     }
     for k, v in repl.items():
-        html = html.replace(k, v if v is not None else "")
+        replacement = v if k == "{{HOTEL_AMAP_URI}}" else text(v)
+        html = html.replace(k, replacement)
 
     title = trip.get("trip_name", "行程")
     dr = trip.get("date_range", "")
     if dr:
         title = f"{title} · {dr}"
-    html = re.sub(r"<title>[^<]*</title>", f"<title>{title}</title>", html, count=1)
+    html = re.sub(r"<title>[^<]*</title>", f"<title>{text(title)}</title>", html, count=1)
     return html
 
 

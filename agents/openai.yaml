@@ -1,0 +1,7 @@
+interface:
+  display_name: "Travel Planner"
+  short_description: "规划并校验中国大陆旅行行程与可分享网页"
+  default_prompt: "Use $travel-planner to plan a realistic domestic trip with verified routes, costs, and booking details."
+
+policy:
+  allow_implicit_invocation: true

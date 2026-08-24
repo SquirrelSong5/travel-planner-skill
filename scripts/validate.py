@@ -1,25 +1,19 @@
 #!/usr/bin/env python3
 """
-travel-planner 自动验证脚本（v1.1.0 新增，v1.5.0 强化）
+travel-planner 自动验证脚本
 
 用法：
     python scripts/validate.py <trip_data.json> [--round 1|2|3] [--check V1,V2,...] [--pretty]
 
 行为：
     - 读 tripData JSON（与 examples/chengdu-2026-09-18.json 同 schema）
-    - 跑 V1/V3/V4/V5/V6 五条**纯数据可验**规则（V2 通勤粗算用 Haversine 距离假设速度；
-      V7 用户禁忌**必须 AI 调上下文判断**，脚本不验）
-    - **v1.5.0 三阶段分轮筛检**：--round 1=结构(V1,V4) 2=时空(V2,V5,V8,V9) 3=体验(V3,V6)
-    - **v1.5.0 新增 V8**：transports[].path **MCP 必跑痕迹**
-    - **v1.5.0 新增 V9**：通勤时间下限（v2.2.3 只拦过快，不拦实算比粗算慢）
+    - V0 校验核心 schema；V1-V13 检查可计算规则
+    - --round 1=结构、2=时空、3=体验；V7 用户禁忌需人工判断
+    - V8 校验路线来源声明与时长字段；V9 只拦快得不合理的时长
     - 输出 JSON validation_report（stdout）
-    - 退出码：全通过 → 0；有失败 → 1
+    - 退出码：全通过 → 0；有失败 → 1；--fail-on-warn 可把警告也设为失败
 
-为什么是硬约束：
-    - SKILL.md / multi-turn-protocol.md 都规定 AI 必须跑这条命令
-    - 输出 JSON 必须嵌进 tripData.validation_report
-    - template.html 浏览器端 JS 会用同样规则**强制重算**（不依赖 AI 的 self-report）
-    - **v1.5.0 起 V8 阻断 AI 凭 LLM 记忆**：transports[].source !== "amap-mcp" → ❌
+注意：source 字段只能验证声明是否完整，不能证明外部查询真的发生过。
 """
 
 from __future__ import annotations
@@ -106,7 +100,7 @@ WALK_KMH = 5.0       # 步行 5 km/h
 TRANSIT_KMH = 20.0   # 公交/地铁 20 km/h
 BIKE_KMH = 12.0      # 市内骑行 12 km/h
 DRIVE_KMH = 40.0     # 市内驾车 40 km/h
-# 通勤占当天行程 50% 阈值（v1.5.0 调整：远程日河口湖→新宿 80km 通勤本就占大头，30% 太严）
+# 通勤占当天行程 50% 阈值
 V2_COMMUTE_RATIO_FAIL = 0.50
 # 单段通勤 > 60 分钟强警告（与 V2 规则一致）
 
@@ -128,21 +122,23 @@ V10_ALLOWED_SOURCES = frozenset({
     "amap-mcp", "amap-rest-api", "official-site",
     "ctrip-webfetch", "meituan-webfetch", "computed",
 })
-V10_BAD_SOURCES = frozenset({"", "ai-guess", "memory"})
+V10_BAD_SOURCES = frozenset({
+    "", "ai-guess", "memory", "estimate", "demo-estimate", "note-derived",
+})
 V10_BUDGET_TOLERANCE = 0.15  # budget_summary 与明细加总偏差 > 15% → 警告
 
-# v1.5.0 三阶段分轮筛检：--round N 只跑当轮子集（见 references/iteration-rounds.md）
+# 三阶段分轮筛检：--round N 只跑当轮子集（见 references/iteration-rounds.md）
 ROUND_CHECKS: dict[int, tuple[str, ...]] = {
-    1: ("V1", "V4", "V11"),
-    2: ("V2", "V5", "V8", "V9", "V13"),
-    3: ("V3", "V6", "V8", "V10"),
+    1: ("V0", "V1", "V4", "V11"),
+    2: ("V0", "V2", "V5", "V8", "V9", "V13"),
+    3: ("V0", "V3", "V6", "V8", "V10"),
 }
 ROUND_PHASE: dict[int, str] = {
     1: "结构筛",
     2: "时空筛",
     3: "体验筛",
 }
-DEFAULT_CHECKS = ("V1", "V2", "V3", "V4", "V5", "V6", "V8", "V9", "V10", "V11", "V13")
+DEFAULT_CHECKS = ("V0", "V1", "V2", "V3", "V4", "V5", "V6", "V8", "V9", "V10", "V11", "V13")
 
 EARTH_R_KM = 6371.0088
 
@@ -181,6 +177,90 @@ def status(v: float, warn: float, fail: float) -> str:
     if v >= warn:
         return "⚠️"
     return "✅"
+
+
+# ===== V0：核心数据完整性 =====
+
+def check_v0(trip: dict[str, Any]) -> dict[str, Any]:
+    """阻断空计划、缺坐标、重复 idx 和无效 transport 端点。"""
+    errors: list[str] = []
+    for field in ("trip_name", "city", "date_range"):
+        if not str(trip.get(field) or "").strip():
+            errors.append(f"缺 tripData.{field}")
+    if not isinstance(trip.get("party_size"), int) or trip["party_size"] < 1:
+        errors.append("tripData.party_size 必须为正整数")
+
+    days = trip.get("days")
+    if not isinstance(days, list) or not days:
+        errors.append("tripData.days 必须为非空数组")
+        days = []
+
+    for day_index, day in enumerate(days):
+        label = f"days[{day_index}]"
+        if not isinstance(day, dict):
+            errors.append(f"{label} 必须为对象")
+            continue
+        if not isinstance(day.get("day"), int):
+            errors.append(f"{label}.day 必须为整数")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(day.get("date") or "")):
+            errors.append(f"{label}.date 必须为 YYYY-MM-DD")
+        if not str(day.get("region") or "").strip():
+            errors.append(f"{label}.region 不能为空")
+        try:
+            center_ok = get_loc({"location": day.get("center")}) is not None
+        except (TypeError, ValueError):
+            center_ok = False
+        if not center_ok:
+            errors.append(f"{label}.center 缺有效经纬度")
+
+        pois = day.get("pois")
+        if not isinstance(pois, list) or not pois:
+            errors.append(f"{label}.pois 必须为非空数组")
+            continue
+        idxs: list[int] = []
+        for poi_index, poi in enumerate(pois):
+            poi_label = f"{label}.pois[{poi_index}]"
+            if not isinstance(poi, dict):
+                errors.append(f"{poi_label} 必须为对象")
+                continue
+            idx = poi.get("idx")
+            if not isinstance(idx, int) or idx < 1:
+                errors.append(f"{poi_label}.idx 必须为正整数")
+            else:
+                idxs.append(idx)
+            if not str(poi.get("name") or "").strip():
+                errors.append(f"{poi_label}.name 不能为空")
+            if not re.match(r"^\d{1,2}:\d{2}", str(poi.get("time") or "")):
+                errors.append(f"{poi_label}.time 缺有效时间")
+            if not isinstance(poi.get("duration_min"), (int, float)) or poi["duration_min"] <= 0:
+                errors.append(f"{poi_label}.duration_min 必须大于 0")
+            try:
+                loc_ok = get_loc(poi) is not None
+            except (TypeError, ValueError):
+                loc_ok = False
+            if not loc_ok:
+                errors.append(f"{poi_label} 缺有效经纬度")
+        if len(idxs) != len(set(idxs)):
+            errors.append(f"{label}.pois 存在重复 idx")
+
+        valid_endpoints = {0, *idxs}
+        for transport_index, transport in enumerate(day.get("transports") or []):
+            t_label = f"{label}.transports[{transport_index}]"
+            if not isinstance(transport, dict):
+                errors.append(f"{t_label} 必须为对象")
+                continue
+            if transport.get("from_idx") not in valid_endpoints:
+                errors.append(f"{t_label}.from_idx 不对应酒店或当日 POI")
+            if transport.get("to_idx") not in valid_endpoints:
+                errors.append(f"{t_label}.to_idx 不对应酒店或当日 POI")
+
+    if errors:
+        return {
+            "id": "V0", "rule": "核心数据完整性", "status": "❌",
+            "note": f"{len(errors)} 项 schema 错误：{errors[:5]}{'...' if len(errors) > 5 else ''}",
+            "errors": errors,
+        }
+    return {"id": "V0", "rule": "核心数据完整性", "status": "✅", "note": "核心字段、POI 坐标与 transport 端点完整"}
 
 
 # ===== V1：区域一致性 =====
@@ -262,7 +342,7 @@ def check_v2(day: dict[str, Any]) -> dict[str, Any]:
 # ===== V3：餐厅区域匹配 =====
 
 def check_v3(day: dict[str, Any]) -> dict[str, Any]:
-    """餐厅到主区域中心距离。"""
+    """餐厅应靠近主区域，或明确作为当日路线中的一站。"""
     center = day.get("center")
     meals = day.get("meals") or {}
     if not center:
@@ -271,22 +351,46 @@ def check_v3(day: dict[str, Any]) -> dict[str, Any]:
     worst_d = 0.0
     worst_meal = None
     worst_rest = None
+    missing_main_coords: list[str] = []
+    candidate_count = 0
+    routed_count = 0
+    poi_locs = [loc for p in day.get("pois") or [] if (loc := get_loc(p)) is not None]
     for meal_name, meal in meals.items():
         if not isinstance(meal, dict):
             continue
-        for tag in ("main", "alt1", "alt2"):
+        for tag in ("main", "alt", "alt1", "alt2"):
             r = meal.get(tag) or {}
+            if not isinstance(r, dict) or not r.get("name"):
+                continue
             loc = get_loc(r)
             if loc is None:
+                if tag == "main":
+                    missing_main_coords.append(f"{meal_name}.main（{r.get('name')}）")
                 continue
+            candidate_count += 1
             d = haversine_km(tuple(center), loc)
+            nearest_poi = min((haversine_km(loc, p) for p in poi_locs), default=float("inf"))
+            if d > V3_WARN_KM and nearest_poi <= 0.3:
+                routed_count += 1
+                continue
             if d > worst_d:
                 worst_d = d
                 worst_meal = meal_name
                 worst_rest = r.get("name", "?")
 
+    if missing_main_coords:
+        return {
+            "id": "V3", "rule": "餐厅区域匹配", "status": "❌",
+            "note": f"主餐厅缺坐标，无法验证区域：{'、'.join(missing_main_coords)}",
+            "errors": missing_main_coords,
+        }
+    if candidate_count == 0:
+        return {"id": "V3", "rule": "餐厅区域匹配", "status": "⚠️", "note": "没有可验证的餐厅候选"}
     if worst_d == 0.0:
-        return {"id": "V3", "rule": "餐厅区域匹配", "status": "✅", "note": "无餐厅坐标字段可验（正常）"}
+        note = "所有餐厅均在主区域内"
+        if routed_count:
+            note = f"{routed_count} 个偏离主区域的餐厅已明确列入当日路线，其余餐厅均在主区域内"
+        return {"id": "V3", "rule": "餐厅区域匹配", "status": "✅", "note": note}
 
     st = status(worst_d, V3_WARN_KM, V3_FAIL_KM)
     note = f"最远餐厅「{worst_rest}」({worst_meal}) 离主区域 {worst_d:.2f} km（阈值 {V3_WARN_KM}/{V3_FAIL_KM}）"
@@ -335,7 +439,8 @@ def check_v5(last_day: dict[str, Any], trip_meta: dict[str, Any]) -> dict[str, A
     if not flights:
         return {"id": "V5", "rule": "末日返程缓冲", "status": "✅", "note": "无返程票，跳过"}
 
-    flight = flights[0]
+    return_flights = [p for p in flights if any(k in (p.get("item") or p.get("title") or "") for k in ("返程", "回程", "离开"))]
+    flight = return_flights[-1] if return_flights else flights[-1]
     flight_time = flight.get("depart_time") or flight.get("time") or ""
     flight_note = flight.get("item") or flight.get("title") or "返程"
 
@@ -396,7 +501,7 @@ def check_v6(day: dict[str, Any]) -> dict[str, Any]:
 # ===== V8：MCP 必跑痕迹（source + duration_min）=====
 
 def check_v8(days: list[dict[str, Any]], trip: dict[str, Any] | None = None) -> dict[str, Any]:
-    """每段 transport 须有高德实算来源与 duration_min（v2.3.0 起不再要求 path）。"""
+    """每段 transport 须有允许的路线来源声明与 duration_min。"""
     total_transports = 0
     bad_source = []
     missing_duration = []
@@ -422,7 +527,13 @@ def check_v8(days: list[dict[str, Any]], trip: dict[str, Any] | None = None) -> 
                 missing_duration.append(f"{seg_label}（缺或无效 duration_min）")
 
     if total_transports == 0:
-        return {"id": "V8", "rule": "MCP 必跑痕迹", "status": "✅", "note": "无 transport 段，跳过"}
+        needs_routes = any(len(d.get("pois") or []) > 1 for d in days)
+        return {
+            "id": "V8",
+            "rule": "路线来源字段完整性",
+            "status": "❌" if needs_routes else "⚠️",
+            "note": "存在多 POI 行程但没有 transport 段" if needs_routes else "无 transport 段可验证",
+        }
 
     errors = []
     if bad_source:
@@ -435,24 +546,24 @@ def check_v8(days: list[dict[str, Any]], trip: dict[str, Any] | None = None) -> 
     if errors:
         return {
             "id": "V8",
-            "rule": "MCP 必跑痕迹",
+            "rule": "路线来源字段完整性",
             "status": "❌",
-            "note": f"❌ 共 {total_transports} 段 transport：{'；'.join(errors)}。请 MCP/REST maps_direction_* 实算（见 amap-mcp-usage §2）。",
+            "note": f"❌ 共 {total_transports} 段 transport：{'；'.join(errors)}。请用当前可用的地图能力重新实算。",
             "errors": {"bad_source": bad_source, "missing_duration": missing_duration},
         }
 
     return {
         "id": "V8",
-        "rule": "MCP 必跑痕迹",
+        "rule": "路线来源字段完整性",
         "status": "✅",
         "note": f"全部 {total_transports} 段 transport 含合法 source 与 duration_min",
     }
 
 
-# ===== V9（v1.5.0 新增，v2.2.3 修正）：通勤时间下限 =====
+# ===== V9：通勤时间下限 =====
 
 def check_v9(days: list[dict[str, Any]], trip: dict[str, Any] | None = None) -> dict[str, Any]:
-    """v1.5.0 新增：transports[].duration_min 必须来自高德实算。
+    """检查 transports[].duration_min 是否快得不合理。
 
     v2.2.3 修正：旧版用 |实算-粗算|/粗算 > 50% 双向比较——公交/步行实算常**比** Haversine
     直线粗算慢很多（绕路、换乘、等站），会误杀真数据。
@@ -577,8 +688,8 @@ def check_v13(trip: dict[str, Any], days: list[dict[str, Any]]) -> dict[str, Any
         return {
             "id": "V13",
             "rule": "酒店早晚通勤",
-            "status": "✅",
-            "note": "无 hotel 坐标，跳过",
+            "status": "⚠️",
+            "note": "无 hotel 坐标，无法验证酒店早晚通勤",
         }
 
     missing: list[str] = []
@@ -625,7 +736,7 @@ def check_v13(trip: dict[str, Any], days: list[dict[str, Any]]) -> dict[str, Any
     }
 
 
-# ===== V10（v2.1.0 新增）：价格溯源 =====
+# ===== V10：价格溯源 =====
 
 def _valid_price_field(obj: Any, label: str) -> str | None:
     """返回错误信息，无错返回 None。"""
@@ -741,7 +852,7 @@ def check_v10(trip: dict[str, Any]) -> dict[str, Any]:
     if errors:
         return {
             "id": "V10",
-            "rule": "价格溯源（v2.1.0 新增）",
+            "rule": "价格溯源",
             "status": "❌",
             "note": f"❌ {len(errors)} 项缺价或无溯源：{errors[:4]}{'...' if len(errors) > 4 else ''}",
             "errors": errors,
@@ -749,7 +860,7 @@ def check_v10(trip: dict[str, Any]) -> dict[str, Any]:
     if warnings:
         return {
             "id": "V10",
-            "rule": "价格溯源（v2.1.0 新增）",
+            "rule": "价格溯源",
             "status": "⚠️",
             "note": "；".join(warnings),
             "warnings": warnings,
@@ -758,13 +869,13 @@ def check_v10(trip: dict[str, Any]) -> dict[str, Any]:
     n_trans = sum(len(d.get("transports") or []) for d in days)
     return {
         "id": "V10",
-        "rule": "价格溯源（v2.1.0 新增）",
+        "rule": "价格溯源",
         "status": "✅",
         "note": f"全部 {n_poi} POI + {n_trans} transport + 餐食均有 source 标价",
     }
 
 
-# ===== V11（v2.2.1 新增）：prebook 禁止国际 OTA =====
+# ===== V11：prebook 禁止国际 OTA =====
 
 _FOREIGN_OTA_SUFFIXES = ("booking.com", "agoda.com", "expedia.com")
 
@@ -776,7 +887,7 @@ def _is_foreign_ota_url(url: str) -> bool:
         return False
     if not host:
         return False
-    if host.endswith("ctrip.com"):
+    if host == "ctrip.com" or host.endswith(".ctrip.com"):
         return False
     if host == "trip.com" or host.endswith(".trip.com"):
         return True
@@ -795,14 +906,14 @@ def check_v11(trip: dict[str, Any]) -> dict[str, Any]:
     if bad:
         return {
             "id": "V11",
-            "rule": "prebook 国内 OTA 链接（v2.2.1）",
+            "rule": "prebook 国内 OTA 链接",
             "status": "❌",
             "note": f"禁止 trip.com / Booking 等国际 OTA，改 flights.ctrip.com 等：{bad[0]}{'…' if len(bad) > 1 else ''}",
             "bad_urls": bad,
         }
     return {
         "id": "V11",
-        "rule": "prebook 国内 OTA 链接（v2.2.1）",
+        "rule": "prebook 国内 OTA 链接",
         "status": "✅",
         "note": "prebook 链接均为国内携程深链或官方站",
     }
@@ -817,14 +928,15 @@ def main() -> int:
         "--round",
         type=int,
         choices=(1, 2, 3),
-        help="v1.5.0 三阶段分轮筛检：1=结构(V1,V4) 2=时空(V2,V5,V8,V9) 3=体验(V3,V6)",
+        help="三阶段筛检：1=结构 2=时空 3=体验；每轮都会先跑 V0",
     )
     p.add_argument(
         "--check",
         default=None,
-        help="逗号分隔的规则 ID；默认全跑；与 --round 同时用时 --check 优先",
+        help="逗号分隔的规则 ID；默认全跑；与 --round 同时用时 --check 优先；V0 始终先运行",
     )
     p.add_argument("--pretty", action="store_true", help="缩进输出")
+    p.add_argument("--fail-on-warn", action="store_true", help="存在警告时也返回非零退出码（CI 推荐）")
     args = p.parse_args()
 
     with open(args.trip_json, "r", encoding="utf-8") as f:
@@ -841,9 +953,14 @@ def main() -> int:
     else:
         round_num = None
         selected = set(DEFAULT_CHECKS)
+    selected.add("V0")
 
     rules = []
     n_days = len(days)
+    v0_result = check_v0(trip)
+    rules.append(v0_result)
+    if v0_result["status"] == "❌":
+        selected = {"V0"}
     if "V1" in selected:
         for i, d in enumerate(days):
             rules.append(check_v1(d, is_last_day=(i == n_days - 1)))
@@ -885,14 +1002,14 @@ def main() -> int:
         "phase": phase,
         "rules": rules,
         "summary": f"{pass_} 通过 / {warn} 警告 / {fail} 失败（{round_note}；**V7 用户禁忌需 AI 自行核对**）",
-        "script_version": "1.5.0",
-        "note": "v1.5.0 三阶段分轮筛检：--round 1|2|3 见 references/iteration-rounds.md；V2 粗算 + 高德实算；V8/V9 阻断假 MCP 痕迹",
+        "script_version": "3.0.0",
+        "note": "V0 校验核心 schema；V8 只验证声明的来源字段，不把字符串本身视为外部查询证明",
     }
 
     indent = 2 if args.pretty else None
     print(json.dumps(summary, ensure_ascii=False, indent=indent))
 
-    return 1 if fail else 0
+    return 1 if fail or (args.fail_on_warn and warn) else 0
 
 
 if __name__ == "__main__":

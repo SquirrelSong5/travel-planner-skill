@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SquirrelSong5/travel-planner-skill/references/trip-schema.json",
+  "title": "travel-planner trip data",
+  "type": "object",
+  "required": [
+    "trip_name",
+    "city",
+    "date_range",
+    "party_size",
+    "days"
+  ],
+  "properties": {
+    "trip_name": {"type": "string", "minLength": 1},
+    "city": {"type": "string", "minLength": 1},
+    "date_range": {"type": "string", "minLength": 1},
+    "party_size": {"type": "integer", "minimum": 1},
+    "summary": {"type": "string"},
+    "hotel": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "lng": {"type": "number", "minimum": 73, "maximum": 136},
+        "lat": {"type": "number", "minimum": 3, "maximum": 54},
+        "amap_uri": {"type": "string", "format": "uri"}
+      }
+    },
+    "days": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/day"}
+    },
+    "prebook": {
+      "type": "array",
+      "items": {"type": "object"}
+    }
+  },
+  "$defs": {
+    "coordinates": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "number", "minimum": 73, "maximum": 136},
+        {"type": "number", "minimum": 3, "maximum": 54}
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "day": {
+      "type": "object",
+      "required": ["day", "date", "region", "center", "pois"],
+      "properties": {
+        "day": {"type": "integer", "minimum": 1},
+        "date": {"type": "string", "minLength": 1},
+        "region": {"type": "string", "minLength": 1},
+        "center": {"$ref": "#/$defs/coordinates"},
+        "pois": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/poi"}
+        },
+        "transports": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/transport"}
+        }
+      }
+    },
+    "poi": {
+      "type": "object",
+      "required": ["idx", "name", "time", "duration_min", "lng", "lat"],
+      "properties": {
+        "idx": {"type": "integer", "minimum": 1},
+        "name": {"type": "string", "minLength": 1},
+        "time": {"type": "string", "minLength": 1},
+        "duration_min": {"type": "number", "minimum": 0},
+        "lng": {"type": "number", "minimum": 73, "maximum": 136},
+        "lat": {"type": "number", "minimum": 3, "maximum": 54}
+      }
+    },
+    "transport": {
+      "type": "object",
+      "required": ["from_idx", "to_idx", "mode", "duration_min", "source"],
+      "properties": {
+        "from_idx": {"type": "integer", "minimum": 0},
+        "to_idx": {"type": "integer", "minimum": 0},
+        "mode": {"type": "string", "minLength": 1},
+        "duration_min": {"type": "number", "exclusiveMinimum": 0},
+        "source": {"enum": ["amap-mcp", "amap-rest-api"]}
+      }
+    }
+  }
+}
