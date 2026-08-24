@@ -128,6 +128,17 @@ V10_BAD_SOURCES = frozenset({
 })
 V10_BUDGET_TOLERANCE = 0.15  # budget_summary 与明细加总偏差 > 15% → 警告
 
+# 五类平台按自身属性参与不同阶段；完整攻略默认逐一尝试并记录结果。
+SOURCE_PLATFORM_STAGES: dict[str, frozenset[str]] = {
+    "official": frozenset({"constraints", "recheck"}),
+    "amap": frozenset({"spatial", "recheck"}),
+    "ota": frozenset({"booking", "pricing", "recheck"}),
+    "xiaohongshu": frozenset({"discovery", "experience"}),
+    "meituan": frozenset({"dining", "experience"}),
+}
+SOURCE_COVERAGE_STATUSES = frozenset({"used", "degraded", "unavailable", "not_applicable"})
+SOURCE_COVERAGE_STAGES = frozenset().union(*SOURCE_PLATFORM_STAGES.values())
+
 # 三阶段分轮筛检：--round N 只跑当轮子集（见 references/iteration-rounds.md）
 ROUND_CHECKS: dict[int, tuple[str, ...]] = {
     1: ("V0", "V1", "V4", "V11"),
@@ -194,6 +205,14 @@ def _as_date(value: Any) -> date | None:
             return None
 
 
+def _is_http_url(value: Any) -> bool:
+    try:
+        parsed = urlparse(str(value or "").strip())
+    except ValueError:
+        return False
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
 # ===== V0：核心数据完整性 =====
 
 def check_v0(trip: dict[str, Any]) -> dict[str, Any]:
@@ -204,6 +223,53 @@ def check_v0(trip: dict[str, Any]) -> dict[str, Any]:
             errors.append(f"缺 tripData.{field}")
     if not isinstance(trip.get("party_size"), int) or trip["party_size"] < 1:
         errors.append("tripData.party_size 必须为正整数")
+
+    source_coverage = trip.get("source_coverage")
+    seen_platforms: set[str] = set()
+    if not isinstance(source_coverage, list):
+        errors.append("tripData.source_coverage 必须为数组")
+    else:
+        for index, item in enumerate(source_coverage):
+            label = f"source_coverage[{index}]"
+            if not isinstance(item, dict):
+                errors.append(f"{label} 必须为对象")
+                continue
+            platform = item.get("platform")
+            if platform not in SOURCE_PLATFORM_STAGES:
+                errors.append(f"{label}.platform 不合法")
+                continue
+            if platform in seen_platforms:
+                errors.append(f"{label}.platform 重复：{platform}")
+            seen_platforms.add(platform)
+            if item.get("status") not in SOURCE_COVERAGE_STATUSES:
+                errors.append(f"{label}.status 不合法")
+            stages = item.get("stages")
+            if not isinstance(stages, list) or not stages:
+                errors.append(f"{label}.stages 必须为非空数组")
+            else:
+                invalid_stages = [stage for stage in stages if stage not in SOURCE_COVERAGE_STAGES]
+                if invalid_stages:
+                    errors.append(f"{label}.stages 含无效阶段：{invalid_stages}")
+                if not set(stages).intersection(SOURCE_PLATFORM_STAGES[platform]):
+                    errors.append(f"{label}.stages 不符合 {platform} 的平台职责")
+            for field in ("purpose", "checked_at"):
+                if not str(item.get(field) or "").strip():
+                    errors.append(f"{label}.{field} 不能为空")
+            if item.get("checked_at") and _as_date(item.get("checked_at")) is None:
+                errors.append(f"{label}.checked_at 不是有效日期")
+            refs = item.get("source_refs")
+            if not isinstance(refs, list):
+                errors.append(f"{label}.source_refs 必须为数组")
+            elif item.get("status") in {"used", "degraded"}:
+                if not refs:
+                    errors.append(f"{label}.source_refs 使用或降级时不能为空")
+                elif any(not _is_http_url(ref) for ref in refs):
+                    errors.append(f"{label}.source_refs 只能包含 HTTP(S) 链接")
+            if item.get("status") in {"unavailable", "not_applicable"} and not str(item.get("note") or "").strip():
+                errors.append(f"{label}.note 必须说明未使用原因")
+        missing_platforms = set(SOURCE_PLATFORM_STAGES).difference(seen_platforms)
+        if missing_platforms:
+            errors.append(f"source_coverage 缺少平台：{sorted(missing_platforms)}")
 
     prebook = trip.get("prebook")
     if not isinstance(prebook, list):
@@ -309,7 +375,7 @@ def check_v0(trip: dict[str, Any]) -> dict[str, Any]:
             "note": f"{len(errors)} 项 schema 错误：{errors[:5]}{'...' if len(errors) > 5 else ''}",
             "errors": errors,
         }
-    return {"id": "V0", "rule": "核心数据完整性", "status": "✅", "note": "核心字段、POI 坐标与 transport 端点完整"}
+    return {"id": "V0", "rule": "核心数据完整性", "status": "✅", "note": "核心字段、五类信息源覆盖、POI 坐标与 transport 端点完整"}
 
 
 # ===== V1：区域一致性 =====
@@ -1197,7 +1263,7 @@ def main() -> int:
         "phase": phase,
         "rules": rules,
         "summary": f"{pass_} 通过 / {warn} 警告 / {fail} 失败（{round_note}；**V7 用户禁忌需 AI 自行核对**）",
-        "script_version": "3.1.0",
+        "script_version": "3.2.0",
         "note": "V0 校验核心 schema；V8 只验证来源声明；V12 检查易变事实的核对与复核节点",
     }
 
