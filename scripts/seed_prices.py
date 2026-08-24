@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""为 tripData 示例回填 v2.1.0 价格字段（开发/迁移用）。
+"""为 tripData 示例回填演示价格（仅开发/迁移用）。
+
+本脚本不会访问高德、携程或官方网站。所有非零默认值都标记为
+``demo-estimate``，因此不能作为正式行程的数据来源，也不会通过严格 V10。
 
 用法：python scripts/seed_prices.py <trip.json> [--party-size N] [--in-place]
 """
@@ -20,7 +23,7 @@ def price(
     unit: str = "per_person",
     quantity: int = 1,
     label: str = "",
-    source: str = "amap-mcp",
+    source: str = "demo-estimate",
     source_ref: str = "",
     currency: str = "CNY",
 ) -> dict[str, Any]:
@@ -288,20 +291,20 @@ def seed_poi_price(p: dict[str, Any], party: int, currency: str) -> None:
     if parsed:
         mn, mx = parsed
         lbl = "门票" if "门票" in note or cat == "scenery" else "费用"
-        src = "official-site" if "公众号" in note or "预约" in note else "amap-mcp"
-        ref = "note 解析 + 官方/高德"
+        src = "note-derived"
+        ref = "从已有 note 解析，尚未实时核验"
         p["price"] = price(mn, mx, unit="per_person", quantity=party, label=lbl, source=src, source_ref=ref, currency=currency)
         return
-    if cat in ("scenery", "culture", "shopping") and "免费" not in note:
-        p["price"] = price(0, 0, unit="free", quantity=1, label="参观", source="computed", source_ref="步行街/免费景点", currency=currency)
+    if "免费" in note:
+        p["price"] = price(0, 0, unit="free", quantity=1, label="参观", source="note-derived", source_ref="note 标注免费，尚未实时核验", currency=currency)
         return
     if cat == "hotel":
         p["price"] = price(0, 0, unit="free", quantity=1, label="入住", source="computed", source_ref="房费见抽屉住宿", currency=currency)
         return
     if cat == "food":
-        p["price"] = price(80, 120, unit="per_person", quantity=party, label="餐饮", source="amap-mcp", source_ref="maps_search_detail cost 区间", currency=currency)
+        p["price"] = price(80, 120, unit="per_person", quantity=party, label="餐饮", source="demo-estimate", source_ref="演示默认区间，必须替换为实时查询", currency=currency)
         return
-    p["price"] = price(0, 0, unit="free", quantity=1, label="活动", source="computed", source_ref="无门票", currency=currency)
+    p["price"] = price(0, 0, unit="free", quantity=1, label="待核实", source="demo-estimate", source_ref="演示占位，必须替换为实时查询", currency=currency)
 
 
 def seed_transport_fare(t: dict[str, Any], party: int, currency: str) -> None:
@@ -313,9 +316,9 @@ def seed_transport_fare(t: dict[str, Any], party: int, currency: str) -> None:
         t["fare"]["currency"] = currency
         return
     if mode == "driving":
-        t["fare"] = price(25, 40, unit="fixed", quantity=1, label="打车", source="amap-mcp", source_ref="maps_direction_driving taxi_cost 估", currency=currency)
+        t["fare"] = price(25, 40, unit="fixed", quantity=1, label="打车", source="demo-estimate", source_ref="演示默认区间，必须替换为实时查询", currency=currency)
         return
-    t["fare"] = price(3, 6, unit="per_person", quantity=party, label="公交/地铁", source="amap-mcp", source_ref="maps_direction_transit cost 估", currency=currency)
+    t["fare"] = price(3, 6, unit="per_person", quantity=party, label="公交/地铁", source="demo-estimate", source_ref="演示默认区间，必须替换为实时查询", currency=currency)
 
 
 def seed_meal_price(m: dict[str, Any] | None, party: int, currency: str, default: tuple[float, float]) -> None:
@@ -324,7 +327,7 @@ def seed_meal_price(m: dict[str, Any] | None, party: int, currency: str, default
     if m.get("price"):
         return
     mn, mx = default
-    m["price"] = price(mn, mx, unit="per_person", quantity=party, label="餐饮", source="amap-mcp", source_ref="maps_search_detail cost", currency=currency)
+    m["price"] = price(mn, mx, unit="per_person", quantity=party, label="餐饮", source="demo-estimate", source_ref="演示默认区间，必须替换为实时查询", currency=currency)
 
 
 def sum_prices(trip: dict[str, Any]) -> tuple[float, float]:
@@ -395,7 +398,7 @@ def seed_trip(trip: dict[str, Any], party: int) -> dict[str, Any]:
         if m:
             nights = int(m.group(1))
         h["price"] = price(nightly, nightly + 80, unit="per_night", quantity=nights, label="住宿",
-                           source="ctrip-webfetch", source_ref="携程酒店列表实查估", currency=currency)
+                           source="demo-estimate", source_ref="演示酒店区间，必须替换为实时查询", currency=currency)
         trip["hotel"] = h
 
     for pb in trip.get("prebook") or []:
@@ -405,13 +408,13 @@ def seed_trip(trip: dict[str, Any], party: int) -> dict[str, Any]:
         note = pb.get("note") or ""
         if "船票" in item or "35" in note:
             pb["price"] = price(35, 35, unit="per_person", quantity=party, label="船票",
-                                source="official-site", source_ref="厦门轮渡官网", currency=currency)
+                                source="demo-estimate", source_ref="演示船票价格，必须替换为实时查询", currency=currency)
         elif "机票" in item:
             pb["price"] = price(600, 900, unit="per_person", quantity=party, label="机票",
-                                source="ctrip-webfetch", source_ref="携程机票实查区间", currency=currency)
+                                source="demo-estimate", source_ref="演示机票区间，必须替换为实时查询", currency=currency)
         elif "酒店" in item:
             pb["price"] = h.get("price") or price(350, 430, unit="per_night", quantity=3, label="酒店",
-                                                  source="ctrip-webfetch", source_ref="携程酒店", currency=currency)
+                                                  source="demo-estimate", source_ref="演示酒店区间，必须替换为实时查询", currency=currency)
 
     line_min, line_max = sum_prices(trip)
     party = trip.get("party_size") or 1
@@ -438,13 +441,13 @@ def seed_trip(trip: dict[str, Any], party: int) -> dict[str, Any]:
                 "max": hotel_p.get("total_max", hotel_p.get("total_min", 0)),
                 "nights": hotel_p.get("quantity", 3),
             },
-            "flights": {"min": flight_min or None, "max": flight_max or flight_min or None, "note": "携程往返估"},
+            "flights": {"min": flight_min or None, "max": flight_max or flight_min or None, "note": "演示估算，必须实时替换"},
         },
         "total_min": total_min,
         "total_max": total_max,
         "per_person_min": round(total_min / party),
         "per_person_max": round(total_max / party),
-        "disclaimer": "价格为调研日参考，不含个人购物；机票/酒店以平台实时为准",
+        "disclaimer": "演示/迁移价格，不是实时调研；交付前必须替换",
     }
     seed_slot_costs(trip)
     trip.pop("_currency", None)

@@ -2,6 +2,7 @@
 """Smoke-test day-route URL generation (no browser)."""
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
@@ -189,13 +190,28 @@ def dir_url(start, vias, end, hotel_name: str) -> str:
 
 
 def main() -> int:
-    files = [
-        Path.home() / ".travel-planner/travel-plans/qingdao-2026-06-25.json",
-        Path.home() / ".travel-planner/travel-plans/xiamen-2026-06-25.json",
-    ]
+    ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "trip_json",
+        nargs="*",
+        type=Path,
+        default=[ROOT / "examples" / "chengdu-2026-09-18.json"],
+        help="一个或多个 trip JSON；默认测试仓库内成都示例",
+    )
+    args = ap.parse_args()
+    files = args.trip_json
     failed = 0
     for path in files:
-        trip = json.loads(path.read_text(encoding="utf-8"))
+        if not path.is_file():
+            print(f"FAIL missing file: {path}", file=sys.stderr)
+            failed += 1
+            continue
+        try:
+            trip = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"FAIL invalid JSON: {path}: {exc}", file=sys.stderr)
+            failed += 1
+            continue
         hotel_name = (trip.get("hotel") or {}).get("name", "")
         print(path.name)
         for day in trip["days"]:

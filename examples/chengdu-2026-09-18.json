@@ -1,11 +1,14 @@
 {
-  "$schema": "./README.md#schema",
-  "amap_key": "",
+  "$schema": "../references/trip-schema.json",
   "trip_name": "成都 3 日 2 晚",
   "date_range": "2026-09-18 ~ 2026-09-20",
   "n_days": "2 泊 3 日",
   "city": "成都",
   "summary": "川菜 + 熊猫 + 茶馆三日。春熙路酒店作锚点，去各区都顺；火锅选小巷本地店而非网红打卡。",
+  "assumptions": [
+    "2 名成年人同行，无已知无障碍、过敏或儿童约束",
+    "航班尚未出票，示例以 18:00 返程航班计算缓冲"
+  ],
   "weather_plan": "9 月成都仍偏热 + 阵雨多，户外（宽窄巷子、人民公园）提前 1 天看雨。",
   "trip_center": [
     104.066,
@@ -362,6 +365,8 @@
         "dinner": {
           "main": {
             "name": "小龙翻大江（春熙店）",
+            "lng": 104.083,
+            "lat": 30.657,
             "why": "步行 5 分钟；川剧变脸火锅 / 落地第一顿稳",
             "price": {
               "min": 80,
@@ -392,6 +397,15 @@
       "weather": "阵雨 25℃",
       "weather_emoji": "🌦️",
       "weather_decision": "提前 1 天看雨；阵雨改 Plan B（成都博物馆 + 蜀锦织绣博物馆）",
+      "plan_b": {
+        "trigger": "持续降雨、雷电预警，或户外步行体验明显受影响",
+        "alternative": "宽窄巷子与人民公园改为成都博物馆 + 蜀锦织绣博物馆",
+        "impact": "午餐改到天府广场附近，取消人民公园茶歇，晚餐时间保持不变",
+        "route_note": "酒店 → 成都博物馆 → 午餐 → 蜀锦织绣博物馆 → 晚餐 → 酒店",
+        "source": "official-site",
+        "source_ref": "成都博物馆与气象官方页面",
+        "checked_at": "2026-08-24T15:30:00+08:00"
+      },
       "center": [
         104.061,
         30.668
@@ -857,6 +871,8 @@
         "lunch": {
           "main": {
             "name": "麻辣空间（宽窄巷子店）",
+            "lng": 104.062,
+            "lat": 30.6695,
             "why": "川菜老店 / 区域顺路",
             "price": {
               "min": 80,
@@ -879,6 +895,8 @@
         "dinner": {
           "main": {
             "name": "小郡肝串串香（春熙路总店）",
+            "lng": 104.082,
+            "lat": 30.6605,
             "why": "返春熙路顺路 / 串串灵魂",
             "price": {
               "min": 80,
@@ -1305,6 +1323,8 @@
         "lunch": {
           "main": {
             "name": "基地外 熊猫主题餐厅",
+            "lng": 104.144,
+            "lat": 30.738,
             "why": "区域补给 / 看熊猫后顺路",
             "price": {
               "min": 80,
@@ -1352,13 +1372,22 @@
   "prebook": [
     {
       "item": "成都大熊猫繁育研究基地门票",
+      "day": 3,
       "deadline": "出发前 1 天（官方公众号实名预约）",
+      "priority": "must",
+      "status": "not_booked",
+      "id_required": true,
+      "channel": "official",
       "url": "https://www.panda.org.cn/",
       "note": "Day 3 上午 7:30 必到；提前 1 天 0 点放票，越早越好"
     },
     {
       "item": "春熙路亚朵酒店",
       "deadline": "出发前 2 周",
+      "priority": "must",
+      "status": "not_booked",
+      "id_required": true,
+      "channel": "ota",
       "url": "https://hotels.ctrip.com/hotels/list?cityname=%E6%88%90%E9%83%BD&keyword=%E6%98%A5%E7%86%95%E8%B7%AF%E4%BA%9A%E6%A0%BC%E9%85%92%E5%BA%97",
       "note": "Booking / 携程对比价；9 月旺季提前订",
       "price": {
@@ -1377,6 +1406,10 @@
     {
       "item": "国内机票（出发 → 成都双流 / 天府）",
       "deadline": "出发前 2 周",
+      "priority": "must",
+      "status": "not_booked",
+      "id_required": true,
+      "channel": "ota",
       "url": "https://flights.ctrip.com/itinerary/oneway/sha-ctu?date=2026-09-18",
       "note": "双流机场近市区（地铁 10 号线 45 分钟）；天府机场远（地铁 18 号线 1.5 小时）",
       "price": {
@@ -1392,9 +1425,14 @@
         "source_ref": "携程机票实查区间"
       }
     },
-    {
-      "item": "国内机票（成都 → 返程）",
-      "deadline": "出发前 2 周",
+  {
+    "item": "国内机票（成都 → 返程）",
+    "depart_time": "18:00",
+    "deadline": "出发前 2 周",
+      "priority": "must",
+      "status": "not_booked",
+      "id_required": true,
+      "channel": "ota",
       "url": "https://flights.ctrip.com/itinerary/oneway/ctu-sha?date=2026-09-20",
       "note": "建议返程 18:00 之后航班，留 3 小时机场缓冲",
       "price": {
@@ -1409,6 +1447,145 @@
         "source": "ctrip-webfetch",
         "source_ref": "携程机票实查区间"
       }
+    }
+  ],
+  "source_coverage": [
+    {
+      "platform": "xiaohongshu",
+      "status": "used",
+      "stages": ["discovery", "experience"],
+      "purpose": "发现成都三日游常见分区、熊猫基地早场节奏与近期排队体验",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "source_refs": [
+        "https://www.xiaohongshu.com/search_result?keyword=%E6%88%90%E9%83%BD%E4%B8%89%E6%97%A5%E6%B8%B8"
+      ],
+      "note": "只作为体验信号，开放和预约以官方渠道为准"
+    },
+    {
+      "platform": "official",
+      "status": "used",
+      "stages": ["constraints", "recheck"],
+      "purpose": "确认熊猫基地开放预约、天气风险和临时通知",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "source_refs": [
+        "https://www.panda.org.cn/",
+        "https://www.weather.com.cn/weather/101270101.shtml"
+      ]
+    },
+    {
+      "platform": "amap",
+      "status": "used",
+      "stages": ["spatial", "recheck"],
+      "purpose": "核对酒店、景点和餐厅位置，计算主要通勤与机场路线",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "source_refs": [
+        "https://www.amap.com/"
+      ]
+    },
+    {
+      "platform": "meituan",
+      "status": "used",
+      "stages": ["dining", "experience"],
+      "purpose": "围绕每日主区域建立川菜、火锅和串串餐厅候选池",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "source_refs": [
+        "https://guide.meituan.com/chengdu/canyin"
+      ],
+      "note": "候选餐厅再用高德确认位置，价格与营业状态单独复核"
+    },
+    {
+      "platform": "ota",
+      "status": "used",
+      "stages": ["booking", "pricing", "recheck"],
+      "purpose": "核对酒店和往返机票价格区间、可售状态与国内预订入口",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "source_refs": [
+        "https://hotels.ctrip.com/",
+        "https://flights.ctrip.com/"
+      ]
+    }
+  ],
+  "safety_notes": [
+    {
+      "risk": "9 月阵雨导致路面湿滑和户外体验下降",
+      "action": "穿防滑鞋，随身带轻便雨具；出现雷电预警时立即启用 Day 2 Plan B",
+      "severity": "warning",
+      "applies_to": "全体同行人",
+      "source": "official-weather",
+      "source_ref": "https://www.weather.com.cn/weather/101270101.shtml",
+      "checked_at": "2026-08-24T15:30:00+08:00"
+    },
+    {
+      "risk": "返程日跨城通勤和机场拥堵压缩缓冲",
+      "action": "15:00 前结束最后一项活动，保留至少 3 小时前往机场、值机和安检",
+      "severity": "critical",
+      "applies_to": "携带行李的同行人",
+      "day": 3,
+      "source": "computed",
+      "source_ref": "V5 返程缓冲计算",
+      "checked_at": "2026-08-24T15:30:00+08:00"
+    }
+  ],
+  "rechecks": [
+    {
+      "item": "熊猫基地开放、实名预约与临时通知",
+      "category": "opening",
+      "status": "verified",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "recheck_at": "2026-09-17T09:00:00+08:00",
+      "source": "official-site",
+      "source_ref": "https://www.panda.org.cn/",
+      "note": "出发前一天再次核对放票与临时闭园通知"
+    },
+    {
+      "item": "酒店、机票与熊猫基地办理状态",
+      "category": "booking",
+      "status": "verified",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "recheck_at": "2026-09-11T09:00:00+08:00",
+      "source": "official-and-ota",
+      "source_ref": "prebook 清单中的官方/携程链接",
+      "note": "确认姓名证件、退改规则和订单状态"
+    },
+    {
+      "item": "酒店往返、末班车与机场路线",
+      "category": "transport",
+      "status": "verified",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "recheck_at": "2026-09-17T09:00:00+08:00",
+      "source": "amap-mcp",
+      "source_ref": "本行程 transports 路线查询",
+      "note": "出发前一天重新计算机场段并核对末班信息"
+    },
+    {
+      "item": "酒店、航班、门票与餐饮价格",
+      "category": "price",
+      "status": "verified",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "recheck_at": "2026-09-11T09:00:00+08:00",
+      "source": "ctrip-and-official",
+      "source_ref": "prebook 与各价格对象 source_ref",
+      "note": "未付款项目在下单前刷新价格和可售状态"
+    },
+    {
+      "item": "成都逐小时天气、雷电和暴雨预警",
+      "category": "weather",
+      "status": "verified",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "recheck_at": "2026-09-17T09:00:00+08:00",
+      "source": "official-weather",
+      "source_ref": "https://www.weather.com.cn/weather/101270101.shtml",
+      "note": "提前一天决定是否启用 Day 2 Plan B"
+    },
+    {
+      "item": "暴雨、雷电与交通中断安全提示",
+      "category": "safety",
+      "status": "verified",
+      "checked_at": "2026-08-24T15:30:00+08:00",
+      "recheck_at": "2026-09-17T09:00:00+08:00",
+      "source": "official-weather",
+      "source_ref": "https://www.weather.com.cn/weather/101270101.shtml",
+      "note": "出现高级别预警时取消户外活动，不用原计划硬顶"
     }
   ],
   "party_size": 2,

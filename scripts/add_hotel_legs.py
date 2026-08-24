@@ -495,12 +495,17 @@ def main() -> int:
     ap.add_argument("-o", "--output", type=Path)
     ap.add_argument("--repair", action="store_true", help="修复已有酒店段 path/时长")
     args = ap.parse_args()
+    if args.in_place and args.output:
+        ap.error("--in-place 与 --output 不能同时使用")
+    if not args.in_place and not args.output:
+        ap.error("请明确指定 --in-place 或 --output；脚本不会默认覆盖输入文件")
     key = load_amap_key()
     trip = json.loads(args.trip_json.read_text(encoding="utf-8"))
     n = add_legs(trip, key)
     if args.repair:
         n += repair_hotel_legs(trip, key)
-    out = args.trip_json if args.in_place else (args.output or args.trip_json)
+    out = args.trip_json if args.in_place else args.output
+    assert out is not None
     out.write_text(json.dumps(trip, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"✅ {args.trip_json.name}: 新增 {n} 段酒店通勤 → {out}")
     return 0

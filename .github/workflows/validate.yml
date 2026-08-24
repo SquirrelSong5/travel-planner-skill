@@ -2,17 +2,14 @@ name: validate
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
-  validate:
+  test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        example: [chengdu-2026-09-18]
     steps:
       - uses: actions/checkout@v4
 
@@ -21,6 +18,19 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run validate.py on example
+      - name: Compile scripts
+        run: python -m py_compile scripts/*.py
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Validate example strictly
+        run: python scripts/validate.py examples/chengdu-2026-09-18.json --pretty --fail-on-warn --as-of 2026-08-24
+
+      - name: Smoke-test route URLs
+        run: python scripts/test_day_route_urls.py
+
+      - name: Render example
         run: |
-          python scripts/validate.py "examples/${{ matrix.example }}.json"
+          python scripts/render_markdown.py examples/chengdu-2026-09-18.json -o /tmp/chengdu-trip.md
+          python scripts/render_html.py assets/template.html examples/chengdu-2026-09-18.json -o /tmp/chengdu-trip.html

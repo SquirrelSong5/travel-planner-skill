@@ -518,6 +518,45 @@
       color: var(--accent);
       font-weight: 500;
     }
+    .item-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .item-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .item-badge.warning { background: #fff4db; color: #8a5500; }
+    .item-badge.critical { background: #feeceb; color: #a42821; }
+    .decision-card {
+      margin: var(--sp-4);
+      padding: var(--sp-4);
+      border: 1px solid #d8c8a3;
+      border-radius: var(--radius);
+      background: #fffaf0;
+      color: var(--fg);
+      font-size: var(--fs-sm);
+      line-height: 1.6;
+    }
+    .decision-card strong { color: #745117; }
+    .decision-card p { margin: 4px 0 0; }
+    .safety-card {
+      margin: var(--sp-3) var(--sp-4) var(--sp-4);
+      padding: var(--sp-3) var(--sp-4);
+      border-left: 3px solid #b54a40;
+      background: #fff7f6;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: var(--fs-sm);
+      line-height: 1.6;
+    }
 
     /* ===== Weather card ===== */
     .weather-card {
@@ -697,6 +736,24 @@
     }
     .map-fallback p { margin: 4px 0; }
     .map-fallback .hint { font-size: 12px; }
+    .map-key-form { display: flex; gap: 8px; margin-top: 12px; }
+    .map-key-form input {
+      min-width: 0;
+      flex: 1;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink);
+    }
+    .map-key-form button {
+      border: 0;
+      border-radius: 8px;
+      padding: 9px 12px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
 
     /* ===== Day Card ===== */
     .day-card {
@@ -1211,11 +1268,7 @@
 
   <div class="wrap">
 
-    <!-- ===== Validation Banner（v1.1.0 新增，代码级硬约束）=====
-         AI 必须在 tripData.validation_report 嵌入完整 7 条规则结果；
-         浏览器加载时 JS 会用同样规则强制重算（不依赖 AI 的 self-report）。
-         缺失/不完整 → 顶部红/黄条
-    -->
+    <!-- scripts/validate.py 是渲染前的权威校验入口；此隐藏节点预留给未来的页内报告。 -->
     <div id="validation-banner" role="status" aria-live="polite" hidden></div>
 
     <header class="hero">
@@ -1260,7 +1313,7 @@
     </main>
 
     <footer class="bottom">
-      <p>由 <strong>travel-planner</strong> skill 生成 · 数据来源：高德 MCP / 小红书 MCP</p>
+      <p>由 <strong>travel-planner</strong> skill 生成 · 信息源与核对时间见侧栏</p>
       <p>计划 = 参考坐标 · 天气 / 体力 / 饥饿均可覆盖</p>
     </footer>
 
@@ -1322,6 +1375,21 @@
         <div class="weather-card" id="weather-plan-text"></div>
       </section>
 
+      <section id="source-coverage-section" style="display:none">
+        <h3>信息源覆盖 <span class="count" id="source-coverage-count"></span></h3>
+        <ul class="drawer-list" id="source-coverage-list"></ul>
+      </section>
+
+      <section id="safety-section" style="display:none">
+        <h3>安全提醒 <span class="count" id="safety-count"></span></h3>
+        <ul class="drawer-list" id="safety-list"></ul>
+      </section>
+
+      <section id="recheck-section" style="display:none">
+        <h3>行前复核 <span class="count" id="recheck-count"></span></h3>
+        <ul class="drawer-list" id="recheck-list"></ul>
+      </section>
+
       <!-- 花销预估 -->
       <section id="budget-section">
         <h3>
@@ -1354,31 +1422,23 @@
     </div>
   </aside>
 
-  <!-- ====== AI 在 Step 7 填这里 ======
+  <!-- ====== scripts/render_html.py 在这里注入已校验的 tripData ======
        window.AMAP_KEY：高德 Web (JS) API Key（空字符串则地图降级为文字版）
        window.tripData：完整行程数据
        可选字段 trip_center：[lng, lat] —— 多城行程的整体中心点（用于初始化地图视野），
                      缺省则取 days[0].center，再缺省兜底北京
   -->
   <script>
-    // v2.0.5 安全：AMAP_WEB_KEY 不内嵌到 HTML（防 git 泄露）
-    // 三种 runtime 注入方式（按优先级）：
-    // 1. URL 加 ?k=YOUR_KEY 参数（如 https://xxx.github.io/.../x.html?k=YOUR_KEY）
-    // 2. localStorage 设置 amap_web_key（持久化，一次设置永久）
-    // 3. 空 → 地图降级为文字版行程
+    // Web Key 仅保存在当前设备的 localStorage，不放进 URL、HTML 或 git。
     (function injectAmapKey() {
       if (window.AMAP_KEY) return;  // 已注入
-      // 1. URL 参数 ?k=KEY
-      const urlKey = new URLSearchParams(location.search).get('k');
-      if (urlKey) { window.AMAP_KEY = urlKey; return; }
-      // 2. localStorage
       try {
         const lsKey = localStorage.getItem('amap_web_key');
         if (lsKey) { window.AMAP_KEY = lsKey; return; }
       } catch (e) {}
-      // 3. 空（地图降级文字版）
       window.AMAP_KEY = "";
     })();
+    // TRIP_DATA_START
     window.tripData = {
       weather_plan: "",
       trip_center: null,   // 例：[116.397, 39.908] 整个行程的中心点
@@ -1390,8 +1450,12 @@
         commute: []
       },
       days: [],
-      prebook: []
+      prebook: [],
+      source_coverage: [],
+      safety_notes: [],
+      rechecks: []
     };
+    // TRIP_DATA_END
   </script>
 
   <!-- ===== 渲染逻辑 ===== -->
@@ -1438,7 +1502,14 @@
       }
 
       function isForeignOtaUrl(url) {
-        return /booking\.com|agoda\.com|expedia\.com|trip\.com/i.test(url || '');
+        try {
+          const host = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+          if (host === 'ctrip.com' || host.endsWith('.ctrip.com')) return false;
+          return ['trip.com', 'booking.com', 'agoda.com', 'expedia.com']
+            .some(domain => host === domain || host.endsWith('.' + domain));
+        } catch (e) {
+          return true;
+        }
       }
 
       function parseTripDates() {
@@ -1453,16 +1524,8 @@
         const { start, end } = parseTripDates();
         const city = encodeURIComponent(D.city || '');
         if (/机票|航班/.test(item)) {
-          if (/返程|离厦|厦门.*→|厦门.*到/.test(item) && end) {
-            return `https://flights.ctrip.com/itinerary/oneway/xmn-sha?date=${end}`;
-          }
-          if (/出发|抵达厦门|→.*厦门|到厦门/.test(item) && start) {
-            return `https://flights.ctrip.com/itinerary/oneway/sha-xmn?date=${start}`;
-          }
-          if (start && end) {
-            return `https://flights.ctrip.com/itinerary/round/sha-xmn?date=${start},${end}`;
-          }
-          return `https://flights.ctrip.com/`;
+          const dates = [start, end].filter(Boolean).join(' ');
+          return `https://www.ctrip.com/search/searchresult?keyword=${encodeURIComponent(`${item} ${D.city || ''} ${dates}`.trim())}`;
         }
         if (/高铁|火车/.test(item)) {
           return `https://trains.ctrip.com/`;
@@ -2266,11 +2329,11 @@
             const c = bs.by_category[k];
             if (!c || c.min == null) return;
             const cmax = c.max != null ? c.max : c.min;
-            const note = c.note ? `（${esc(c.note)}）` : (c.nights ? `（${c.nights} 晚）` : '');
+            const note = c.note ? `（${esc(c.note)}）` : (c.nights ? `（${esc(c.nights)} 晚）` : '');
             html += `<div class="budget-row"><span>${catLabels[k]}${note}</span><span>${formatMoney(c.min, bs.currency)}${cmax !== c.min ? '–' + formatMoney(cmax, bs.currency) : ''}</span></div>`;
           });
         }
-        html += `<div class="budget-row budget-total-line"><span>全程合计（${ps} 人）</span><span>${formatMoney(totalMin, bs.currency)}${totalMax !== totalMin ? '–' + formatMoney(totalMax, bs.currency) : ''}</span></div>`;
+        html += `<div class="budget-row budget-total-line"><span>全程合计（${esc(ps)} 人）</span><span>${formatMoney(totalMin, bs.currency)}${totalMax !== totalMin ? '–' + formatMoney(totalMax, bs.currency) : ''}</span></div>`;
         if (bs.per_person_min != null) {
           html += `<div class="budget-row"><span>人均</span><span>${formatMoney(bs.per_person_min, bs.currency)}${bs.per_person_max !== bs.per_person_min ? '–' + formatMoney(bs.per_person_max, bs.currency) : ''}</span></div>`;
         }
@@ -2330,7 +2393,7 @@
         const h = D.hotel || {};
         if (h.commute && h.commute.length) {
           const items = h.commute.map(c =>
-            `<li>Day ${c.day} ${esc(c.region)}：${esc(c.mode)} ${c.duration_min} 分钟</li>`
+            `<li>Day ${esc(c.day)} ${esc(c.region)}：${esc(c.mode)} ${esc(c.duration_min)} 分钟</li>`
           ).join('');
           document.getElementById('hotel-commute').innerHTML =
             `<details class="hotel-commute"><summary>每天通勤（点击展开）</summary>
@@ -2353,8 +2416,8 @@
       function renderTabs() {
         const tabsEl = document.getElementById('tabs');
         tabsEl.innerHTML = D.days.map(d =>
-          `<button class="tab" role="tab" data-day="${d.day}" aria-selected="${d.day === 1}">
-            <span class="tab-day">Day ${d.day}</span>
+          `<button class="tab" role="tab" data-day="${esc(d.day)}" aria-selected="${d.day === 1}">
+            <span class="tab-day">Day ${esc(d.day)}</span>
             <span class="tab-region">${esc(d.region)}</span>
           </button>`
         ).join('');
@@ -2527,6 +2590,22 @@
 
         const wsTag = d.weather_decision ?
           `<p class="note" style="margin-top:8px">📋 ${mdLite(d.weather_decision)}</p>` : '';
+        const rawPlanB = Array.isArray(d.plan_b) ? d.plan_b : (d.plan_b ? [d.plan_b] : []);
+        const planBHtml = rawPlanB.filter(x => x && x.trigger && x.alternative).map(x => `
+          <div class="decision-card">
+            <strong>Plan B · ${esc(x.trigger)}</strong>
+            <p>替代安排：${mdLite(x.alternative)}</p>
+            ${x.impact ? `<p>调整影响：${mdLite(x.impact)}</p>` : ''}
+            ${x.route_note ? `<p>路线：${mdLite(x.route_note)}</p>` : ''}
+          </div>`).join('');
+        const daySafety = [
+          ...(d.safety_notes || []),
+          ...(D.safety_notes || []).filter(x => x && x.day === d.day),
+        ];
+        const daySafetyHtml = daySafety.length ? `
+          <div class="safety-card">
+            ${daySafety.map(x => `<p><strong>${esc(x.risk || '安全提醒')}</strong>：${mdLite(x.action || x)}</p>`).join('')}
+          </div>` : '';
 
         // 收集要"嵌入"到 POI 卡片末尾的 meal：按时段匹配第一个符合的 POI，
         // 没匹配到的 fallback 到最后 POI
@@ -2607,7 +2686,7 @@
                   ${costUi.pillHtml}
                 </div>
                 <div class="place">
-                  <h4><span class="slot-num">${slotNum}.</span>${esc(p.name)} <span class="cat ${esc(p.cat)}">${esc(p.cat)}</span>${ws}</h4>
+                  <h4><span class="slot-num">${esc(slotNum)}.</span>${esc(p.name)} <span class="cat ${esc(p.cat)}">${esc(p.cat)}</span>${ws}</h4>
                   ${note}${why}
                   ${nextLegHtml}
                   ${mealLegHtml}
@@ -2645,13 +2724,13 @@
 
         const dayRoute = collectDayRouteStops(d);
         const dayRouteBtn = dayRoute
-          ? `<button type="button" class="day-route-btn" data-day-route="${d.day}" title="按当天行程顺序规划驾车路线（含全部途经点），不等同于分段公交方案"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19V9.5a2 2 0 0 1 2-2H16"/></svg>全天路线</button>`
+          ? `<button type="button" class="day-route-btn" data-day-route="${esc(d.day)}" title="按当天行程顺序规划驾车路线（含全部途经点），不等同于分段公交方案"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19V9.5a2 2 0 0 1 2-2H16"/></svg>全天路线</button>`
           : '';
 
         document.getElementById('day-panel').innerHTML = `
           <article class="day-card">
             <header>
-              <h3>Day ${d.day} · ${esc(d.date)} (${esc(d.weekday)}) · ${esc(d.region)}</h3>
+              <h3>Day ${esc(d.day)} · ${esc(d.date)} (${esc(d.weekday)}) · ${esc(d.region)}</h3>
               <div class="day-header-actions">
                 ${dayRouteBtn}
                 <span class="weather">${esc(d.weather_emoji || '')} ${esc(d.weather || '')}</span>
@@ -2660,6 +2739,8 @@
             <p class="theme">${esc(d.theme || '')}</p>
             <ol class="timeline">${morningLegHtml}${poiItems}</ol>
             ${wsTag}
+            ${planBHtml}
+            ${daySafetyHtml}
           </article>`;
         bindUserBudgetInputs();
         bindCostMarginInteractions();
@@ -2673,12 +2754,20 @@
         if (D.prebook && D.prebook.length) {
           prebookEl.innerHTML = D.prebook.map(x => {
             const link = resolvePrebookLink(x);
-            const title = esc(x.item);
+            const title = esc(x.item || x.title || '待办事项');
             const titleHtml = link.search
               ? `<a href="${esc(link.href)}" target="_blank" rel="noopener">${title}</a><span class="item-search-hint">（搜索）</span>`
               : `<a href="${esc(link.href)}" target="_blank" rel="noopener">${title}</a>`;
+            const priorityMap = { must: '必须', recommended: '建议', optional: '可选' };
+            const statusMap = { booked: '已完成', not_booked: '待办理', not_required: '无需办理', unknown: '待确认' };
+            const badges = [
+              `<span class="item-badge">${esc(priorityMap[x.priority] || x.priority || '未分级')}</span>`,
+              `<span class="item-badge ${x.status === 'unknown' ? 'warning' : ''}">${esc(statusMap[x.status] || x.status || '待确认')}</span>`,
+              x.id_required ? '<span class="item-badge warning">实名/证件</span>' : '',
+            ].filter(Boolean).join('');
             return `<li>
-              <span class="item-title">${titleHtml}<span class="item-deadline">· ${mdLite(x.deadline)}</span></span>
+              <span class="item-title">${titleHtml}${x.deadline ? `<span class="item-deadline">· ${mdLite(x.deadline)}</span>` : ''}</span>
+              <span class="item-badges">${badges}</span>
               ${x.note ? `<span class="item-meta">${mdLite(x.note)}</span>` : ''}
             </li>`;
           }).join('');
@@ -2688,6 +2777,83 @@
         } else {
           document.getElementById('prebook-count').textContent = '0';
           document.getElementById('drawer-badge').style.display = 'none';
+        }
+
+        renderOperationalLists();
+      }
+
+      function renderOperationalLists() {
+        const platformMap = {
+          official: '官方与运营方', amap: '高德地图', ota: '国内 OTA',
+          xiaohongshu: '小红书', meituan: '美团攻略'
+        };
+        const coverageStatusMap = {
+          used: '已使用', degraded: '降级使用', unavailable: '暂不可用', not_applicable: '本次不适用'
+        };
+        const stageMap = {
+          discovery: '目的地发现', constraints: '规则确认', spatial: '路线落地',
+          dining: '餐饮筛选', booking: '预订核对', pricing: '价格核对',
+          experience: '体验复核', recheck: '行前复核'
+        };
+        const coverage = (D.source_coverage || []).filter(x => x && typeof x === 'object');
+        const coverageSection = document.getElementById('source-coverage-section');
+        const coverageList = document.getElementById('source-coverage-list');
+        if (coverage.length) {
+          coverageSection.style.display = '';
+          document.getElementById('source-coverage-count').textContent = `${coverage.length}/5`;
+          coverageList.innerHTML = coverage.map(x => {
+            const stages = (x.stages || []).map(stage => stageMap[stage] || stage).join('、');
+            const refs = (x.source_refs || []).filter(isValidHttpUrl).map((ref, index) =>
+              `<a href="${esc(ref)}" target="_blank" rel="noopener">证据 ${index + 1}</a>`
+            ).join(' · ');
+            return `<li>
+              <span class="item-title">${esc(platformMap[x.platform] || x.platform || '未知平台')}</span>
+              <span class="item-badges"><span class="item-badge ${x.status === 'used' ? '' : 'warning'}">${esc(coverageStatusMap[x.status] || x.status || '待确认')}</span></span>
+              <span class="item-meta">${esc(stages)}${x.checked_at ? ` · ${esc(String(x.checked_at).slice(0, 10))}` : ''}</span>
+              <span class="item-meta">${mdLite(x.purpose || '')}${refs ? ` · ${refs}` : ''}</span>
+              ${x.note ? `<span class="item-meta">${mdLite(x.note)}</span>` : ''}
+            </li>`;
+          }).join('');
+        } else {
+          coverageSection.style.display = 'none';
+        }
+
+        const severityMap = { notice: '提示', warning: '注意', critical: '重要' };
+        const safety = (D.safety_notes || []).filter(x => x && typeof x === 'object');
+        const safetySection = document.getElementById('safety-section');
+        const safetyList = document.getElementById('safety-list');
+        if (safety.length) {
+          safetySection.style.display = '';
+          document.getElementById('safety-count').textContent = `${safety.length} 项`;
+          safetyList.innerHTML = safety.map(x => `<li>
+            <span class="item-title">${esc(x.risk || '安全提醒')}</span>
+            <span class="item-badges"><span class="item-badge ${esc(x.severity || '')}">${esc(severityMap[x.severity] || x.severity || '提示')}</span></span>
+            <span class="item-meta">${mdLite(x.action || '')}</span>
+          </li>`).join('');
+        } else {
+          safetySection.style.display = 'none';
+        }
+
+        const statusMap = { verified: '已核对', due: '待复核', unknown: '待确认' };
+        const rechecks = (D.rechecks || []).filter(x => x && typeof x === 'object');
+        const recheckSection = document.getElementById('recheck-section');
+        const recheckList = document.getElementById('recheck-list');
+        if (rechecks.length) {
+          recheckSection.style.display = '';
+          document.getElementById('recheck-count').textContent = `${rechecks.length} 项`;
+          recheckList.innerHTML = rechecks.map(x => {
+            const sourceLink = isValidHttpUrl(x.source_ref)
+              ? `<a href="${esc(x.source_ref)}" target="_blank" rel="noopener">来源</a>`
+              : esc(x.source_ref || '');
+            return `<li>
+              <span class="item-title">${esc(x.item || '待复核事项')}<span class="item-deadline">· ${esc(x.recheck_at || '未设置')}</span></span>
+              <span class="item-badges"><span class="item-badge ${x.status === 'verified' ? '' : 'warning'}">${esc(statusMap[x.status] || x.status || '待确认')}</span></span>
+              <span class="item-meta">上次核对：${esc(x.checked_at || '未知')} · ${sourceLink}</span>
+              ${x.note ? `<span class="item-meta">${mdLite(x.note)}</span>` : ''}
+            </li>`;
+          }).join('');
+        } else {
+          recheckSection.style.display = 'none';
         }
       }
 
@@ -2729,7 +2895,7 @@
             const info = `<div style="padding:8px;max-width:240px;font-size:13px">
               <strong>🏨 ${esc(D.hotel.name || '酒店')}</strong><br>
               <span style="color:#888">${esc(D.hotel.address || '')}</span>
-              ${D.hotel.price ? `<p style="margin:6px 0;color:#666">${D.hotel.price.min}-${D.hotel.price.max} ${D.hotel.price.currency||'CNY'}/晚</p>` : ''}
+              ${D.hotel.price ? `<p style="margin:6px 0;color:#666">${esc(D.hotel.price.min)}-${esc(D.hotel.price.max)} ${esc(D.hotel.price.currency || 'CNY')}/晚</p>` : ''}
               ${D.hotel.why ? `<p style="margin:6px 0;color:#666">${esc(D.hotel.why)}</p>` : ''}
             </div>`;
             new AMap.InfoWindow({ content: info, offset: new AMap.Pixel(0, -36) })
@@ -2754,14 +2920,14 @@
               border:2px solid white;
               box-shadow:0 2px 4px rgba(0,0,0,0.4);
               font-family:system-ui;
-            ">${p.idx != null ? p.idx : i + 1}</div>`,
+            ">${esc(p.idx != null ? p.idx : i + 1)}</div>`,
             title: p.name,
             zIndex: 100 + i
           });
           marker.on('click', () => {
             const info = `<div style="padding:8px;max-width:220px;font-size:13px">
               <strong>${esc(p.time)} ${esc(p.name)}</strong><br>
-              <span style="color:#888">${esc(p.cat)} · ${p.duration_min || '?'} 分钟</span>
+              <span style="color:#888">${esc(p.cat)} · ${esc(p.duration_min || '?')} 分钟</span>
               ${p.note ? `<p style="margin:6px 0;color:#666">${esc(p.note)}</p>` : ''}
             </div>`;
             new AMap.InfoWindow({ content: info, offset: new AMap.Pixel(0, -32) })
@@ -2816,16 +2982,27 @@
           const fb = document.createElement('div');
           fb.className = 'map-fallback';
           fb.innerHTML = `<p>⚠️ 未配置高德 Web API Key</p>
-            <p class="hint">在 AI Step 7 输出时填入 <code>window.AMAP_KEY</code>，或参见 README 申请（免费）</p>`;
+            <p class="hint">Key 只保存在当前设备，不会写入 URL、HTML 或公开仓库。</p>
+            <form class="map-key-form" id="map-key-form">
+              <input id="map-key-input" type="password" autocomplete="off" placeholder="粘贴高德 Web Key" aria-label="高德 Web Key">
+              <button type="submit">保存并加载地图</button>
+            </form>`;
           const panel = document.getElementById('map-panel');
           const inner = panel && panel.querySelector('.map-panel-inner');
           (inner || panel || document.querySelector('.map-section')).appendChild(fb);
+          document.getElementById('map-key-form').addEventListener('submit', event => {
+            event.preventDefault();
+            const key = document.getElementById('map-key-input').value.trim();
+            if (!key) return;
+            try { localStorage.setItem('amap_web_key', key); } catch (e) { return; }
+            location.reload();
+          });
           return;
         }
         const script = document.createElement('script');
         script.src = `https://webapi.amap.com/maps?v=2.0&key=${window.AMAP_KEY}&plugin=AMap.Marker,AMap.InfoWindow`;
         script.onload = () => {
-          // 地图中心：优先取 tripData.trip_center（AI 在 Step 7 注入），否则取首日主区域中心
+          // 地图中心：优先取已渲染 JSON 的 trip_center，否则取首日主区域中心
           const tripCenter = D.trip_center || (D.days[0] && D.days[0].center);
           const initCenter = tripCenter || [116.397, 39.908]; // 兜底北京（GCJ-02）
           map = new AMap.Map('map', {
@@ -2843,7 +3020,7 @@
           const fb = document.createElement('div');
           fb.className = 'map-fallback';
           fb.innerHTML = `<p>❌ 高德地图加载失败</p>
-            <p class="hint">请检查 <code>window.AMAP_KEY</code> 是否正确</p>`;
+            <p class="hint">请检查当前设备保存的高德 Web Key 和域名白名单。</p>`;
           const panel = document.getElementById('map-panel');
           const inner = panel && panel.querySelector('.map-panel-inner');
           (inner || panel || document.querySelector('.map-section')).appendChild(fb);
@@ -2896,11 +3073,9 @@
         }
       });
 
-      // ===== Validation（v1.1.0 新增，代码级硬约束）=====
-      // 浏览器端强制重算 V1/V3/V4/V5/V6（用 POI 坐标 + 阈值公式），
-      // 结果**覆盖** tripData.validation_report.rules（AI 作弊也挡不住）。
-      // V2 通勤需高德 API，浏览器内只能粗算 → 提示用户看 AI 高德复核报告。
-      // V7 用户禁忌需 AI 上下文判断，**不能脚本化** → 保留 AI self-report。
+      // ===== Legacy browser diagnostics =====
+      // 最终交付以 scripts/validate.py 的完整规则集与渲染前结果为准。
+      // 以下辅助函数仅保留给开发调试，不在成品页展示。
 
       const VALIDATION_RULE_IDS = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9'];
       const VALIDATION_THRESHOLDS = {
@@ -2952,23 +3127,41 @@
         return { id: 'V1', rule: '区域一致性', status: st, note: `最远「${worstPoi}」 ${worst.toFixed(2)} km`, source: 'browser' };
       }
 
-      // 浏览器端 V3 重算
+      // 浏览器端 V3 重算：主餐厅必须有坐标；偏离主区域时允许明确列入当日路线
       function browserCheckV3(day) {
         const center = day.center;
         const meals = day.meals || {};
         if (!center) return { id: 'V3', rule: '餐厅区域匹配', status: '⚠️', note: '缺 center', source: 'browser' };
         let worst = 0, worstRest = null, worstMeal = null;
+        let candidateCount = 0, routedCount = 0;
+        const missingMain = [];
+        const poiLocs = (day.pois || []).map(getLoc).filter(Boolean);
         for (const [name, meal] of Object.entries(meals)) {
           if (!meal || typeof meal !== 'object') continue;
-          for (const tag of ['main', 'alt1', 'alt2']) {
+          for (const tag of ['main', 'alt', 'alt1', 'alt2']) {
             const r = meal[tag];
+            if (!r || !r.name) continue;
             const loc = getLoc(r);
-            if (!loc) continue;
+            if (!loc) {
+              if (tag === 'main') missingMain.push(`${name}.main（${r.name}）`);
+              continue;
+            }
+            candidateCount++;
             const d = haversineKm(center, loc);
+            const nearestPoi = poiLocs.reduce((best, p) => Math.min(best, haversineKm(loc, p)), Infinity);
+            if (d > VALIDATION_THRESHOLDS.V3_WARN_KM && nearestPoi <= 0.3) {
+              routedCount++;
+              continue;
+            }
             if (d != null && d > worst) { worst = d; worstRest = r.name || '?'; worstMeal = name; }
           }
         }
-        if (worst === 0) return { id: 'V3', rule: '餐厅区域匹配', status: '✅', note: '无餐厅坐标可验', source: 'browser' };
+        if (missingMain.length) return { id: 'V3', rule: '餐厅区域匹配', status: '❌', note: `主餐厅缺坐标：${missingMain.join('、')}`, source: 'browser' };
+        if (!candidateCount) return { id: 'V3', rule: '餐厅区域匹配', status: '⚠️', note: '没有可验证的餐厅候选', source: 'browser' };
+        if (worst === 0) {
+          const note = routedCount ? `${routedCount} 个偏离主区域的餐厅已列入当日路线` : '所有餐厅均在主区域内';
+          return { id: 'V3', rule: '餐厅区域匹配', status: '✅', note, source: 'browser' };
+        }
         const st = statusFor(worst, VALIDATION_THRESHOLDS.V3_WARN_KM, VALIDATION_THRESHOLDS.V3_FAIL_KM);
         return { id: 'V3', rule: '餐厅区域匹配', status: st, note: `「${worstRest}」(${worstMeal}) ${worst.toFixed(2)} km`, source: 'browser' };
       }
@@ -2996,7 +3189,8 @@
           return /航班|飞机|高铁|火车|动车|机票/.test(t);
         });
         if (!flights.length) return { id: 'V5', rule: '末日返程缓冲', status: '✅', note: '无返程票', source: 'browser' };
-        const flight = flights[0];
+        const returnFlights = flights.filter(p => /返程|回程|离开/.test(p.item || p.title || ''));
+        const flight = returnFlights.length ? returnFlights[returnFlights.length - 1] : flights[flights.length - 1];
         const flightTime = flight.depart_time || flight.time || '';
         const flightNote = flight.item || flight.title || '返程';
         const pois = lastDay.pois || [];
@@ -3049,14 +3243,20 @@
             }
           }
         }
-        if (total === 0) return { id: 'V8', rule: 'MCP 必跑痕迹', status: '✅', note: '无 transport 段', source: 'browser' };
+        if (total === 0) {
+          const multiPoiDays = (days || []).filter(d => (d.pois || []).length > 1).map(d => d.day);
+          if (multiPoiDays.length) {
+            return { id: 'V8', rule: '路线来源字段完整性', status: '❌', note: `Day ${multiPoiDays.join('、')} 有多个 POI 但无 transport 段`, source: 'browser' };
+          }
+          return { id: 'V8', rule: '路线来源字段完整性', status: '⚠️', note: '无 transport 段可验证', source: 'browser' };
+        }
         const errors = [];
         if (badSource.length) errors.push(`${badSource.length} 段 source 不合法`);
         if (missingDuration.length) errors.push(`${missingDuration.length} 段缺 duration_min`);
         if (errors.length) {
-          return { id: 'V8', rule: 'MCP 必跑痕迹', status: '❌', note: errors.join('；') + '。请 MCP/REST maps_direction_* 实算', source: 'browser' };
+          return { id: 'V8', rule: '路线来源字段完整性', status: '❌', note: errors.join('；') + '。请使用地图能力实算', source: 'browser' };
         }
-        return { id: 'V8', rule: 'MCP 必跑痕迹', status: '✅', note: `全部 ${total} 段含 source 与 duration_min`, source: 'browser' };
+        return { id: 'V8', rule: '路线来源字段完整性', status: '✅', note: `全部 ${total} 段含 source 与 duration_min`, source: 'browser' };
       }
 
       // 浏览器端 V9（与 validate.py check_v9 一致，v2.2.3 只拦过快）
@@ -3125,8 +3325,7 @@
         rules.push(browserCheckV8(D.days));
         // V9 高德实算 vs 粗算
         rules.push(browserCheckV9(D.days));
-        // V7 完全由 AI 判断，浏览器无法验
-        // 保留 AI self-report 里的 V7（如有）
+        // V7 只能复用离线校验报告，浏览器无法独立判断用户约束。
         const aiReport = D.validation_report;
         if (aiReport && Array.isArray(aiReport.rules)) {
           const v7 = aiReport.rules.find(r => r.id === 'V7');
