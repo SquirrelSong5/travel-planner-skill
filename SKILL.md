@@ -1,11 +1,11 @@
 ---
 name: travel-planner
-description: 面向中国大陆行程的旅行规划与迭代 Skill。使用地图、官方渠道、OTA、目的地攻略和餐饮指南等实时信息，生成并校验包含酒店、每日路线、交通、餐饮、预算和预订事项的结构化计划与响应式单文件 HTML。Use when the user asks to plan, optimize, review, update, or publish a domestic trip itinerary, including requests based on flight, train, hotel, attraction, restaurant, or route details.
+description: 面向中国大陆行程的旅行规划与迭代 Skill。使用地图、官方渠道、OTA、目的地攻略和餐饮指南等实时信息，生成并校验包含酒店、每日路线、交通、餐饮、预算和预订事项的对话版攻略与响应式单文件 HTML。Use when the user asks to plan, optimize, review, update, or publish a domestic trip itinerary, including requests based on flight, train, hotel, attraction, restaurant, or route details.
 ---
 
 # Travel Planner
 
-把旅行需求变成可执行、可校验、可继续修改的中国大陆行程。默认交付结构化 JSON 与本地单文件 HTML；只有用户明确希望分享，并确认隐私影响后，才发布公开链接。
+把旅行需求变成可执行、可校验、可继续修改的中国大陆行程。每次必须同时交付可独立使用的对话版攻略与本地单文件 HTML；两者同等重要，并由同一份已校验 JSON 生成。只有用户明确希望分享，并确认隐私影响后，才额外发布公开链接。
 
 ## 工作原则
 
@@ -16,6 +16,7 @@ description: 面向中国大陆行程的旅行规划与迭代 Skill。使用地�
 5. **最少打扰用户。** 先利用已有信息和工具，只询问会实质改变方案的缺项。
 6. **保护隐私。** 不把 API Key 写进 JSON、HTML、URL 或仓库；公开发布前明确提示页面可能暴露城市、日期、酒店和路线。
 7. **不擅自改环境。** 不自动安装 MCP、浏览器扩展或 CLI；缺能力时说明影响，并提供可继续的降级方案。
+8. **双输出保持一致。** 对话版攻略与 HTML 必须包含相同的核心行程事实；缺少任一输出、仅返回摘要或链接、两者版本不一致，都不算完成。
 
 ## 信息源
 
@@ -120,14 +121,29 @@ python scripts/render_html.py assets/template.html trip.json -o trip.html
 
 打开 HTML 检查标题、日期、地图、预订链接、预算和移动端布局。高德 Web Key 只允许用户在页面内输入并保存到当前设备；不得通过 `?k=` 参数传递。
 
-### 7. 交付或发布
+### 7. 生成对话版攻略
 
-默认交付 JSON、HTML 和简短说明。用户明确要求公开链接时：
+根据已校验的同一份 JSON，在对话中直接给出一份无需打开附件也能使用的完整攻略，至少包含：
+
+- 行程概览、关键假设和待核验项；
+- 每日时段、POI 顺序、区域和主要交通；
+- 餐饮安排、预算区间、预约事项和 Plan B；
+- 与老人、儿童、天气、末班车或返程有关的安全提醒。
+
+不要只回复“已生成 HTML”、文件链接或改动摘要来代替对话版攻略。
+
+### 8. 双交付或额外发布
+
+在同一次最终回复中同时提供对话版攻略与 HTML 文件。JSON 是两种输出的唯一数据源和后续修改底稿，可一并提供，但不能替代任一用户可见输出。
+
+用户明确要求公开链接时，把链接作为 HTML 文件之外的额外交付：
 
 1. 提示城市、日期、酒店和路线可能公开；
 2. 确认发布仓库、可见性和目标路径；
 3. 发布后实际打开链接验证；
 4. 只返回经过验证的链接。
+
+公开发布失败时仍交付对话版攻略与 HTML 文件，不让托管能力阻塞规划结果。
 
 部署细节见 [references/deployment.md](references/deployment.md)。
 
@@ -140,7 +156,9 @@ python scripts/render_html.py assets/template.html trip.json -o trip.html
 3. 只重新查询会失效的事实；
 4. 重跑全量校验；
 5. 重渲 HTML；
-6. 已发布且用户要求同步时，再更新同一页面。
+6. 从更新后的 JSON 重新生成完整对话版攻略；
+7. 在同一回复中重新交付两种最新输出；
+8. 已发布且用户要求同步时，再更新同一页面。
 
 如果来源出现冲突，保留官方结论，并在说明里记录冲突与取舍。
 
